@@ -1,6 +1,6 @@
 # LokmaGo — Restoran paneli
 
-Restoran egalari uchun desktop veb-panel. React + TypeScript + Vite + Tailwind + TanStack Query + Socket.IO.
+Restoran egalari uchun desktop veb-panel. React + JavaScript + Vite + Tailwind + TanStack Query + Socket.IO.
 
 ## Ishga tushirish
 

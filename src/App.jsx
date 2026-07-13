@@ -9,7 +9,7 @@ import { PromosPage, StatsPage, SettingsPage } from '@/pages/StubPages';
 import { panelApi } from '@/api';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } },
+  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } }
 });
 
 const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID ?? 'demo';
@@ -25,7 +25,7 @@ function Shell() {
         return 1;
       }
     },
-    refetchInterval: 15000,
+    refetchInterval: 15000
   });
 
   return (
@@ -40,8 +40,8 @@ function Shell() {
         <Route path="/stats" element={<StatsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
       </Routes>
-    </div>
-  );
+    </div>);
+
 }
 
 export default function App() {
@@ -50,6 +50,6 @@ export default function App() {
       <BrowserRouter>
         <Shell />
       </BrowserRouter>
-    </QueryClientProvider>
-  );
+    </QueryClientProvider>);
+
 }

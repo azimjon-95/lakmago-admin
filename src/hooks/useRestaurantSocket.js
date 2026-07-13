@@ -4,7 +4,7 @@ import { io } from 'socket.io-client';
 const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4000';
 
 // Restoran yangi buyurtmalarni real-time eshitadi
-export function useRestaurantSocket(restaurantId: string | null, onNewOrder: () => void) {
+export function useRestaurantSocket(restaurantId, onNewOrder) {
   useEffect(() => {
     if (!restaurantId) return;
     const socket = io(SOCKET_URL, { transports: ['websocket'] });
