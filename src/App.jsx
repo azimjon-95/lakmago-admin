@@ -7,9 +7,13 @@ import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
+import { SettingsPage } from '@/pages/admin/SettingsPage';
+import { RevenuePage } from '@/pages/admin/RevenuePage';
+import { BannersPage } from '@/pages/admin/BannersPage';
 // Restoran sahifalari
 import { RestaurantOrdersPage } from '@/pages/restaurant/OrdersPage';
 import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
+import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
 
 // Panel karkasi (sidebar + sahifa)
 function Shell({ children }) {
@@ -28,6 +32,9 @@ function AdminRoutes() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/restaurants" element={<RestaurantsPage />} />
+        <Route path="/revenue" element={<RevenuePage />} />
+        <Route path="/banners" element={<BannersPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -42,6 +49,7 @@ function RestaurantRoutes() {
       <Routes>
         <Route path="/" element={<RestaurantOrdersPage />} />
         <Route path="/menu" element={<RestaurantMenuPage />} />
+        <Route path="/banner" element={<RestaurantBannerPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

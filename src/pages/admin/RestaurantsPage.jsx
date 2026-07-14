@@ -36,6 +36,14 @@ export function RestaurantsPage() {
     load();
   };
 
+  const toggleBlock = async (r) => {
+    const action = r.isBlocked ? 'blokdan chiqarish' : 'BLOKLASH';
+    const warn = r.isBlocked ? '' : ' Bloklansa mijozlarga taomlari bilan ko\u2018rinmaydi.';
+    if (!confirm(`"${r.name}" ${action}?${warn}`)) return;
+    await adminApi.toggleBlock(r._id, !r.isBlocked);
+    load();
+  };
+
   const remove = async (r) => {
     if (!confirm(`"${r.name}" o'chirilsinmi? Akkaunt ham o'chadi.`)) return;
     await adminApi.deleteRestaurant(r._id);
@@ -86,7 +94,9 @@ export function RestaurantsPage() {
                   <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-600">
                     {KIND_LABEL[r.kind] || 'Restoran'}
                   </span>
-                  {r.isActive ? (
+                  {r.isBlocked ? (
+                    <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">🚫 Bloklangan</span>
+                  ) : r.isActive ? (
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700">Faol</span>
                   ) : (
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">Yopiq</span>
@@ -106,6 +116,13 @@ export function RestaurantsPage() {
                   className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
                 >
                   <i className={`ti ${r.isActive ? 'ti-lock' : 'ti-lock-open'}`} />
+                </button>
+                <button
+                  onClick={() => toggleBlock(r)}
+                  title={r.isBlocked ? 'Blokdan chiqarish' : 'Bloklash'}
+                  className={`w-9 h-9 rounded-lg border flex items-center justify-center ${r.isBlocked ? 'border-red-300 bg-red-50 text-red-600' : 'border-line hover:bg-canvas text-muted'}`}
+                >
+                  <i className={`ti ${r.isBlocked ? 'ti-ban' : 'ti-shield-x'}`} />
                 </button>
                 <button
                   onClick={() => resetPass(r)}

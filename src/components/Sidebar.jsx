@@ -5,11 +5,15 @@ import { useAuth } from '@/store/auth';
 const adminNav = [
   { to: '/', icon: 'ti-layout-dashboard', label: 'Boshqaruv', end: true },
   { to: '/restaurants', icon: 'ti-building-store', label: 'Muassasalar' },
+  { to: '/revenue', icon: 'ti-cash', label: 'Daromad' },
+  { to: '/banners', icon: 'ti-photo', label: 'Bannerlar' },
+  { to: '/settings', icon: 'ti-settings', label: 'Komissiya' },
   { to: '/users', icon: 'ti-users', label: 'Mijozlar' },
 ];
 const restaurantNav = [
   { to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', end: true },
   { to: '/menu', icon: 'ti-book', label: 'Menyu' },
+  { to: '/banner', icon: 'ti-photo', label: 'Banner' },
 ];
 
 export function Sidebar() {

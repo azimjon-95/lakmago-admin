@@ -29,6 +29,11 @@ export const panelApi = {
   getReservations: () => apiFetch('/panel/reservations'),
   updateReservationStatus: (id, status) =>
     apiFetch(`/panel/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+
+  // O'z banneri
+  getBanner: () => apiFetch('/panel/banner'),
+  setBanner: (data) => apiFetch('/panel/banner', { method: 'PUT', body: JSON.stringify(data) }),
+  deleteBanner: () => apiFetch('/panel/banner', { method: 'DELETE' }),
 };
 
 // ===== Admin paneli API (role: admin) =====
@@ -37,9 +42,23 @@ export const adminApi = {
   getRestaurants: (status) => apiFetch(`/admin/restaurants${status ? `?status=${status}` : ''}`),
   createRestaurant: (data) => apiFetch('/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),
   updateRestaurant: (id, data) => apiFetch(`/admin/restaurants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  toggleBlock: (id, blocked) => apiFetch(`/admin/restaurants/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked }) }),
   resetPassword: (id, password) =>
     apiFetch(`/admin/restaurants/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) }),
   deleteRestaurant: (id) => apiFetch(`/admin/restaurants/${id}`, { method: 'DELETE' }),
   getOrders: (status) => apiFetch(`/admin/orders${status ? `?status=${status}` : ''}`),
   getUsers: () => apiFetch('/admin/users'),
+
+  // Komissiya sozlamasi
+  getSettings: () => apiFetch('/admin/settings'),
+  updateSettings: (data) => apiFetch('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Daromad hisobi
+  getRevenue: () => apiFetch('/admin/revenue'),
+
+  // Banner boshqaruvi
+  getBanners: () => apiFetch('/admin/banners'),
+  createBanner: (data) => apiFetch('/admin/banners', { method: 'POST', body: JSON.stringify(data) }),
+  updateBanner: (id, data) => apiFetch(`/admin/banners/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteBanner: (id) => apiFetch(`/admin/banners/${id}`, { method: 'DELETE' }),
 };
