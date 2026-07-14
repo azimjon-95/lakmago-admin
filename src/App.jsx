@@ -1,55 +1,89 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import { QueryClient, QueryClientProvider, useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
-import { OrdersPage } from '@/pages/OrdersPage';
-import { MenuPage } from '@/pages/MenuPage';
-import { ReservationsPage } from '@/pages/ReservationsPage';
-import { AdminPage } from '@/pages/AdminPage';
-import { PromosPage, StatsPage, SettingsPage } from '@/pages/StubPages';
-import { panelApi } from '@/api';
+import { LoginPage } from '@/pages/LoginPage';
+// Admin sahifalari
+import { DashboardPage } from '@/pages/admin/DashboardPage';
+import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
+import { UsersPage } from '@/pages/admin/UsersPage';
+// Restoran sahifalari
+import { RestaurantOrdersPage } from '@/pages/restaurant/OrdersPage';
+import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
 
-const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, retry: false } }
-});
-
-const RESTAURANT_ID = import.meta.env.VITE_RESTAURANT_ID ?? 'demo';
-
-function Shell() {
-  const { data: newCount = 1 } = useQuery({
-    queryKey: ['new-count'],
-    queryFn: async () => {
-      try {
-        const orders = await panelApi.getOrders(RESTAURANT_ID);
-        return orders.filter((o) => o.status === 'accepted').length;
-      } catch {
-        return 1;
-      }
-    },
-    refetchInterval: 15000
-  });
-
+// Panel karkasi (sidebar + sahifa)
+function Shell({ children }) {
   return (
     <div className="flex min-h-screen bg-canvas">
-      <Sidebar newCount={newCount} />
-      <Routes>
-        <Route path="/" element={<OrdersPage />} />
-        <Route path="/menu" element={<MenuPage />} />
-        <Route path="/reservations" element={<ReservationsPage />} />
-        <Route path="/admin" element={<AdminPage />} />
-        <Route path="/promos" element={<PromosPage />} />
-        <Route path="/stats" element={<StatsPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-      </Routes>
-    </div>);
+      <Sidebar />
+      <main className="flex-1 flex min-w-0">{children}</main>
+    </div>
+  );
+}
 
+// Admin uchun himoyalangan sahifalar
+function AdminRoutes() {
+  return (
+    <Shell>
+      <Routes>
+        <Route path="/" element={<DashboardPage />} />
+        <Route path="/restaurants" element={<RestaurantsPage />} />
+        <Route path="/users" element={<UsersPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Shell>
+  );
+}
+
+// Restoran uchun himoyalangan sahifalar
+function RestaurantRoutes() {
+  return (
+    <Shell>
+      <Routes>
+        <Route path="/" element={<RestaurantOrdersPage />} />
+        <Route path="/menu" element={<RestaurantMenuPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </Shell>
+  );
+}
+
+function AppInner() {
+  const status = useAuth((s) => s.status);
+  const user = useAuth((s) => s.user);
+  const init = useAuth((s) => s.init);
+
+  useEffect(() => { init(); }, [init]);
+
+  if (status === 'checking') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-canvas text-muted">
+        <i className="ti ti-loader-2 animate-spin text-2xl" />
+      </div>
+    );
+  }
+
+  // Kirmagan bo'lsa — login. /eka bo'lsa admin ko'rinishi.
+  if (status === 'guest') {
+    return (
+      <Routes>
+        <Route path="/eka" element={<LoginPage isAdminRoute />} />
+        <Route path="*" element={<LoginPage />} />
+      </Routes>
+    );
+  }
+
+  // Kirgan — rolga qarab
+  if (user?.role === 'admin') return <AdminRoutes />;
+  if (user?.role === 'restaurant') return <RestaurantRoutes />;
+
+  return <div className="p-10 text-center text-muted">Noma'lum rol</div>;
 }
 
 export default function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
-        <Shell />
-      </BrowserRouter>
-    </QueryClientProvider>);
-
+    <BrowserRouter>
+      <AppInner />
+    </BrowserRouter>
+  );
 }

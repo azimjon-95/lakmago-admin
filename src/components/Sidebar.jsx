@@ -1,60 +1,72 @@
 import { NavLink } from 'react-router-dom';
+import { useAuth } from '@/store/auth';
 
-const nav = [
-{ to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', badge: true },
-{ to: '/menu', icon: 'ti-book', label: 'Menyu' },
-{ to: '/reservations', icon: 'ti-calendar', label: 'Bronlar' },
-{ to: '/promos', icon: 'ti-discount-2', label: 'Aksiyalar' },
-{ to: '/stats', icon: 'ti-chart-bar', label: 'Statistika' },
-{ to: '/admin', icon: 'ti-shield-check', label: 'Admin' },
-{ to: '/settings', icon: 'ti-settings', label: 'Sozlamalar' }];
+// Rolga qarab menyu: admin (dastur egasi) yoki restaurant (restoran)
+const adminNav = [
+  { to: '/', icon: 'ti-layout-dashboard', label: 'Boshqaruv', end: true },
+  { to: '/restaurants', icon: 'ti-building-store', label: 'Muassasalar' },
+  { to: '/users', icon: 'ti-users', label: 'Mijozlar' },
+];
+const restaurantNav = [
+  { to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', end: true },
+  { to: '/menu', icon: 'ti-book', label: 'Menyu' },
+];
 
+export function Sidebar() {
+  const user = useAuth((s) => s.user);
+  const restaurant = useAuth((s) => s.restaurant);
+  const logout = useAuth((s) => s.logout);
+  const isAdmin = user?.role === 'admin';
+  const nav = isAdmin ? adminNav : restaurantNav;
 
-export function Sidebar({ newCount }) {
+  const title = isAdmin ? 'Administrator' : restaurant?.name || 'Restoran';
+  const subtitle = isAdmin ? 'Dastur egasi' : 'Restoran paneli';
+  const initials = (isAdmin ? 'AD' : (restaurant?.name || 'R')).slice(0, 2).toUpperCase();
+
   return (
-    <aside className="w-[190px] bg-sidebar flex-none p-3 flex flex-col min-h-screen">
-      <div className="flex items-center gap-2 px-2 pb-4">
-        <div className="w-[30px] h-[30px] rounded-lg bg-brand-400 flex items-center justify-center">
-          <i className="ti ti-tools-kitchen-2 text-brand-text text-lg" aria-hidden="true" />
+    <aside className="w-[210px] bg-sidebar flex-none p-3 flex flex-col min-h-screen">
+      <div className="flex items-center gap-2 px-2 pb-5 pt-1">
+        <div className="w-[32px] h-[32px] rounded-lg bg-brand-400 flex items-center justify-center">
+          <i className="ti ti-tools-kitchen-2 text-brand-text text-lg" />
         </div>
-        <div className="text-white font-medium text-[15px]">LokmaGo</div>
+        <div className="text-white font-semibold text-[15px]">LokmaGo</div>
       </div>
 
       <nav className="flex flex-col gap-0.5">
-        {nav.map((item) =>
-        <NavLink
-          key={item.to}
-          to={item.to}
-          end={item.to === '/'}
-          className={({ isActive }) =>
-          `flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-sm transition-colors ${
-          isActive ?
-          'bg-brand-400/20 text-brand-100' :
-          'text-[#D9B98C] hover:text-brand-100'}`
-
-          }>
-          
-            <i className={`ti ${item.icon} text-lg`} aria-hidden="true" />
+        {nav.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.end}
+            className={({ isActive }) =>
+              `flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-sm transition-colors ${
+                isActive ? 'bg-brand-400/20 text-brand-100' : 'text-[#D9B98C] hover:text-brand-100'
+              }`
+            }
+          >
+            <i className={`ti ${item.icon} text-lg`} />
             {item.label}
-            {item.badge && newCount > 0 &&
-          <span className="ml-auto bg-brand-400 text-brand-text text-[11px] px-[7px] rounded-full">
-                {newCount}
-              </span>
-          }
           </NavLink>
-        )}
+        ))}
       </nav>
 
-      <div className="mt-auto flex items-center gap-2.5 px-2.5 py-2 border-t border-white/10">
-        <div className="w-[30px] h-[30px] rounded-full bg-brand-400 text-brand-text flex items-center justify-center font-medium text-xs">
-          MT
+      <div className="mt-auto">
+        <div className="flex items-center gap-2.5 px-2.5 py-3 border-t border-white/10">
+          <div className="w-[32px] h-[32px] rounded-full bg-brand-400 text-brand-text flex items-center justify-center font-medium text-xs flex-none">
+            {initials}
+          </div>
+          <div className="text-white text-xs leading-tight min-w-0">
+            <div className="truncate">{title}</div>
+            <span className="text-[#D9B98C] text-[11px]">{subtitle}</span>
+          </div>
         </div>
-        <div className="text-white text-xs leading-tight">
-          Milliy Taomlar
-          <br />
-          <span className="text-[#D9B98C] text-[11px]">Restoran</span>
-        </div>
+        <button
+          onClick={logout}
+          className="w-full flex items-center gap-2.5 px-2.5 py-2.5 rounded-lg text-sm text-[#D9B98C] hover:text-white hover:bg-white/5 transition-colors"
+        >
+          <i className="ti ti-logout text-lg" /> Chiqish
+        </button>
       </div>
-    </aside>);
-
+    </aside>
+  );
 }
