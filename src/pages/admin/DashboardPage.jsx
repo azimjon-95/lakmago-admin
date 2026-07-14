@@ -69,6 +69,33 @@ export function DashboardPage() {
         <Stat label="Komissiya (12%)" value={`${som(stats?.commission)} so'm`} icon="ti-cash" highlight />
       </div>
 
+      {/* Eng ko'p buyurtma qilingan taomlar (marketing/psixologiya) */}
+      {stats?.topDishes && stats.topDishes.length > 0 && (
+        <div className="mb-6">
+          <h2 className="text-sm font-medium text-ink mb-3">🔥 Eng ko'p buyurtma qilinayotgan taomlar</h2>
+          <div className="bg-surface border border-line rounded-xl p-4">
+            {stats.topDishes.map((d, i) => {
+              const max = stats.topDishes[0].count || 1;
+              const pct = Math.round((d.count / max) * 100);
+              return (
+                <div key={d.name} className="mb-3 last:mb-0">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm text-ink flex items-center gap-2">
+                      <span className={`w-5 h-5 rounded-md flex items-center justify-center text-[11px] font-semibold ${i < 3 ? 'bg-brand-400 text-brand-text' : 'bg-brand-50 text-brand-600'}`}>{i + 1}</span>
+                      {d.name}
+                    </span>
+                    <span className="text-sm text-muted">{d.count} marta</span>
+                  </div>
+                  <div className="h-1.5 bg-canvas rounded-full overflow-hidden">
+                    <div className="h-full bg-brand-400 rounded-full" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
       <h2 className="text-sm font-medium text-ink mb-3">So'nggi buyurtmalar</h2>
       <div className="grid gap-2">
         {orders.length === 0 && (
