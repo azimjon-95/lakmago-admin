@@ -1,21 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
+import { CATEGORIES, KINDS, KIND_LABEL } from './restaurantMeta';
 
-const CATEGORIES = [
-  { value: 'milliy', label: 'Milliy oshxona', icon: 'ti-bowl' },
-  { value: 'fastfood', label: 'Fast food', icon: 'ti-pizza' },
-  { value: 'sushi', label: 'Sushi', icon: 'ti-fish' },
-  { value: 'kafe', label: 'Kafe', icon: 'ti-coffee' },
-  { value: 'shirinlik', label: 'Shirinliklar', icon: 'ti-cake' },
-  { value: 'magazin', label: 'Magazin', icon: 'ti-building-store' },
-];
-
-const KIND_LABEL = { restaurant: 'Restoran', cafe: 'Kafe', shop: 'Magazin' };
 
 export function RestaurantsPage() {
   const [list, setList] = useState([]);
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [showForm, setShowForm] = useState(false);
   const [err, setErr] = useState(null);
 
   const load = useCallback(async () => {
@@ -65,7 +57,7 @@ export function RestaurantsPage() {
           <p className="text-sm text-muted mt-0.5">Restoran, kafe va magazinlarni boshqarish</p>
         </div>
         <button
-          onClick={() => setShowForm(true)}
+          onClick={() => navigate('/restaurants/new')}
           className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2"
         >
           <i className="ti ti-plus" /> Yangi qo'shish
@@ -144,9 +136,7 @@ export function RestaurantsPage() {
         </div>
       )}
 
-      {showForm && (
-        <CreateForm
-          onClose={() => setShowForm(false)}
+
           onCreated={() => { setShowForm(false); load(); }}
         />
       )}
@@ -154,117 +144,3 @@ export function RestaurantsPage() {
   );
 }
 
-function CreateForm({ onClose, onCreated }) {
-  const [form, setForm] = useState({
-    name: '', cuisine: '', category: 'milliy', kind: 'restaurant',
-    phone: '', address: '', login: '', password: '',
-  });
-  const [err, setErr] = useState(null);
-  const [saving, setSaving] = useState(false);
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const submit = async () => {
-    setErr(null);
-    setSaving(true);
-    try {
-      const icon = CATEGORIES.find((c) => c.value === form.category)?.icon || 'ti-building-store';
-      await adminApi.createRestaurant({ ...form, icon });
-      onCreated();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-surface rounded-2xl p-6 w-full max-w-[460px] max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-ink">Yangi muassasa</h2>
-          <button onClick={onClose} className="text-muted hover:text-ink"><i className="ti ti-x text-xl" /></button>
-        </div>
-
-        <div className="grid gap-3">
-          <Field label="Nomi" value={form.name} onChange={(v) => set('name', v)} placeholder="Masalan: Milliy Taomlar" />
-          <Field label="Oshxona turi" value={form.cuisine} onChange={(v) => set('cuisine', v)} placeholder="Masalan: Milliy oshxona" />
-
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">Kategoriya</label>
-            <div className="grid grid-cols-3 gap-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.value}
-                  onClick={() => set('category', c.value)}
-                  className={`flex flex-col items-center gap-1 py-2.5 rounded-xl border text-xs transition-colors ${
-                    form.category === c.value
-                      ? 'border-brand-400 bg-brand-50 text-brand-600'
-                      : 'border-line text-muted hover:bg-canvas'
-                  }`}
-                >
-                  <i className={`ti ${c.icon} text-lg`} />
-                  {c.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-ink mb-1.5">Muassasa turi</label>
-            <div className="flex gap-2">
-              {Object.entries(KIND_LABEL).map(([k, label]) => (
-                <button
-                  key={k}
-                  onClick={() => set('kind', k)}
-                  className={`flex-1 py-2 rounded-xl border text-sm transition-colors ${
-                    form.kind === k ? 'border-brand-400 bg-brand-50 text-brand-600' : 'border-line text-muted'
-                  }`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Telefon" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+998..." />
-            <Field label="Manzil" value={form.address} onChange={(v) => set('address', v)} placeholder="Shahar, ko'cha" />
-          </div>
-
-          <div className="border-t border-line pt-3 mt-1">
-            <p className="text-xs text-muted mb-2">Restoran shu login/parol bilan kiradi:</p>
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Login" value={form.login} onChange={(v) => set('login', v)} placeholder="masalan: milliy" />
-              <Field label="Parol" value={form.password} onChange={(v) => set('password', v)} placeholder="kamida 4 belgi" />
-            </div>
-          </div>
-
-          {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
-
-          <button
-            onClick={submit}
-            disabled={saving || !form.name || !form.cuisine || !form.login || !form.password}
-            className="bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50 mt-1"
-          >
-            {saving ? 'Saqlanmoqda...' : 'Yaratish'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, value, onChange, placeholder }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 rounded-xl border border-line bg-canvas text-ink outline-none focus:border-brand-400 transition-colors"
-      />
-    </div>
-  );
-}
