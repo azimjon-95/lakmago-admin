@@ -135,11 +135,6 @@ export function RestaurantsPage() {
           ))}
         </div>
       )}
-
-
-          onCreated={() => { setShowForm(false); load(); }}
-        />
-      )}
     </div>
   );
 }
