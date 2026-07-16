@@ -61,4 +61,13 @@ export const adminApi = {
   createBanner: (data) => apiFetch('/admin/banners', { method: 'POST', body: JSON.stringify(data) }),
   updateBanner: (id, data) => apiFetch(`/admin/banners/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteBanner: (id) => apiFetch(`/admin/banners/${id}`, { method: 'DELETE' }),
+
+  // Telegram guruhlar
+  getGroups: () => apiFetch('/admin/groups'),
+  resendGroupPromo: (chatId) => apiFetch(`/admin/groups/${chatId}/resend`, { method: 'POST' }),
+  runGroupCheck: () => apiFetch('/admin/groups/check', { method: 'POST' }),
+
+  // Buyurtmalar nazorati (kim → qaysi restoran → nima)
+  getOrders: (params = '') => apiFetch(`/admin/orders${params}`),
+  getLiveOrders: () => apiFetch('/admin/orders/live'),
 };

@@ -5,8 +5,10 @@ import { useAuth } from '@/store/auth';
 const adminNav = [
   { to: '/', icon: 'ti-layout-dashboard', label: 'Boshqaruv', end: true },
   { to: '/restaurants', icon: 'ti-building-store', label: 'Muassasalar' },
+  { to: '/orders', icon: 'ti-clipboard-list', label: 'Buyurtmalar' },
   { to: '/revenue', icon: 'ti-cash', label: 'Daromad' },
   { to: '/banners', icon: 'ti-photo', label: 'Bannerlar' },
+  { to: '/groups', icon: 'ti-brand-telegram', label: 'Guruhlar' },
   { to: '/settings', icon: 'ti-settings', label: 'Komissiya' },
   { to: '/users', icon: 'ti-users', label: 'Mijozlar' },
 ];
