@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { CATEGORIES, KINDS } from './restaurantMeta';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export function CreateRestaurantPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState({
     name: '', cuisine: '', category: 'milliy', kind: 'restaurant',
     phone: '', address: '', deliveryMin: 25, deliveryMax: 40, deliveryFee: 0,
-    login: '', password: '',
+    login: '', password: '', imageUrl: '',
   });
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -22,7 +23,9 @@ export function CreateRestaurantPage() {
     setSaving(true);
     try {
       const icon = selectedCat?.icon || 'ti-building-store';
-      await adminApi.createRestaurant({ ...form, icon });
+      const payload = { ...form, icon };
+      if (form.imageUrl) payload.images = [form.imageUrl];
+      await adminApi.createRestaurant(payload);
       navigate('/restaurants');
     } catch (e) {
       setErr(e.message);
@@ -52,6 +55,13 @@ export function CreateRestaurantPage() {
             <i className="ti ti-info-circle text-brand-600" /> Asosiy ma'lumot
           </h2>
           <div className="grid gap-4">
+            <ImageUpload
+              value={form.imageUrl}
+              onChange={(url) => set('imageUrl', url)}
+              folder="banners"
+              label="Muassasa rasmi (banner)"
+              aspect="16/9"
+            />
             <Field label="Muassasa nomi *" value={form.name} onChange={(v) => set('name', v)} placeholder="Masalan: Milliy Taomlar" />
             <Field label="Oshxona / yo'nalish tavsifi *" value={form.cuisine} onChange={(v) => set('cuisine', v)} placeholder="Masalan: Milliy oshxona, osh va shashlik" />
           </div>

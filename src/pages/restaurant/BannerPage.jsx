@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { useAuth } from '@/store/auth';
+import { ImageUpload } from '@/components/ImageUpload';
 
 const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-discount-2' };
 const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1E2E'];
@@ -72,8 +73,15 @@ export function RestaurantBannerPage() {
       <label className="block text-xs text-muted mb-1">Tugma matni</label>
       <input value={form.cta} onChange={(e) => setForm({ ...form, cta: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" />
 
-      <label className="block text-xs text-muted mb-1">Rasm URL (ixtiyoriy)</label>
-      <input value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="https://..." />
+      <div className="mb-3">
+        <ImageUpload
+          value={form.imageUrl}
+          onChange={(url) => setForm({ ...form, imageUrl: url })}
+          folder="banners"
+          label="Banner rasmi (ixtiyoriy)"
+          aspect="3/1"
+        />
+      </div>
 
       <label className="block text-xs text-muted mb-1">Fon rangi</label>
       <div className="flex gap-2 mb-5">

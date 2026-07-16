@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
+import { ImageUpload } from '@/components/ImageUpload';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -113,7 +114,7 @@ export function RestaurantMenuPage() {
 }
 
 function DishForm({ onClose, onSaved }) {
-  const [form, setForm] = useState({ section: '', name: '', description: '', price: '', oldPrice: '', icon: 'ti-bowl' });
+  const [form, setForm] = useState({ section: '', name: '', description: '', price: '', oldPrice: '', icon: 'ti-bowl', imageUrl: '' });
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
@@ -128,6 +129,7 @@ function DishForm({ onClose, onSaved }) {
         price: Number(form.price),
         ...(form.oldPrice ? { oldPrice: Number(form.oldPrice) } : {}),
         icon: form.icon,
+        ...(form.imageUrl ? { imageUrl: form.imageUrl, images: [form.imageUrl] } : {}),
       });
       onSaved();
     } catch (e) { setErr(e.message); } finally { setSaving(false); }
@@ -141,6 +143,13 @@ function DishForm({ onClose, onSaved }) {
           <button onClick={onClose} className="text-muted hover:text-ink"><i className="ti ti-x text-xl" /></button>
         </div>
         <div className="grid gap-3">
+          <ImageUpload
+            value={form.imageUrl}
+            onChange={(url) => set('imageUrl', url)}
+            folder="dishes"
+            label="Taom rasmi"
+            aspect="4/3"
+          />
           <Field label="Bo'lim" value={form.section} onChange={(v) => set('section', v)} placeholder="Masalan: Milliy taomlar" />
           <Field label="Nomi" value={form.name} onChange={(v) => set('name', v)} placeholder="Masalan: Osh" />
           <Field label="Tavsif" value={form.description} onChange={(v) => set('description', v)} placeholder="Qisqacha izoh" />
