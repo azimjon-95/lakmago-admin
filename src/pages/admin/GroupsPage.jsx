@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
+import { BroadcastComposer } from '@/components/BroadcastComposer';
 
 export function GroupsPage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
   const [busyId, setBusyId] = useState(null);
+  const [composer, setComposer] = useState(null); // { chatId, title } | { all: true } | null
 
   const load = useCallback(async () => {
     try {
@@ -43,9 +45,14 @@ export function GroupsPage() {
           <h1 className="text-xl font-semibold text-ink">Telegram guruhlar</h1>
           <p className="text-sm text-muted mt-0.5">Bot admin qilingan guruhlar — reklama va pin holati</p>
         </div>
-        <button onClick={runCheck} disabled={checking} className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
-          <i className="ti ti-refresh" /> {checking ? 'Tekshirilmoqda...' : 'Hozir tekshirish'}
-        </button>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setComposer({ all: true })} disabled={groups.length === 0} className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
+            <i className="ti ti-send" /> Barchaga reklama
+          </button>
+          <button onClick={runCheck} disabled={checking} className="border border-line text-muted font-medium px-4 py-2 rounded-xl hover:bg-canvas transition-colors disabled:opacity-50">
+            <i className="ti ti-refresh" /> {checking ? 'Tekshirilmoqda...' : 'Tekshirish'}
+          </button>
+        </div>
       </div>
 
       {/* Yo'riqnoma */}
@@ -89,17 +96,35 @@ export function GroupsPage() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={() => resend(g.chatId)}
-                disabled={busyId === g.chatId || !g.isBotAdmin}
-                className="px-3 py-2 border border-line rounded-lg text-sm text-muted hover:bg-canvas disabled:opacity-40 flex-none"
-                title={g.isBotAdmin ? 'Reklamani qayta yuborish + pin' : 'Bot admin emas'}
-              >
-                {busyId === g.chatId ? '...' : 'Qayta yuborish'}
-              </button>
+              <div className="flex items-center gap-2 flex-none">
+                <button
+                  onClick={() => setComposer({ chatId: g.chatId, title: g.title })}
+                  disabled={!g.isBotAdmin}
+                  className="px-3 py-2 bg-brand-50 text-brand-600 border border-brand-200 rounded-lg text-sm hover:bg-brand-100 disabled:opacity-40"
+                  title={g.isBotAdmin ? 'Reklama yaratib yuborish' : 'Bot admin emas'}
+                >
+                  <i className="ti ti-ad-2" /> Reklama
+                </button>
+                <button
+                  onClick={() => resend(g.chatId)}
+                  disabled={busyId === g.chatId || !g.isBotAdmin}
+                  className="px-3 py-2 border border-line rounded-lg text-sm text-muted hover:bg-canvas disabled:opacity-40"
+                  title={g.isBotAdmin ? 'Standart reklamani qayta yuborish + pin' : 'Bot admin emas'}
+                >
+                  {busyId === g.chatId ? '...' : 'Qayta'}
+                </button>
+              </div>
             </div>
           ))}
         </div>
+      )}
+
+      {composer && (
+        <BroadcastComposer
+          target={composer}
+          onClose={() => setComposer(null)}
+          onSent={load}
+        />
       )}
     </div>
   );

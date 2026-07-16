@@ -66,6 +66,9 @@ export const adminApi = {
   getGroups: () => apiFetch('/admin/groups'),
   resendGroupPromo: (chatId) => apiFetch(`/admin/groups/${chatId}/resend`, { method: 'POST' }),
   runGroupCheck: () => apiFetch('/admin/groups/check', { method: 'POST' }),
+  // Moslashuvchan reklama (rasm/matn/tugma)
+  broadcastToGroup: (chatId, data) => apiFetch(`/admin/groups/${chatId}/broadcast`, { method: 'POST', body: JSON.stringify(data) }),
+  broadcastToAll: (data) => apiFetch('/admin/groups/broadcast-all', { method: 'POST', body: JSON.stringify(data) }),
 
   // Buyurtmalar nazorati (kim → qaysi restoran → nima)
   getOrders: (params = '') => apiFetch(`/admin/orders${params}`),
