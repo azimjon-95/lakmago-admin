@@ -45,7 +45,7 @@ export function CreateRestaurantPage() {
         </div>
       </div>
 
-      <div className="max-w-3xl mx-auto px-6 py-6 grid gap-6">
+      <div className="max-w-4xl mx-auto px-6 py-6 grid gap-6">
         {/* Asosiy ma'lumot */}
         <section className="bg-surface border border-line rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
@@ -63,7 +63,7 @@ export function CreateRestaurantPage() {
             <i className="ti ti-tag text-brand-600" /> Kategoriya
           </h2>
           <p className="text-xs text-muted mb-4">Muassasa qaysi yo'nalishда — mijozlar shu bo'yicha filtrlaydi</p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-2.5">
             {CATEGORIES.map((c) => (
               <button
                 key={c.value}
