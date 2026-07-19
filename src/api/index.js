@@ -27,8 +27,8 @@ export const panelApi = {
     apiFetch(`/panel/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   getReservations: () => apiFetch('/panel/reservations'),
-  updateReservationStatus: (id, status) =>
-    apiFetch(`/panel/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  updateReservationStatus: (id, status, reason = '') =>
+    apiFetch(`/panel/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
 
   // O'z banneri
   getBanner: () => apiFetch('/panel/banner'),

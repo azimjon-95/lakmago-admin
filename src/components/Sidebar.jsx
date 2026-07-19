@@ -15,6 +15,7 @@ const adminNav = [
 const restaurantNav = [
   { to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', end: true },
   { to: '/menu', icon: 'ti-book', label: 'Menyu' },
+  { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
 ];
 

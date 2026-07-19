@@ -18,6 +18,7 @@ import { GroupsPage } from '@/pages/admin/GroupsPage';
 import { RestaurantOrdersPage } from '@/pages/restaurant/OrdersPage';
 import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
 import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
+import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 
 // Panel karkasi (sidebar + sahifa)
 function Shell({ children }) {
@@ -58,6 +59,7 @@ function RestaurantRoutes() {
         <Route path="/" element={<RestaurantOrdersPage />} />
         <Route path="/menu" element={<RestaurantMenuPage />} />
         <Route path="/banner" element={<RestaurantBannerPage />} />
+        <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
