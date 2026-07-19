@@ -31,3 +31,17 @@ export const KINDS = [
 ];
 
 export const KIND_LABEL = KINDS.reduce((acc, k) => { acc[k.value] = k.label; return acc; }, {});
+
+// Do'kon yo'nalishlari — faqat kind='shop' bo'lganda ko'rsatiladi.
+// LokmaGo ovqat yetkazish platformasi: faqat oziq-ovqat bilan bog'liq turlar.
+export const SHOP_TYPES = [
+  { value: 'oziq_ovqat', label: 'Oziq-ovqat', icon: 'ti-building-store' },
+  { value: 'meva_sabzavot', label: 'Meva-sabzavot', icon: 'ti-apple' },
+  { value: 'nonvoyxona', label: 'Nonvoyxona', icon: 'ti-bread' },
+  { value: 'shirinlik', label: 'Shirinlik', icon: 'ti-cake' },
+  { value: 'ichimlik', label: 'Ichimliklar', icon: 'ti-bottle' },
+  { value: 'gosht', label: "Go'sht mahsulotlari", icon: 'ti-meat' },
+  { value: 'sut', label: 'Sut mahsulotlari', icon: 'ti-milk' },
+  { value: 'quruq_meva', label: 'Quruq meva', icon: 'ti-seeding' },
+  { value: 'salqin', label: 'Muzqaymoq / salqin', icon: 'ti-ice-cream' },
+];
