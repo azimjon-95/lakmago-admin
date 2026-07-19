@@ -14,6 +14,7 @@ import { RevenuePage } from '@/pages/admin/RevenuePage';
 import { BannersPage } from '@/pages/admin/BannersPage';
 import { OrdersMonitorPage } from '@/pages/admin/OrdersMonitorPage';
 import { GroupsPage } from '@/pages/admin/GroupsPage';
+import { SupportPage } from '@/pages/admin/SupportPage';
 // Restoran sahifalari
 import { RestaurantOrdersPage } from '@/pages/restaurant/OrdersPage';
 import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
@@ -41,6 +42,7 @@ function AdminRoutes() {
         <Route path="/restaurants/:id/settings" element={<RestaurantSettingsPage />} />
         <Route path="/orders" element={<OrdersMonitorPage />} />
         <Route path="/groups" element={<GroupsPage />} />
+        <Route path="/support" element={<SupportPage />} />
         <Route path="/revenue" element={<RevenuePage />} />
         <Route path="/banners" element={<BannersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
