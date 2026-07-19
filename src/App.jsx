@@ -7,6 +7,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
 import { CreateRestaurantPage } from '@/pages/admin/CreateRestaurantPage';
+import { RestaurantSettingsPage } from '@/pages/admin/RestaurantSettingsPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { RevenuePage } from '@/pages/admin/RevenuePage';
@@ -36,6 +37,7 @@ function AdminRoutes() {
         <Route path="/" element={<DashboardPage />} />
         <Route path="/restaurants" element={<RestaurantsPage />} />
         <Route path="/restaurants/new" element={<CreateRestaurantPage />} />
+        <Route path="/restaurants/:id/settings" element={<RestaurantSettingsPage />} />
         <Route path="/orders" element={<OrdersMonitorPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/revenue" element={<RevenuePage />} />

@@ -117,6 +117,13 @@ export function RestaurantsPage() {
                   <i className={`ti ${r.isBlocked ? 'ti-ban' : 'ti-shield-x'}`} />
                 </button>
                 <button
+                  onClick={() => navigate(`/restaurants/${r._id}/settings`)}
+                  title="Sozlamalar (ish tartibi, xizmat haqi, bron)"
+                  className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
+                >
+                  <i className="ti ti-settings" />
+                </button>
+                <button
                   onClick={() => resetPass(r)}
                   title="Parolni almashtirish"
                   className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
