@@ -8,6 +8,7 @@ export function RestaurantMenuPage() {
   const [dishes, setDishes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
+  const [editDish, setEditDish] = useState(null);
 
   const load = useCallback(async () => {
     try { setDishes(await panelApi.getDishes()); }
@@ -67,9 +68,22 @@ export function RestaurantMenuPage() {
                     d.isAvailable ? 'border-line' : 'border-red-200 bg-red-50/40'
                   }`}
                 >
-                  <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-none" style={{ background: d.tint || '#FAEEDA' }}>
-                    <i className={`ti ${d.icon || 'ti-bowl'} text-lg text-brand-600`} />
-                  </div>
+                  {/* Rasm — bor bo'lsa foto, yo'q bo'lsa ikonka. Bosilsa tahrirlash. */}
+                  <button
+                    onClick={() => setEditDish(d)}
+                    title="Rasmni o'zgartirish"
+                    className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center flex-none relative group"
+                    style={{ background: d.tint || '#FAEEDA' }}
+                  >
+                    {d.imageUrl ? (
+                      <img src={d.imageUrl} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <i className={`ti ${d.icon || 'ti-bowl'} text-lg text-brand-600`} />
+                    )}
+                    <span className="absolute inset-0 bg-black/0 group-hover:bg-black/45 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all">
+                      <i className="ti ti-camera text-white text-lg" />
+                    </span>
+                  </button>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="font-medium text-ink">{d.name}</span>
@@ -109,6 +123,13 @@ export function RestaurantMenuPage() {
       )}
 
       {showForm && <DishForm onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); load(); }} />}
+      {editDish && (
+        <DishImageEditor
+          dish={editDish}
+          onClose={() => setEditDish(null)}
+          onSaved={() => { setEditDish(null); load(); }}
+        />
+      )}
     </div>
   );
 }
@@ -179,6 +200,65 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
         type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
         className="w-full px-3.5 py-2.5 rounded-xl border border-line bg-canvas text-ink outline-none focus:border-brand-400 transition-colors"
       />
+    </div>
+  );
+}
+
+// Mavjud taomga rasm qo'shish / almashtirish.
+// Seed'dan kelgan taomlarga rasm biriktirish uchun eng qulay yo'l.
+function DishImageEditor({ dish, onClose, onSaved }) {
+  const [imageUrl, setImageUrl] = useState(dish.imageUrl || '');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const save = async () => {
+    setSaving(true); setErr(null);
+    try {
+      await panelApi.updateDish(dish._id, {
+        imageUrl,
+        images: imageUrl ? [imageUrl] : [],
+      });
+      onSaved();
+    } catch (e) {
+      setErr(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-6">
+        <div className="flex items-start justify-between mb-1">
+          <h3 className="text-lg font-semibold text-ink">Taom rasmi</h3>
+          <button onClick={onClose} className="text-muted hover:text-ink">
+            <i className="ti ti-x text-xl" />
+          </button>
+        </div>
+        <p className="text-sm text-muted mb-4">{dish.name}</p>
+
+        <ImageUpload
+          value={imageUrl}
+          onChange={setImageUrl}
+          folder="dishes"
+          label=""
+          aspect="4/3"
+        />
+
+        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mt-3">{err}</div>}
+
+        <div className="flex gap-3 mt-5">
+          <button onClick={onClose} className="px-5 py-2.5 border border-line text-muted rounded-xl hover:bg-canvas">
+            Bekor
+          </button>
+          <button
+            onClick={save}
+            disabled={saving}
+            className="flex-1 bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50"
+          >
+            {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

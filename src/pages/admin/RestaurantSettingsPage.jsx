@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
+import { ImageUpload } from '@/components/ImageUpload';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
@@ -29,6 +30,7 @@ export function RestaurantSettingsPage() {
             reservationEnabled: r.reservationEnabled ?? false,
             reservationNote: r.reservationNote || '',
             name: r.name,
+            imageUrl: r.imageUrl || '',
           });
         }
       })
@@ -40,7 +42,8 @@ export function RestaurantSettingsPage() {
   const save = async () => {
     setSaving(true); setMsg(null);
     try {
-      const { name, ...payload } = form;
+      const { name, ...rest } = form;
+      const payload = { ...rest, images: rest.imageUrl ? [rest.imageUrl] : [] };
       await adminApi.updateRestaurant(id, payload);
       setMsg({ type: 'ok', text: 'Saqlandi' });
       setTimeout(() => setMsg(null), 2500);
@@ -68,6 +71,21 @@ export function RestaurantSettingsPage() {
       </div>
 
       <div className="max-w-3xl mx-auto px-6 py-6 grid gap-6">
+        {/* Muassasa rasmi (banner) */}
+        <section className="bg-surface border border-line rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
+            <i className="ti ti-photo text-brand-600" /> Muassasa rasmi
+          </h2>
+          <p className="text-xs text-muted mb-4">Mijoz ilovasida restoran kartasi va sahifasida ko'rinadi</p>
+          <ImageUpload
+            value={form.imageUrl}
+            onChange={(url) => set('imageUrl', url)}
+            folder="banners"
+            label=""
+            aspect="16/9"
+          />
+        </section>
+
         {/* Ish tartibi */}
         <section className="bg-surface border border-line rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
