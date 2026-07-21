@@ -21,12 +21,14 @@ import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
 import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
 import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 
-// Panel karkasi (sidebar + sahifa)
+// Panel karkasi (sidebar + sahifa).
+// Mobilda: yuqori panel + pastki tez-kirish sidebar ichida chiziladi,
+// shuning uchun kontentga pastdan bo'shliq beramiz (pastki nav bosib qolmasin).
 function Shell({ children }) {
   return (
-    <div className="flex min-h-screen bg-canvas">
+    <div className="flex flex-col lg:flex-row min-h-screen bg-canvas">
       <Sidebar />
-      <main className="flex-1 flex min-w-0">{children}</main>
+      <main className="flex-1 flex min-w-0 pb-16 lg:pb-0">{children}</main>
     </div>
   );
 }

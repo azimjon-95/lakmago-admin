@@ -51,18 +51,18 @@ export function DashboardPage() {
   }, [loadStats, loadOrders]);
 
   return (
-    <div className="flex-1 p-6 min-w-0">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Boshqaruv paneli</h1>
-          <p className="text-sm text-muted mt-0.5">Barcha buyurtmalar — jonli nazorat</p>
+    <div className="flex-1 p-4 sm:p-6 min-w-0">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-ink">Boshqaruv paneli</h1>
+          <p className="text-xs sm:text-sm text-muted mt-0.5">Barcha buyurtmalar — jonli nazorat</p>
         </div>
-        <span className="flex items-center gap-2 text-sm text-green-600">
+        <span className="flex items-center gap-2 text-sm text-green-600 flex-none">
           <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Jonli
         </span>
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6">
         <Stat label="Muassasalar" value={stats?.restaurants ?? '—'} icon="ti-building-store" />
         <Stat label="Bugungi buyurtma" value={stats?.todayOrders ?? '—'} icon="ti-clipboard-list" />
         <Stat label="Jami buyurtma" value={stats?.orders ?? '—'} icon="ti-receipt" />
@@ -142,11 +142,11 @@ export function DashboardPage() {
 
 function Stat({ label, value, icon, highlight }) {
   return (
-    <div className="bg-surface border border-line rounded-xl p-4">
-      <div className="flex items-center gap-2 text-muted text-xs mb-2">
-        <i className={`ti ${icon}`} /> {label}
+    <div className="bg-surface border border-line rounded-xl p-3 sm:p-4 min-w-0">
+      <div className="flex items-center gap-1.5 text-muted text-[11px] sm:text-xs mb-1.5 sm:mb-2 leading-tight">
+        <i className={`ti ${icon} flex-none`} /> <span className="truncate">{label}</span>
       </div>
-      <div className={`text-2xl font-semibold ${highlight ? 'text-brand-600' : 'text-ink'}`}>{value}</div>
+      <div className={`text-lg sm:text-2xl font-semibold truncate ${highlight ? 'text-brand-600' : 'text-ink'}`}>{value}</div>
     </div>
   );
 }

@@ -16,7 +16,7 @@ export function RevenuePage() {
   if (!data) return <div className="flex-1 p-6 text-muted text-sm">Ma'lumot yo'q</div>;
 
   return (
-    <div className="flex-1 p-6 min-w-0">
+    <div className="flex-1 p-4 sm:p-6 min-w-0">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-semibold text-ink">Daromad</h1>
@@ -27,7 +27,7 @@ export function RevenuePage() {
       </div>
 
       {/* Umumiy kartalar */}
-      <div className="grid grid-cols-3 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
         <div className="bg-surface border border-line rounded-xl p-4">
           <div className="text-xs text-muted mb-1">Umumiy aylanma</div>
           <div className="text-xl font-semibold text-ink">{som(data.totals.gross)}</div>
@@ -53,7 +53,9 @@ export function RevenuePage() {
         </div>
       ) : (
         <div className="bg-surface border border-line rounded-xl overflow-hidden">
-          <table className="w-full text-sm">
+          {/* Mobilda ustunlar sig'masa gorizontal scroll bilan */}
+          <div className="overflow-x-auto">
+          <table className="w-full text-sm min-w-[480px]">
             <thead>
               <tr className="text-left text-muted text-xs border-b border-line">
                 <th className="p-3 font-medium">Muassasa</th>
@@ -75,6 +77,7 @@ export function RevenuePage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
     </div>

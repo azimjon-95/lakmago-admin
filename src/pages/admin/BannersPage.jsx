@@ -53,7 +53,7 @@ export function BannersPage() {
   if (loading) return <div className="flex-1 p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
-    <div className="flex-1 p-6 min-w-0">
+    <div className="flex-1 p-4 sm:p-6 min-w-0">
       <div className="flex items-center justify-between mb-5">
         <div>
           <h1 className="text-xl font-semibold text-ink">Bannerlar</h1>

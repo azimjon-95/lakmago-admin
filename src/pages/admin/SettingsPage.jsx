@@ -60,7 +60,7 @@ export function SettingsPage() {
   if (loading) return <div className="flex-1 p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
-    <div className="flex-1 p-6 min-w-0 max-w-2xl">
+    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-2xl">
       <h1 className="text-xl font-semibold text-ink">Komissiya sozlamalari</h1>
       <p className="text-sm text-muted mt-0.5 mb-6">Platforma daromadini qanday hisoblashni belgilang</p>
 

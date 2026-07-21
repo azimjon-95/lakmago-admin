@@ -48,7 +48,7 @@ export function RestaurantBannerPage() {
   if (loading) return <div className="flex-1 p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
-    <div className="flex-1 p-6 min-w-0 max-w-lg">
+    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-lg">
       <h1 className="text-xl font-semibold text-ink">Mening bannerim</h1>
       <p className="text-sm text-muted mt-0.5 mb-5">
         Webapp bosh sahifasida ko'rinadigan reklama banneringiz. Istalgan vaqt almashtiring.

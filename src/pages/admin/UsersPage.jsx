@@ -10,7 +10,7 @@ export function UsersPage() {
   }, []);
 
   return (
-    <div className="flex-1 p-6 min-w-0">
+    <div className="flex-1 p-4 sm:p-6 min-w-0">
       <h1 className="text-xl font-semibold text-ink mb-1">Mijozlar</h1>
       <p className="text-sm text-muted mb-5">Ro'yxatdan o'tgan foydalanuvchilar</p>
 

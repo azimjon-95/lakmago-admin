@@ -111,8 +111,10 @@ export function SupportPage() {
 
   return (
     <div className="flex-1 flex min-w-0 h-screen">
-      {/* Suhbatlar ro'yxati */}
-      <div className="w-80 border-r border-line flex flex-col flex-none">
+      {/* Suhbatlar ro'yxati — mobilda chat ochilganда yashiriladi */}
+      <div className={`w-full lg:w-80 border-r border-line flex-col flex-none ${
+        activeId ? 'hidden lg:flex' : 'flex'
+      }`}>
         <div className="p-4 border-b border-line">
           <div className="flex items-center justify-between mb-3">
             <h1 className="text-lg font-semibold text-ink">Xabarlar</h1>
@@ -180,9 +182,9 @@ export function SupportPage() {
         </div>
       </div>
 
-      {/* Suhbat oynasi */}
+      {/* Suhbat oynasi — mobilda faqat suhbat tanlanganда ko'rinadi */}
       {!active ? (
-        <div className="flex-1 flex items-center justify-center text-muted">
+        <div className="hidden lg:flex flex-1 items-center justify-center text-muted">
           <div className="text-center">
             <i className="ti ti-message-circle text-5xl opacity-30" />
             <p className="mt-3 text-sm">Suhbatni tanlang</p>
@@ -191,7 +193,15 @@ export function SupportPage() {
       ) : (
         <div className="flex-1 flex flex-col min-w-0">
           {/* Mijoz ma'lumotlari */}
-          <div className="px-5 py-3 border-b border-line flex items-center gap-3">
+          <div className="px-3 sm:px-5 py-3 border-b border-line flex items-center gap-2 sm:gap-3">
+            {/* Orqaga — faqat mobilda (ro'yxatga qaytish) */}
+            <button
+              onClick={() => { setActiveId(null); setActive(null); }}
+              className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:bg-canvas flex-none"
+              aria-label="Orqaga"
+            >
+              <i className="ti ti-arrow-left text-lg" />
+            </button>
             {active.photoUrl ? (
               <img src={active.photoUrl} alt="" className="w-11 h-11 rounded-full object-cover" />
             ) : (
@@ -211,6 +221,7 @@ export function SupportPage() {
               onClick={toggleResolve}
               className={`px-3 py-1.5 rounded-lg text-sm border ${
                 active.isResolved
+
                   ? 'border-line text-muted hover:bg-canvas'
                   : 'border-green-300 text-green-600 hover:bg-green-50'
               }`}
