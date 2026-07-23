@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
+import { getSocket, joinAdmin } from '@/lib/socket';
 import { BroadcastComposer } from '@/components/BroadcastComposer';
 
 export function GroupsPage() {
@@ -18,6 +19,15 @@ export function GroupsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Real-time: bot yangi guruhga admin bo'lsa darhol ko'rinadi
+  useEffect(() => {
+    const socket = getSocket();
+    joinAdmin();
+    const refresh = () => load();
+    socket.on('group:new', refresh);
+    return () => socket.off('group:new', refresh);
+  }, [load]);
 
   const runCheck = async () => {
     setChecking(true);

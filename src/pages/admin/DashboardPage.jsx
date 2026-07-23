@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { adminApi } from '@/api';
-import { SOCKET_URL } from '@/api/client';
+import { getSocket, joinAdmin } from '@/lib/socket';
 
 const STATUS_LABEL = {
   accepted: 'Yangi', preparing: 'Tayyorlanmoqda', delivering: "Yo'lda",
@@ -38,8 +37,8 @@ export function DashboardPage() {
     const t = setInterval(() => { loadStats(); loadOrders(); }, 20000);
 
     // Live: yangi buyurtmalar
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socket.emit('join:admin');
+    const socket = getSocket();
+    joinAdmin();
     socket.on('order:new', (order) => {
       setOrders((prev) => [order, ...prev.filter((o) => o._id !== order._id)]);
       setFlash(order._id);
@@ -47,7 +46,7 @@ export function DashboardPage() {
       loadStats();
     });
 
-    return () => { clearInterval(t); socket.disconnect(); };
+    return () => { clearInterval(t); socket.removeAllListeners(); };
   }, [loadStats, loadOrders]);
 
   return (

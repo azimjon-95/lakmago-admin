@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { panelApi } from '@/api';
-import { SOCKET_URL } from '@/api/client';
+import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { playNewOrderSound, playAcceptSound } from '@/lib/sound';
 
@@ -40,8 +39,8 @@ export function RestaurantOrdersPage() {
 
   useEffect(() => {
     load();
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    if (restaurant?._id) socket.emit('join:restaurant', restaurant._id);
+    const socket = getSocket();
+    joinRestaurant(restaurant?._id);
 
     socket.on('order:new', (order) => {
       setOrders((prev) => {
@@ -62,7 +61,7 @@ export function RestaurantOrdersPage() {
     });
 
     const poll = setInterval(load, 25000);
-    return () => { clearInterval(poll); socket.disconnect(); };
+    return () => { clearInterval(poll); socket.removeAllListeners(); };
   }, [load, restaurant]);
 
   const advance = async (o) => {

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { adminApi } from '@/api';
-import { SOCKET_URL } from '@/api/client';
+import { getSocket, joinAdmin } from '@/lib/socket';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -33,12 +32,12 @@ export function OrdersMonitorPage() {
 
   // Real-time — yangi buyurtma va status yangilanishi
   useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socket.emit('join:admin');
+    const socket = getSocket();
+    joinAdmin();
     socket.on('order:new', () => load());
     socket.on('order:update', () => load());
     socketRef.current = socket;
-    return () => socket.disconnect();
+    return () => socket.removeAllListeners();
   }, [load]);
 
   // groupId bo'yicha guruhlash (bitta mijoz buyurtmasi = bir necha restoran)

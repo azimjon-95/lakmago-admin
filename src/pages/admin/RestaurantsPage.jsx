@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
+import { getSocket, joinAdmin } from '@/lib/socket';
 import { CATEGORIES, KINDS, KIND_LABEL } from './restaurantMeta';
 
 
@@ -22,6 +23,15 @@ export function RestaurantsPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  // Real-time: restoran qo'shilsa/o'zgarsa ro'yxat yangilanadi
+  useEffect(() => {
+    const socket = getSocket();
+    joinAdmin();
+    const refresh = () => load();
+    socket.on('restaurant:update', refresh);
+    return () => socket.off('restaurant:update', refresh);
+  }, [load]);
 
   const toggleActive = async (r) => {
     await adminApi.updateRestaurant(r._id, { isActive: !r.isActive });

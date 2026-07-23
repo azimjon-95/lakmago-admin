@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
+import { getSocket, joinAdmin } from '@/lib/socket';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU');
 
@@ -41,6 +42,30 @@ export function RestaurantDetailPage() {
       .catch(() => {})
       .finally(() => !cancelled && setLoading(false));
     return () => { cancelled = true; };
+  }, [id]);
+
+  // Real-time: menyu yoki bron o'zgarsa darhol yangilanadi
+  useEffect(() => {
+    const socket = getSocket();
+    joinAdmin();
+    const refresh = () => {
+      Promise.all([
+        adminApi.getRestaurantDishes(id),
+        adminApi.getRestaurantReservations(id),
+      ]).then(([d, r]) => setData({
+        restaurant: d.restaurant || r.restaurant,
+        dishes: d.dishes || [],
+        reservations: r.reservations || [],
+      })).catch(() => {});
+    };
+    socket.on('dish:update', refresh);
+    socket.on('reservation:update', refresh);
+    socket.on('reservation:new', refresh);
+    return () => {
+      socket.off('dish:update', refresh);
+      socket.off('reservation:update', refresh);
+      socket.off('reservation:new', refresh);
+    };
   }, [id]);
 
   const { restaurant, dishes, reservations } = data;

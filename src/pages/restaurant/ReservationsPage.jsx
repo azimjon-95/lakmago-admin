@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { panelApi } from '@/api';
-import { SOCKET_URL, getToken } from '@/api/client';
+import { getSocket, joinRestaurant } from '@/lib/socket';
+import { useAuth } from '@/store/auth';
 
 // Mijoz javoblari va holatlar
 const STATUS = {
@@ -21,6 +21,7 @@ export function ReservationsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('active');
   const [busyId, setBusyId] = useState(null);
+  const restaurant = useAuth((s) => s.restaurant);
   const socketRef = useRef(null);
 
   const load = useCallback(async () => {
@@ -35,14 +36,15 @@ export function ReservationsPage() {
 
   // Real-time: yangi bron va mijoz javoblari
   useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    const token = getToken();
-    if (token) socket.emit('join:restaurant', { token });
+    if (!restaurant?._id) return;
+    const socket = getSocket();
+    // Server restaurantId kutadi (token emas) — aks holda xonaga qo'shilmaydi
+    joinRestaurant(restaurant._id);
     socket.on('reservation:new', () => load());
     socket.on('reservation:update', () => load());
     socketRef.current = socket;
-    return () => socket.disconnect();
-  }, [load]);
+    return () => socket.removeAllListeners();
+  }, [load, restaurant?._id]);
 
   const decide = async (id, status) => {
     let reason = '';

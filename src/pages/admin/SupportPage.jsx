@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { io } from 'socket.io-client';
 import { adminApi } from '@/api';
-import { SOCKET_URL } from '@/api/client';
+import { getSocket, joinAdmin } from '@/lib/socket';
 
 // Vaqt formatlash: bugun bo'lsa soat, aks holda sana
 function fmtTime(d) {
@@ -60,8 +59,8 @@ export function SupportPage() {
 
   // Real-time: yangi xabar
   useEffect(() => {
-    const socket = io(SOCKET_URL, { transports: ['websocket', 'polling'] });
-    socket.emit('join:admin');
+    const socket = getSocket();
+    joinAdmin();
 
     socket.on('support:message', (msg) => {
       playSound();
@@ -75,7 +74,7 @@ export function SupportPage() {
     socket.on('support:read', loadList);
     socket.on('support:resolved', loadList);
 
-    return () => socket.disconnect();
+    return () => socket.removeAllListeners();
   }, [loadList, playSound]);
 
   // Xabarlar oxiriga scroll
