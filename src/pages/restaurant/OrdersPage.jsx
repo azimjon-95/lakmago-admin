@@ -87,9 +87,9 @@ export function RestaurantOrdersPage() {
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
-      <div className="flex items-center justify-between mb-5">
-        <div>
-          <h1 className="text-xl font-semibold text-ink flex items-center gap-2">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-ink flex items-center gap-2 flex-wrap">
             Buyurtmalar
             {pendingCount > 0 && (
               <span className="text-xs font-semibold bg-red-500 text-white px-2 py-0.5 rounded-full animate-pulse">
@@ -97,7 +97,7 @@ export function RestaurantOrdersPage() {
               </span>
             )}
           </h1>
-          <p className="text-sm text-muted mt-0.5">{restaurant?.name}</p>
+          <p className="text-xs sm:text-sm text-muted mt-0.5 truncate">{restaurant?.name}</p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -134,11 +134,11 @@ export function RestaurantOrdersPage() {
               <div className="grid gap-2">
                 {done.slice(0, 10).map((o) => (
                   <div key={o._id} className="bg-surface border border-line rounded-xl p-3 flex items-center gap-3 opacity-70">
-                    <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: `${flow[o.status]?.color}20`, color: flow[o.status]?.color }}>
+                    <span className="text-xs px-2 py-0.5 rounded-full flex-none" style={{ background: `${flow[o.status]?.color}20`, color: flow[o.status]?.color }}>
                       {flow[o.status]?.label}
                     </span>
-                    <span className="text-sm text-ink truncate flex-1">{o.items?.map((i) => `${i.name}×${i.quantity}`).join(', ')}</span>
-                    <span className="text-sm font-medium text-ink">{som(o.total)}</span>
+                    <span className="text-sm text-ink truncate flex-1 min-w-0">{o.items?.map((i) => `${i.name}×${i.quantity}`).join(', ')}</span>
+                    <span className="text-sm font-medium text-ink flex-none whitespace-nowrap">{som(o.total)}</span>
                   </div>
                 ))}
               </div>

@@ -40,7 +40,7 @@ export function GroupsPage() {
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-ink">Telegram guruhlar</h1>
           <p className="text-sm text-muted mt-0.5">Bot admin qilingan guruhlar — reklama va pin holati</p>
@@ -73,13 +73,14 @@ export function GroupsPage() {
       ) : (
         <div className="grid gap-3">
           {groups.map((g) => (
-            <div key={g.chatId} className="bg-surface border border-line rounded-xl p-4 flex items-center gap-4">
+            <div key={g.chatId} className="bg-surface border border-line rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 overflow-hidden">
+              <div className="flex items-start gap-3 min-w-0 flex-1">
               <div className="w-11 h-11 rounded-xl bg-brand-100 flex items-center justify-center flex-none">
                 <i className="ti ti-users text-brand-text text-xl" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-ink truncate">{g.title || 'Guruh'}</div>
-                <div className="flex items-center gap-3 mt-1 text-[11px]">
+                <div className="flex items-center gap-x-3 gap-y-1 mt-1 text-[11px] flex-wrap">
                   {g.isBotAdmin
                     ? <span className="text-green-600"><i className="ti ti-shield-check" /> Bot admin</span>
                     : <span className="text-red-500"><i className="ti ti-shield-x" /> Admin emas</span>}
@@ -96,7 +97,8 @@ export function GroupsPage() {
                   </div>
                 )}
               </div>
-              <div className="flex items-center gap-2 flex-none">
+              </div>
+              <div className="flex items-center gap-2 flex-none justify-start sm:justify-end flex-wrap">
                 <button
                   onClick={() => setComposer({ chatId: g.chatId, title: g.title })}
                   disabled={!g.isBotAdmin}

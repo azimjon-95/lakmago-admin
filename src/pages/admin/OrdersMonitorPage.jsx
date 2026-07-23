@@ -51,7 +51,7 @@ export function OrdersMonitorPage() {
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-ink">Buyurtmalar nazorati</h1>
           <p className="text-sm text-muted mt-0.5">Kim, qaysi muassasaga, nima buyurtma qildi — jonli kuzatuv</p>

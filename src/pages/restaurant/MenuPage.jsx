@@ -37,7 +37,7 @@ export function RestaurantMenuPage() {
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
-      <div className="flex items-center justify-between mb-5">
+      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
         <div>
           <h1 className="text-xl font-semibold text-ink">Menyu</h1>
           <p className="text-sm text-muted mt-0.5">Taomlarni boshqaring — tugaganini STOP qiling</p>
@@ -64,10 +64,12 @@ export function RestaurantMenuPage() {
               {items.map((d) => (
                 <div
                   key={d._id}
-                  className={`bg-surface border rounded-xl p-4 flex items-center gap-4 ${
+                  className={`bg-surface border rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 ${
                     d.isAvailable ? 'border-line' : 'border-red-200 bg-red-50/40'
                   }`}
                 >
+                  {/* Yuqori qator: rasm + nom + narx */}
+                  <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
                   {/* Rasm — bor bo'lsa foto, yo'q bo'lsa ikonka. Bosilsa tahrirlash. */}
                   <button
                     onClick={() => setEditDish(d)}
@@ -94,8 +96,9 @@ export function RestaurantMenuPage() {
                     <div className="text-xs text-muted truncate mt-0.5">{d.description}</div>
                   </div>
                   <div className="text-right flex-none">
-                    <div className="font-semibold text-ink">{som(d.price)} so'm</div>
-                    {d.oldPrice && <div className="text-xs text-muted line-through">{som(d.oldPrice)}</div>}
+                    <div className="font-semibold text-ink whitespace-nowrap">{som(d.price)} so'm</div>
+                    {d.oldPrice && <div className="text-xs text-muted line-through whitespace-nowrap">{som(d.oldPrice)}</div>}
+                  </div>
                   </div>
                   <div className="flex items-center gap-2 flex-none">
                     <button
