@@ -11,7 +11,10 @@ export function CreateRestaurantPage() {
     phone: '', address: '', deliveryMin: 25, deliveryMax: 40, deliveryFee: 0,
     login: '', password: '', imageUrl: '',
     shopTypes: [], pickupEnabled: true, pickupDiscountPercent: 0, prepMinutes: 20,
+    lat: '', lng: '', landmark: '',
+    reservationEnabled: false, reservationNote: '',
   });
+  const [step, setStep] = useState(1);
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
 
@@ -25,6 +28,9 @@ export function CreateRestaurantPage() {
     try {
       const icon = selectedCat?.icon || 'ti-building-store';
       const payload = { ...form, icon };
+      // Koordinata matn sifatida kiritiladi — songa aylantiramiz
+      if (form.lat) payload.lat = Number(form.lat); else delete payload.lat;
+      if (form.lng) payload.lng = Number(form.lng); else delete payload.lng;
       if (form.imageUrl) payload.images = [form.imageUrl];
       await adminApi.createRestaurant(payload);
       navigate('/restaurants');
@@ -34,7 +40,21 @@ export function CreateRestaurantPage() {
     }
   };
 
-  const valid = form.name && form.cuisine && form.login && form.password.length >= 4;
+  // Har bosqichning o'z shartlari
+  const stepValid = {
+    1: form.name.trim() && form.cuisine.trim(),
+    2: form.address.trim(),
+    3: form.login.trim() && form.password.length >= 4,
+    4: true,
+  };
+  const valid = stepValid[1] && stepValid[2] && stepValid[3];
+
+  const STEPS = [
+    { n: 1, label: 'Asosiy', icon: 'ti-building-store' },
+    { n: 2, label: 'Manzil', icon: 'ti-map-pin' },
+    { n: 3, label: 'Sozlamalar', icon: 'ti-settings' },
+    { n: 4, label: 'Tekshiruv', icon: 'ti-checks' },
+  ];
 
   return (
     <div className="flex-1 min-w-0 overflow-y-auto">
@@ -49,7 +69,37 @@ export function CreateRestaurantPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-6 grid gap-6">
+      {/* Bosqich indikatori */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-5">
+        <div className="flex items-center gap-1 sm:gap-2">
+          {STEPS.map((st, i) => (
+            <div key={st.n} className="flex items-center flex-1 min-w-0">
+              <button
+                onClick={() => st.n < step && setStep(st.n)}
+                disabled={st.n > step}
+                className={`flex items-center gap-2 min-w-0 ${st.n <= step ? '' : 'opacity-40'}`}
+              >
+                <span className={`w-8 h-8 rounded-full flex items-center justify-center flex-none text-sm ${
+                  st.n === step ? 'bg-brand-400 text-brand-text'
+                  : st.n < step ? 'bg-green-100 text-green-700' : 'bg-canvas border border-line text-muted'
+                }`}>
+                  {st.n < step ? <i className="ti ti-check" /> : st.n}
+                </span>
+                <span className={`text-xs sm:text-sm truncate hidden sm:block ${
+                  st.n === step ? 'text-ink font-medium' : 'text-muted'
+                }`}>{st.label}</span>
+              </button>
+              {i < STEPS.length - 1 && (
+                <div className={`flex-1 h-0.5 mx-1 sm:mx-2 ${st.n < step ? 'bg-green-300' : 'bg-line'}`} />
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 grid gap-6">
+        {/* ===== 1-BOSQICH: asosiy ma'lumot ===== */}
+        {step === 1 && (<>
         {/* Asosiy ma'lumot */}
         <section className="bg-surface border border-line rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
@@ -118,6 +168,100 @@ export function CreateRestaurantPage() {
         </section>
 
         {/* Do'kon yo'nalishlari — faqat magazin tanlansa */}
+        {/* Aloqa + yetkazish */}
+        <section className="bg-surface border border-line rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
+            <i className="ti ti-map-pin text-brand-600" /> Aloqa va yetkazish
+          </h2>
+          <div className="grid sm:grid-cols-2 gap-4">
+            <Field label="Telefon" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+998 90 123 45 67" />
+            <Field label="Manzil" value={form.address} onChange={(v) => set('address', v)} placeholder="Shahar, ko'cha, uy" />
+          </div>
+          <div className="mt-4">
+            <Field label="Mo'ljal" value={form.landmark} onChange={(v) => set('landmark', v)} placeholder="Metro yonida, 2-qavat" />
+          </div>
+
+          {/* Xaritadagi joylashuv */}
+          <div className="mt-4 pt-4 border-t border-line">
+            <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
+              <div className="min-w-0">
+                <div className="text-sm font-medium text-ink">Xaritadagi joylashuv</div>
+                <p className="text-xs text-muted mt-0.5">Kuryer va mijoz aniq topishi uchun</p>
+              </div>
+              <button
+                onClick={() => {
+                  if (!navigator.geolocation) { setErr('Brauzer joylashuvni qo\'llab-quvvatlamaydi'); return; }
+                  navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                      set('lat', pos.coords.latitude.toFixed(6));
+                      set('lng', pos.coords.longitude.toFixed(6));
+                    },
+                    () => setErr('Joylashuvni olishda xato'),
+                    { enableHighAccuracy: true, timeout: 10000 },
+                  );
+                }}
+                className="text-sm px-3 py-2 rounded-lg border border-line text-brand-600 hover:bg-canvas flex items-center gap-2 flex-none"
+              >
+                <i className="ti ti-current-location" /> Hozirgi joyni olish
+              </button>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4">
+              <Field label="Kenglik (lat)" value={form.lat} onChange={(v) => set('lat', v)} placeholder="41.311081" />
+              <Field label="Uzunlik (lng)" value={form.lng} onChange={(v) => set('lng', v)} placeholder="69.240562" />
+            </div>
+            {form.lat && form.lng && (
+              <a
+                href={`https://maps.google.com/?q=${form.lat},${form.lng}`}
+                target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-brand-600 mt-2 hover:underline"
+              >
+                <i className="ti ti-map-2" /> Xaritada tekshirish
+              </a>
+            )}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-line">
+            <NumField label="Yetkazish (min daq)" value={form.deliveryMin} onChange={(v) => set('deliveryMin', v)} />
+            <NumField label="Yetkazish (max daq)" value={form.deliveryMax} onChange={(v) => set('deliveryMax', v)} />
+            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} hint="0 = bepul" />
+          </div>
+        </section>
+        </>)}
+
+        {/* ===== 3-BOSQICH: sozlamalar va akkaunt ===== */}
+        {step === 2 && (<>
+
+        {/* Stol bron qilish */}
+        <section className="bg-surface border border-line rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
+            <i className="ti ti-calendar-plus text-brand-600" /> Stol bron qilish
+          </h2>
+          <p className="text-xs text-muted mb-4">
+            Yoqilsa mijoz ilovada "Stol bron qilish" tugmasini ko'radi
+          </p>
+          <label className="flex items-center gap-3 cursor-pointer mb-4">
+            <input
+              type="checkbox"
+              checked={form.reservationEnabled}
+              onChange={(e) => set('reservationEnabled', e.target.checked)}
+              className="w-4 h-4 accent-brand-400"
+            />
+            <span className="text-sm text-ink">Bron qabul qilish</span>
+          </label>
+          {form.reservationEnabled && (
+            <Field
+              label="Bron shartlari"
+              value={form.reservationNote}
+              onChange={(v) => set('reservationNote', v)}
+              placeholder="Kamida 2 soat oldin bron qiling"
+            />
+          )}
+        </section>
+
+
+        </>)}
+
+        {step === 3 && (<>
         {form.kind === 'shop' && (
           <section className="bg-surface border border-line rounded-2xl p-5">
             <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
@@ -183,22 +327,6 @@ export function CreateRestaurantPage() {
           )}
         </section>
 
-        {/* Aloqa + yetkazish */}
-        <section className="bg-surface border border-line rounded-2xl p-5">
-          <h2 className="text-sm font-semibold text-ink mb-4 flex items-center gap-2">
-            <i className="ti ti-map-pin text-brand-600" /> Aloqa va yetkazish
-          </h2>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <Field label="Telefon" value={form.phone} onChange={(v) => set('phone', v)} placeholder="+998 90 123 45 67" />
-            <Field label="Manzil" value={form.address} onChange={(v) => set('address', v)} placeholder="Shahar, ko'cha, uy" />
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4">
-            <NumField label="Yetkazish (min daq)" value={form.deliveryMin} onChange={(v) => set('deliveryMin', v)} />
-            <NumField label="Yetkazish (max daq)" value={form.deliveryMax} onChange={(v) => set('deliveryMax', v)} />
-            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} hint="0 = bepul" />
-          </div>
-        </section>
-
         {/* Akkaunt */}
         <section className="bg-surface border border-line rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
@@ -210,23 +338,84 @@ export function CreateRestaurantPage() {
             <Field label="Parol *" value={form.password} onChange={(v) => set('password', v)} placeholder="kamida 4 belgi" />
           </div>
         </section>
+        </>)}
+
+        {/* ===== 4-BOSQICH: tekshiruv ===== */}
+        {step === 4 && (
+          <section className="bg-surface border border-line rounded-2xl p-5">
+            <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
+              <i className="ti ti-checks text-brand-600" /> Tekshiruv
+            </h2>
+            <p className="text-xs text-muted mb-4">Barcha ma'lumotni tekshiring va yarating</p>
+
+            {form.imageUrl && (
+              <img src={form.imageUrl} alt="" className="w-full h-36 object-cover rounded-xl mb-4" />
+            )}
+
+            <Review label="Nomi" value={form.name} />
+            <Review label="Turi" value={KINDS.find((k) => k.value === form.kind)?.label} />
+            <Review label="Kategoriya" value={selectedCat?.label} />
+            <Review label="Tavsif" value={form.cuisine} />
+            <Review label="Telefon" value={form.phone} />
+            <Review label="Manzil" value={form.address} />
+            {form.landmark && <Review label="Mo'ljal" value={form.landmark} />}
+            <Review
+              label="Koordinata"
+              value={form.lat && form.lng ? `${form.lat}, ${form.lng}` : 'Kiritilmagan'}
+              warn={!form.lat || !form.lng}
+            />
+            <Review label="Yetkazish" value={`${form.deliveryMin}–${form.deliveryMax} daq · ${form.deliveryFee > 0 ? form.deliveryFee.toLocaleString('ru-RU') + " so'm" : 'bepul'}`} />
+            <Review label="Olib ketish" value={form.pickupEnabled ? `Ha · ${form.prepMinutes} daq` : "Yo'q"} />
+            <Review label="Stol bron" value={form.reservationEnabled ? 'Yoqilgan' : "O'chirilgan"} />
+            {form.kind === 'shop' && form.shopTypes.length > 0 && (
+              <Review label="Do'kon yo'nalishi" value={form.shopTypes.length + ' ta tanlangan'} />
+            )}
+            <Review label="Login" value={form.login} />
+            <Review label="Parol" value={'•'.repeat(form.password.length)} />
+          </section>
+        )}
 
         {err && <div className="text-sm text-red-600 bg-red-50 rounded-xl px-4 py-3">{err}</div>}
 
-        {/* Amal tugmalari */}
+        {/* Bosqich navigatsiyasi */}
         <div className="flex gap-3 pb-6">
-          <button onClick={() => navigate('/restaurants')} className="px-6 py-3 border border-line text-muted rounded-xl hover:bg-surface">
-            Bekor qilish
-          </button>
           <button
-            onClick={submit}
-            disabled={saving || !valid}
-            className="flex-1 bg-brand-400 text-brand-text font-medium py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50"
+            onClick={() => (step === 1 ? navigate('/restaurants') : setStep(step - 1))}
+            className="px-5 py-3 border border-line text-muted rounded-xl hover:bg-surface flex-none"
           >
-            {saving ? 'Saqlanmoqda...' : 'Muassasani yaratish'}
+            {step === 1 ? 'Bekor' : 'Orqaga'}
           </button>
+          {step < 4 ? (
+            <button
+              onClick={() => setStep(step + 1)}
+              disabled={!stepValid[step]}
+              className="flex-1 bg-brand-400 text-brand-text font-medium py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50"
+            >
+              Keyingi
+            </button>
+          ) : (
+            <button
+              onClick={submit}
+              disabled={saving || !valid}
+              className="flex-1 bg-brand-400 text-brand-text font-medium py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50"
+            >
+              {saving ? 'Saqlanmoqda...' : 'Muassasani yaratish'}
+            </button>
+          )}
         </div>
       </div>
+    </div>
+  );
+}
+
+// Tekshiruv qatori
+function Review({ label, value, warn }) {
+  return (
+    <div className="flex items-start justify-between gap-4 py-2.5 border-b border-line last:border-0">
+      <span className="text-sm text-muted flex-none">{label}</span>
+      <span className={`text-sm text-right break-words ${warn ? 'text-amber-600' : 'text-ink'}`}>
+        {value || '—'}
+      </span>
     </div>
   );
 }

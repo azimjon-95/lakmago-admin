@@ -49,11 +49,19 @@ export function RestaurantMenuPage() {
     load();
   };
 
-  // Bo'limlar bo'yicha guruhlash
-  const sections = {};
-  dishes.forEach((d) => {
-    (sections[d.section] = sections[d.section] || []).push(d);
-  });
+  // Kategoriya bo'yicha guruhlash — DISH_CATEGORIES tartibida.
+  // Bir kategoriya ichida bo'limlar ham ajratiladi.
+  const grouped = DISH_CATEGORIES
+    .map((cat) => ({
+      ...cat,
+      items: dishes.filter((d) => (d.category || 'issiq') === cat.value),
+    }))
+    .filter((g) => g.items.length > 0);
+
+  // Kategoriyasi noma'lum taomlar (eski ma'lumot)
+  const known = new Set(DISH_CATEGORIES.map((c) => c.value));
+  const orphans = dishes.filter((d) => !known.has(d.category || 'issiq'));
+  if (orphans.length) grouped.push({ value: '_', label: 'Boshqalar', items: orphans });
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
