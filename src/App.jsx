@@ -6,7 +6,11 @@ import { LoginPage } from '@/pages/LoginPage';
 // Admin sahifalari
 import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
-import { CreateRestaurantPage } from '@/pages/admin/CreateRestaurantPage';
+import { CreateRestaurantLayout } from '@/pages/admin/create-restaurant/context';
+import { Step1Basic } from '@/pages/admin/create-restaurant/Step1Basic';
+import { Step2Address } from '@/pages/admin/create-restaurant/Step2Address';
+import { Step3Settings } from '@/pages/admin/create-restaurant/Step3Settings';
+import { Step4Review } from '@/pages/admin/create-restaurant/Step4Review';
 import { RestaurantSettingsPage } from '@/pages/admin/RestaurantSettingsPage';
 import { RestaurantDetailPage } from '@/pages/admin/RestaurantDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
@@ -41,7 +45,13 @@ function AdminRoutes() {
       <Routes>
         <Route path="/" element={<DashboardPage />} />
         <Route path="/restaurants" element={<RestaurantsPage />} />
-        <Route path="/restaurants/new" element={<CreateRestaurantPage />} />
+        <Route path="/restaurants/new" element={<CreateRestaurantLayout />}>
+          <Route index element={<Navigate to="asosiy" replace />} />
+          <Route path="asosiy" element={<Step1Basic />} />
+          <Route path="manzil" element={<Step2Address />} />
+          <Route path="sozlamalar" element={<Step3Settings />} />
+          <Route path="tekshiruv" element={<Step4Review />} />
+        </Route>
         <Route path="/restaurants/:id/settings" element={<RestaurantSettingsPage />} />
         <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
         <Route path="/orders" element={<OrdersMonitorPage />} />
