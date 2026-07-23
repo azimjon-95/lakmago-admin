@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 
-const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift' };
+const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '' };
 const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1E2E'];
 
 export function BannersPage() {
@@ -27,12 +27,12 @@ export function BannersPage() {
 
   const openNew = () => { setForm(EMPTY); setEditing('new'); };
   const openEdit = (b) => {
-    setForm({ title: b.title, eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift' });
+    setForm({ title: b.title || '', eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift', hasButton: b.hasButton || false, linkUrl: b.linkUrl || '' });
     setEditing(b);
   };
 
   const save = async () => {
-    if (!form.title.trim()) { alert('Sarlavha kiriting'); return; }
+    if (!form.imageUrl) { alert('Banner rasmini yuklang'); return; }
     setSaving(true);
     try {
       if (editing === 'new') await adminApi.createBanner(form);
@@ -99,35 +99,67 @@ export function BannersPage() {
             <h3 className="text-lg font-semibold text-ink mb-4">{editing === 'new' ? 'Yangi banner' : 'Bannerni tahrirlash'}</h3>
 
             {/* Jonli ko'rinish */}
-            <div className="rounded-xl p-4 mb-4 flex items-center justify-between" style={{ background: form.imageUrl ? `center/cover url(${form.imageUrl})` : form.bg }}>
-              <div>
-                <div className="text-[11px] font-medium" style={{ color: '#FAC775' }}>{form.eyebrow || 'REKLAMA'}</div>
-                <div className="text-white font-medium mt-0.5">{form.title || 'Banner sarlavhasi'}</div>
-                <div className="inline-block mt-2 text-xs font-medium px-3 py-1 rounded-lg bg-brand-400 text-brand-text">{form.cta}</div>
-              </div>
-              <i className={`ti ${form.icon} text-3xl text-brand-400`} />
+            <div
+              className="rounded-xl h-28 mb-4 flex items-center px-4 bg-center bg-cover"
+              style={{ background: form.imageUrl ? `center/cover url(${form.imageUrl})` : form.bg }}
+            >
+              {form.hasButton && (
+                <div className="relative z-10">
+                  {form.eyebrow && (
+                    <div className="text-[11px] font-medium" style={{ color: '#FAC775' }}>{form.eyebrow}</div>
+                  )}
+                  {form.title && <div className="text-white font-medium mt-0.5">{form.title}</div>}
+                  <div className="inline-block mt-2 text-xs font-medium px-3 py-1 rounded-lg bg-brand-400 text-brand-text">
+                    {form.cta || "Ko'rish"}
+                  </div>
+                </div>
+              )}
             </div>
 
-            <label className="block text-xs text-muted mb-1">Sarlavha *</label>
-            <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="Birinchi buyurtmaga −30%" />
-
-            <label className="block text-xs text-muted mb-1">Kichik sarlavha</label>
-            <input value={form.eyebrow} onChange={(e) => setForm({ ...form, eyebrow: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="TANLANGAN AKSIYA" />
-
-            <label className="block text-xs text-muted mb-1">Tugma matni</label>
-            <input value={form.cta} onChange={(e) => setForm({ ...form, cta: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" />
-
-            <div className="mb-3">
+            {/* 1. Rasm — asosiy */}
+            <div className="mb-4">
               <ImageUpload
                 value={form.imageUrl}
                 onChange={(url) => setForm({ ...form, imageUrl: url })}
                 folder="banners"
-                label="Banner rasmi (ixtiyoriy)"
+                label="Banner rasmi *"
                 aspect="3/1"
               />
+              <p className="text-[11px] text-muted mt-1">
+                Rasm o'zi yetarli — matn yozish shart emas
+              </p>
             </div>
 
-            <label className="block text-xs text-muted mb-1">Fon rangi</label>
+            {/* 2. Tugma — ixtiyoriy */}
+            <label className="flex items-center gap-2.5 cursor-pointer mb-3">
+              <input
+                type="checkbox"
+                checked={form.hasButton}
+                onChange={(e) => setForm({ ...form, hasButton: e.target.checked })}
+                className="w-4 h-4 accent-brand-400"
+              />
+              <span className="text-sm text-ink">Tugma qo'shish (havola bilan)</span>
+            </label>
+
+            {form.hasButton && (
+              <div className="pl-6 border-l-2 border-line mb-4">
+                <label className="block text-xs text-muted mb-1">Sarlavha</label>
+                <input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="Birinchi buyurtmaga −30%" />
+
+                <label className="block text-xs text-muted mb-1">Kichik sarlavha</label>
+                <input value={form.eyebrow} onChange={(e) => setForm({ ...form, eyebrow: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="TANLANGAN AKSIYA" />
+
+                <label className="block text-xs text-muted mb-1">Tugma matni</label>
+                <input value={form.cta} onChange={(e) => setForm({ ...form, cta: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-3 text-ink outline-none focus:border-brand-400" placeholder="Ko'rish" />
+
+                <label className="block text-xs text-muted mb-1">Havola (bosilganda ochiladi)</label>
+                <input value={form.linkUrl} onChange={(e) => setForm({ ...form, linkUrl: e.target.value })} className="w-full border border-line rounded-lg px-3 py-2 mb-1 text-ink outline-none focus:border-brand-400" placeholder="https://t.me/kanal yoki https://..." />
+                <p className="text-[11px] text-muted mb-2">Bo'sh qoldirilsa banner bosilmaydi</p>
+              </div>
+            )}
+
+            {/* 3. Zaxira fon (rasm yuklanmasa) */}
+            <label className="block text-xs text-muted mb-1">Zaxira fon rangi</label>
             <div className="flex gap-2 mb-4">
               {BG_PRESETS.map((c) => (
                 <button key={c} onClick={() => setForm({ ...form, bg: c })} className={`w-8 h-8 rounded-lg border-2 ${form.bg === c ? 'border-brand-400' : 'border-transparent'}`} style={{ background: c }} />
