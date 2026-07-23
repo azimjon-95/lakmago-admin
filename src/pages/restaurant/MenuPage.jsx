@@ -38,13 +38,13 @@ export function RestaurantMenuPage() {
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
       <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Menyu</h1>
-          <p className="text-sm text-muted mt-0.5">Taomlarni boshqaring — tugaganini STOP qiling</p>
+        <div className="min-w-0">
+          <h1 className="text-lg sm:text-xl font-semibold text-ink">Menyu</h1>
+          <p className="text-xs sm:text-sm text-muted mt-0.5">Taomlarni boshqaring — tugaganini STOP qiling</p>
         </div>
         <button
           onClick={() => setShowForm(true)}
-          className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2"
+          className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2 flex-none whitespace-nowrap"
         >
           <i className="ti ti-plus" /> Taom qo'shish
         </button>
@@ -87,17 +87,19 @@ export function RestaurantMenuPage() {
                     </span>
                   </button>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-ink">{d.name}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="font-medium text-ink truncate">{d.name}</span>
                       {!d.isAvailable && (
-                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium">STOP</span>
+                        <span className="text-[11px] px-2 py-0.5 rounded-full bg-red-100 text-red-600 font-medium flex-none">STOP</span>
                       )}
                     </div>
-                    <div className="text-xs text-muted truncate mt-0.5">{d.description}</div>
+                    {d.description && (
+                      <div className="text-xs text-muted truncate mt-0.5">{d.description}</div>
+                    )}
                   </div>
-                  <div className="text-right flex-none">
-                    <div className="font-semibold text-ink whitespace-nowrap">{som(d.price)} so'm</div>
-                    {d.oldPrice && <div className="text-xs text-muted line-through whitespace-nowrap">{som(d.oldPrice)}</div>}
+                  <div className="text-right flex-none pl-2">
+                    <div className="text-sm sm:text-base font-semibold text-ink whitespace-nowrap">{som(d.price)} so'm</div>
+                    {d.oldPrice > 0 && <div className="text-[11px] text-muted line-through whitespace-nowrap">{som(d.oldPrice)}</div>}
                   </div>
                   </div>
                   <div className="flex items-center gap-2 flex-none">
