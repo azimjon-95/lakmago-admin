@@ -217,6 +217,20 @@ export function SupportPage() {
                 {active.telegramId && <span>· ID {active.telegramId}</span>}
               </div>
             </div>
+            {/* Mijozning Telegram akkauntiga o'tish */}
+            {(active.username || active.telegramId) && (
+              <a
+                href={active.username
+                  ? `https://t.me/${active.username}`
+                  : `tg://user?id=${active.telegramId}`}
+                target="_blank"
+                rel="noreferrer"
+                title="Telegramda yozish"
+                className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-[#229ED9] flex-none"
+              >
+                <i className="ti ti-brand-telegram text-lg" />
+              </a>
+            )}
             <button
               onClick={toggleResolve}
               className={`px-3 py-1.5 rounded-lg text-sm border ${
