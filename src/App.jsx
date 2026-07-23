@@ -8,6 +8,7 @@ import { DashboardPage } from '@/pages/admin/DashboardPage';
 import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
 import { CreateRestaurantPage } from '@/pages/admin/CreateRestaurantPage';
 import { RestaurantSettingsPage } from '@/pages/admin/RestaurantSettingsPage';
+import { RestaurantDetailPage } from '@/pages/admin/RestaurantDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { RevenuePage } from '@/pages/admin/RevenuePage';
@@ -42,6 +43,7 @@ function AdminRoutes() {
         <Route path="/restaurants" element={<RestaurantsPage />} />
         <Route path="/restaurants/new" element={<CreateRestaurantPage />} />
         <Route path="/restaurants/:id/settings" element={<RestaurantSettingsPage />} />
+        <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
         <Route path="/orders" element={<OrdersMonitorPage />} />
         <Route path="/groups" element={<GroupsPage />} />
         <Route path="/support" element={<SupportPage />} />

@@ -70,6 +70,10 @@ export const adminApi = {
   broadcastToGroup: (chatId, data) => apiFetch(`/admin/groups/${chatId}/broadcast`, { method: 'POST', body: JSON.stringify(data) }),
   broadcastToAll: (data) => apiFetch('/admin/groups/broadcast-all', { method: 'POST', body: JSON.stringify(data) }),
 
+  // Muassasa ichi — menyu va bronlar (admin nazorati)
+  getRestaurantDishes: (id) => apiFetch(`/admin/restaurants/${id}/dishes`),
+  getRestaurantReservations: (id) => apiFetch(`/admin/restaurants/${id}/reservations`),
+
   // Qo'llab-quvvatlash chati
   getSupportChats: (resolved = false) => apiFetch(`/admin/support?resolved=${resolved}`),
   getSupportChat: (id) => apiFetch(`/admin/support/${id}`),

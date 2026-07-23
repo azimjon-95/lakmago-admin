@@ -84,7 +84,12 @@ export function RestaurantsPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="font-medium text-ink break-all">{r.name}</span>
+                    <button
+                      onClick={() => navigate(`/restaurants/${r._id}`)}
+                      className="font-medium text-ink break-all text-left hover:text-brand-600 transition-colors"
+                    >
+                      {r.name}
+                    </button>
                     <span className="text-[11px] px-2 py-0.5 rounded-full bg-brand-50 text-brand-600 flex-none">
                       {KIND_LABEL[r.kind] || 'Restoran'}
                     </span>
