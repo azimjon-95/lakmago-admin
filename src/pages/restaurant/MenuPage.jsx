@@ -2,6 +2,26 @@ import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 
+// Taom kategoriyalari — barcha muassasalar uchun umumiy.
+// Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
+const DISH_CATEGORIES = [
+  { value: 'issiq', label: 'Issiq taomlar (garyachiy sex)' },
+  { value: 'shorva', label: "Sho'rvalar" },
+  { value: 'salat', label: 'Salatlar' },
+  { value: 'sovuq', label: 'Sovuq gazaklar' },
+  { value: 'grill', label: 'Mangal / shashlik' },
+  { value: 'garnir', label: 'Garnirlar' },
+  { value: 'fastfood', label: 'Fast food (lavash, burger)' },
+  { value: 'pitsa', label: 'Pitsa' },
+  { value: 'sushi', label: 'Sushi va rollar' },
+  { value: 'nonushta', label: 'Nonushta' },
+  { value: 'shirinlik', label: 'Shirinlik / desert' },
+  { value: 'nonvoyxona', label: 'Non, somsa, patir' },
+  { value: 'ichimlik', label: 'Ichimliklar (bar)' },
+  { value: 'alkogol', label: 'Alkogolli ichimliklar' },
+  { value: 'boshqa', label: 'Boshqa' },
+];
+
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
 export function RestaurantMenuPage() {
@@ -96,6 +116,11 @@ export function RestaurantMenuPage() {
                     {d.description && (
                       <div className="text-xs text-muted truncate mt-0.5">{d.description}</div>
                     )}
+                    {d.prepMinutes > 0 && (
+                      <div className="text-[11px] text-muted mt-0.5">
+                        <i className="ti ti-clock text-[10px]" /> {d.prepMinutes} daq
+                      </div>
+                    )}
                   </div>
                   <div className="text-right flex-none pl-2">
                     <div className="text-sm sm:text-base font-semibold text-ink whitespace-nowrap">{som(d.price)} so'm</div>
@@ -140,20 +165,30 @@ export function RestaurantMenuPage() {
 }
 
 function DishForm({ onClose, onSaved }) {
-  const [form, setForm] = useState({ section: '', name: '', description: '', price: '', oldPrice: '', icon: 'ti-bowl', imageUrl: '' });
+  const [form, setForm] = useState({
+    imageUrl: '', name: '', description: '',
+    category: 'issiq', section: '',
+    price: '', oldPrice: '', prepMinutes: 15,
+    icon: 'ti-bowl',
+  });
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const submit = async () => {
+    if (!form.name.trim()) { setErr('Taom nomini kiriting'); return; }
+    if (!form.price || Number(form.price) <= 0) { setErr('Narxni kiriting'); return; }
     setErr(null); setSaving(true);
     try {
       await panelApi.createDish({
-        section: form.section,
-        name: form.name,
-        description: form.description,
+        // Bo'lim ko'rsatilmasa kategoriya nomi ishlatiladi
+        section: form.section.trim() || DISH_CATEGORIES.find((c) => c.value === form.category)?.label || 'Menyu',
+        category: form.category,
+        name: form.name.trim(),
+        description: form.description.trim(),
         price: Number(form.price),
         ...(form.oldPrice ? { oldPrice: Number(form.oldPrice) } : {}),
+        prepMinutes: Number(form.prepMinutes) || 15,
         icon: form.icon,
         ...(form.imageUrl ? { imageUrl: form.imageUrl, images: [form.imageUrl] } : {}),
       });
@@ -162,13 +197,17 @@ function DishForm({ onClose, onSaved }) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50" onClick={onClose}>
-      <div className="bg-surface rounded-2xl p-6 w-full max-w-[420px]" onClick={(e) => e.stopPropagation()}>
+    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-ink">Yangi taom</h2>
-          <button onClick={onClose} className="text-muted hover:text-ink"><i className="ti ti-x text-xl" /></button>
+          <button onClick={onClose} className="text-muted hover:text-ink">
+            <i className="ti ti-x text-xl" />
+          </button>
         </div>
-        <div className="grid gap-3">
+
+        {/* 1. Rasm */}
+        <div className="mb-4">
           <ImageUpload
             value={form.imageUrl}
             onChange={(url) => set('imageUrl', url)}
@@ -176,20 +215,96 @@ function DishForm({ onClose, onSaved }) {
             label="Taom rasmi"
             aspect="4/3"
           />
-          <Field label="Bo'lim" value={form.section} onChange={(v) => set('section', v)} placeholder="Masalan: Milliy taomlar" />
-          <Field label="Nomi" value={form.name} onChange={(v) => set('name', v)} placeholder="Masalan: Osh" />
-          <Field label="Tavsif" value={form.description} onChange={(v) => set('description', v)} placeholder="Qisqacha izoh" />
-          <div className="grid grid-cols-2 gap-3">
-            <Field label="Narx (so'm)" value={form.price} onChange={(v) => set('price', v)} placeholder="38000" type="number" />
-            <Field label="Eski narx (ixt.)" value={form.oldPrice} onChange={(v) => set('oldPrice', v)} placeholder="—" type="number" />
+        </div>
+
+        {/* 2. Nom va tavsif */}
+        <Field label="Taom nomi *">
+          <input
+            value={form.name}
+            onChange={(e) => set('name', e.target.value)}
+            placeholder="Osh (palov)"
+            className="inp"
+          />
+        </Field>
+
+        <Field label="Tavsif">
+          <input
+            value={form.description}
+            onChange={(e) => set('description', e.target.value)}
+            placeholder="Devzira guruch, mol go'shti"
+            className="inp"
+          />
+        </Field>
+
+        {/* 3. Kategoriya — qaysi bo'limga kiradi */}
+        <Field label="Kategoriya *" hint="Mijoz shu bo'yicha qidiradi va filtrlaydi">
+          <select
+            value={form.category}
+            onChange={(e) => set('category', e.target.value)}
+            className="inp"
+          >
+            {DISH_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.value}>{c.label}</option>
+            ))}
+          </select>
+        </Field>
+
+        <Field label="Menyu bo'limi" hint="Bo'sh qoldirilsa kategoriya nomi ishlatiladi">
+          <input
+            value={form.section}
+            onChange={(e) => set('section', e.target.value)}
+            placeholder="Masalan: Milliy taomlar"
+            className="inp"
+          />
+        </Field>
+
+        {/* 4. Narx */}
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Narx (so'm) *">
+            <input
+              type="number" min="0"
+              value={form.price}
+              onChange={(e) => set('price', e.target.value)}
+              placeholder="45000"
+              className="inp"
+            />
+          </Field>
+          <Field label="Eski narx" hint="Chegirma ko'rsatish uchun">
+            <input
+              type="number" min="0"
+              value={form.oldPrice}
+              onChange={(e) => set('oldPrice', e.target.value)}
+              placeholder="55000"
+              className="inp"
+            />
+          </Field>
+        </div>
+
+        {/* 5. Tayyorlanish vaqti */}
+        <Field label="Tayyorlanish vaqti" hint="Mijozga «nechida tayyor» shu bo'yicha hisoblanadi">
+          <div className="flex items-center gap-2">
+            <input
+              type="number" min="1" max="240"
+              value={form.prepMinutes}
+              onChange={(e) => set('prepMinutes', e.target.value)}
+              className="inp flex-1"
+            />
+            <span className="text-sm text-muted flex-none">daqiqa</span>
           </div>
-          {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
+        </Field>
+
+        {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{err}</div>}
+
+        <div className="flex gap-2 mt-2">
+          <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl hover:bg-canvas">
+            Bekor
+          </button>
           <button
             onClick={submit}
-            disabled={saving || !form.name || !form.section || !form.price}
-            className="bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50"
+            disabled={saving}
+            className="flex-[1.5] bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl hover:bg-brand-600 hover:text-white disabled:opacity-50"
           >
-            {saving ? 'Saqlanmoqda...' : 'Qo\u2018shish'}
+            {saving ? 'Saqlanmoqda...' : 'Qo\'shish'}
           </button>
         </div>
       </div>
@@ -197,20 +312,16 @@ function DishForm({ onClose, onSaved }) {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = 'text' }) {
+// Forma maydoni — label + hint bilan
+function Field({ label, hint, children }) {
   return (
-    <div>
-      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
-      <input
-        type={type} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3.5 py-2.5 rounded-xl border border-line bg-canvas text-ink outline-none focus:border-brand-400 transition-colors"
-      />
+    <div className="mb-3">
+      <label className="block text-xs font-medium text-ink mb-1">{label}</label>
+      {children}
+      {hint && <p className="text-[11px] text-muted mt-1">{hint}</p>}
     </div>
   );
 }
-
-// Mavjud taomga rasm qo'shish / almashtirish.
-// Seed'dan kelgan taomlarga rasm biriktirish uchun eng qulay yo'l.
 function DishImageEditor({ dish, onClose, onSaved }) {
   const [imageUrl, setImageUrl] = useState(dish.imageUrl || '');
   const [saving, setSaving] = useState(false);
