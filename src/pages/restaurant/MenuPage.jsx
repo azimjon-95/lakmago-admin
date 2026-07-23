@@ -85,9 +85,14 @@ export function RestaurantMenuPage() {
           Menyu bo'sh. "Taom qo'shish" tugmasini bosing.
         </div>
       ) : (
-        Object.entries(sections).map(([section, items]) => (
-          <div key={section} className="mb-6">
-            <h2 className="text-sm font-medium text-muted mb-2 uppercase tracking-wide">{section}</h2>
+        grouped.map(({ value, label, items }) => (
+          <div key={value} className="mb-6">
+            <h2 className="text-sm font-medium text-muted mb-2 uppercase tracking-wide flex items-center gap-2">
+              {label}
+              <span className="text-[11px] normal-case font-normal text-muted bg-canvas px-2 py-0.5 rounded-full">
+                {items.length}
+              </span>
+            </h2>
             <div className="grid gap-2">
               {items.map((d) => (
                 <div
