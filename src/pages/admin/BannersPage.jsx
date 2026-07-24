@@ -1,3 +1,4 @@
+import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -22,8 +23,15 @@ export function BannersPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  // Muassasa rasmlarini nazorat uchun yuklaymiz
+  useEffect(() => {
+    adminApi.getRestaurants().then(setRestaurants).catch(() => {});
+  }, []);
+
   const platform = banners.filter((b) => b.kind === 'platform');
-  const restaurant = banners.filter((b) => b.kind === 'restaurant');
+  const navigate = useNavigate();
+  const [restaurants, setRestaurants] = useState([]);
+  const withImage = restaurants.filter((r) => r.imageUrl);
 
   const openNew = () => { setForm(EMPTY); setEditing('new'); };
   const openEdit = (b) => {
@@ -78,16 +86,33 @@ export function BannersPage() {
         </div>
       )}
 
-      {/* Restoran bannerlari */}
-      <h2 className="text-sm font-medium text-ink mb-3">Restoran bannerlari</h2>
-      {restaurant.length === 0 ? (
+      {/* Muassasa rasmlari — nazorat uchun */}
+      <h2 className="text-sm font-medium text-ink mb-1">Muassasa rasmlari</h2>
+      <p className="text-xs text-muted mb-3">
+        Restoranlar o'z panelidan qo'shadi. Nomaqbul rasmni o'chirish uchun
+        muassasa sozlamalariga kiring.
+      </p>
+      {withImage.length === 0 ? (
         <div className="text-center text-muted text-sm py-8 border border-dashed border-line rounded-xl">
-          Restoranlar hali banner qo'shmagan. Ular o'z panelidan qo'shadi, siz esa bu yerdan o'chira olasiz.
+          Hali hech qaysi muassasa rasm qo'shmagan
         </div>
       ) : (
         <div className="grid gap-3">
-          {restaurant.map((b) => (
-            <BannerCard key={b._id} banner={b} onDelete={() => remove(b)} showOwner />
+          {withImage.map((r) => (
+            <div key={r._id} className="bg-surface border border-line rounded-xl p-3 flex items-center gap-3 min-w-0">
+              <img src={r.imageUrl} alt="" className="w-24 h-16 rounded-lg object-cover flex-none" />
+              <div className="flex-1 min-w-0">
+                <div className="font-medium text-ink truncate">{r.name}</div>
+                <div className="text-xs text-muted truncate">{r.cuisine}</div>
+              </div>
+              <button
+                onClick={() => navigate(`/restaurants/${r._id}/settings`)}
+                className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted flex-none"
+                title="Sozlamalar"
+              >
+                <i className="ti ti-settings" />
+              </button>
+            </div>
           ))}
         </div>
       )}

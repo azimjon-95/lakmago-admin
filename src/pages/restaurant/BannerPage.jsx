@@ -26,7 +26,7 @@ export function RestaurantBannerPage() {
     setSaving(true);
     try {
       // Restoran banneri — faqat rasm, matn va tugma yo'q
-      await panelApi.setBanner({ imageUrl, hasButton: false });
+      await panelApi.setBanner({ imageUrl });
       setHasBanner(true);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
@@ -54,9 +54,9 @@ export function RestaurantBannerPage() {
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-lg">
-      <h1 className="text-lg sm:text-xl font-semibold text-ink">Mening bannerim</h1>
+      <h1 className="text-lg sm:text-xl font-semibold text-ink">Muassasa rasmi</h1>
       <p className="text-xs sm:text-sm text-muted mt-0.5 mb-5">
-        Restoran sahifangizda ko'rinadigan reklama rasmi. Istalgan vaqt almashtiring.
+        Mijoz ilovasida kartangizda va sahifangizda ko'rinadi. Istalgan vaqt almashtiring.
       </p>
 
       <div className="bg-surface border border-line rounded-2xl p-4 sm:p-5">
