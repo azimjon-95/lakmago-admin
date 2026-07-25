@@ -73,6 +73,16 @@ export function RestaurantOrdersPage() {
     try { await panelApi.updateOrderStatus(o._id, next); } catch { load(); }
   };
 
+  // Naqd to'lov qabul qilindi deb belgilash
+  const markPaid = async (id) => {
+    try {
+      await panelApi.markOrderPaid(id);
+      load();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
   const cancel = async (o) => {
     if (!confirm('Buyurtma bekor qilinsinmi?')) return;
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: 'cancelled' } : x)));
