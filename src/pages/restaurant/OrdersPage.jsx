@@ -64,13 +64,30 @@ export function RestaurantOrdersPage() {
     return () => { clearInterval(poll); socket.removeAllListeners(); };
   }, [load, restaurant]);
 
+  // Ayni paytda so'rov ketayotgan buyurtmalar — takror bosishni bloklaydi
+  const [busyIds, setBusyIds] = useState(() => new Set());
+
   const advance = async (o) => {
     const next = flow[o.status]?.next;
     if (!next) return;
+    // Tugma ikki marta bosilsa ikkinchi so'rov ketmaydi
+    if (busyIds.has(o._id)) return;
+    setBusyIds((prev) => new Set(prev).add(o._id));
+
     if (next === 'accepted') playAcceptSound();
     // Optimistik yangilash
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: next } : x)));
-    try { await panelApi.updateOrderStatus(o._id, next); } catch { load(); }
+    try {
+      await panelApi.updateOrderStatus(o._id, next);
+    } catch {
+      load();
+    } finally {
+      setBusyIds((prev) => {
+        const n = new Set(prev);
+        n.delete(o._id);
+        return n;
+      });
+    }
   };
 
   // Naqd to'lov qabul qilindi deb belgilash
@@ -133,7 +150,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} onAdvance={advance} onCancel={cancel} onPaid={markPaid} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onPaid={markPaid} />
             ))}
           </div>
 
@@ -159,7 +176,7 @@ export function RestaurantOrdersPage() {
   );
 }
 
-function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
+function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
   const meta = flow[o.status] || {};
   const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
   // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
@@ -317,10 +334,11 @@ function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
         <div className="px-4 pb-4 flex gap-2">
           <button
             onClick={() => onAdvance(o)}
-            className="flex-1 text-white text-sm font-semibold py-2.5 rounded-lg transition-transform active:scale-[0.98]"
+            disabled={busy}
+            className="flex-1 text-white text-sm font-semibold py-2.5 rounded-lg transition-transform active:scale-[0.98] disabled:opacity-60"
             style={{ background: meta.color }}
           >
-            {meta.nextLabel}
+            {busy ? '...' : meta.nextLabel}
           </button>
           {canCancel && (
             <button onClick={() => onCancel(o)} className="px-4 border border-line text-muted text-sm rounded-lg hover:bg-red-50 hover:text-red-600">
