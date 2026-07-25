@@ -119,8 +119,13 @@ export function BannersPage() {
 
       {/* Tahrirlash modali */}
       {editing && (
-        <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-6 max-h-[90vh] overflow-y-auto">
+        <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto
+                       max-h-[88dvh]
+                       pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6"
+          >
             <h3 className="text-lg font-semibold text-ink mb-4">{editing === 'new' ? 'Yangi banner' : 'Bannerni tahrirlash'}</h3>
 
             {/* Jonli ko'rinish */}

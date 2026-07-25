@@ -216,8 +216,13 @@ function DishForm({ onClose, onSaved }) {
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-5 sm:p-6 max-h-[92vh] overflow-y-auto">
+    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto
+                   max-h-[88dvh] sm:max-h-[92dvh]
+                   pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6"
+      >
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg font-semibold text-ink">Yangi taom</h2>
           <button onClick={onClose} className="text-muted hover:text-ink">
@@ -318,7 +323,8 @@ function DishForm({ onClose, onSaved }) {
 
         {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{err}</div>}
 
-        <div className="flex gap-2 mt-2">
+        {/* Tugmalar pastda mahkamlanadi — scroll qilganda ham ko'rinadi */}
+        <div className="flex gap-2 mt-4 sticky bottom-0 bg-white pt-3 -mx-5 px-5 sm:-mx-6 sm:px-6 border-t border-line">
           <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl hover:bg-canvas">
             Bekor
           </button>
@@ -365,8 +371,13 @@ function DishImageEditor({ dish, onClose, onSaved }) {
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-md p-6">
+    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto
+                   max-h-[88dvh]
+                   pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-6"
+      >
         <div className="flex items-start justify-between mb-1">
           <h3 className="text-lg font-semibold text-ink">Taom rasmi</h3>
           <button onClick={onClose} className="text-muted hover:text-ink">
