@@ -5,21 +5,27 @@ import { ImageUpload } from '@/components/ImageUpload';
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
 const DISH_CATEGORIES = [
-  { value: 'issiq', label: 'Issiq taomlar (garyachiy sex)' },
-  { value: 'shorva', label: "Sho'rvalar" },
-  { value: 'salat', label: 'Salatlar' },
-  { value: 'sovuq', label: 'Sovuq gazaklar' },
-  { value: 'grill', label: 'Mangal / shashlik' },
-  { value: 'garnir', label: 'Garnirlar' },
-  { value: 'fastfood', label: 'Fast food (lavash, burger)' },
+  // Mijoz ilovasidagi kategoriyalar bilan AYNAN bir xil.
+  // Mijoz kategoriya tanlasa — shu taomlar va restoranlar chiqadi.
+  { value: 'milliy', label: 'Milliy taom' },
+  { value: 'osh', label: 'Osh' },
+  { value: 'shashlik', label: 'Shashlik' },
+  { value: 'sup', label: "Sho'rva" },
+  { value: 'choyxona', label: 'Choyxona' },
+  { value: 'zavtroki', label: 'Nonushta' },
+  { value: 'obed', label: 'Tushlik' },
+  { value: 'fastfood', label: 'Fast food' },
+  { value: 'lavash', label: 'Lavash' },
+  { value: 'burger', label: 'Burger' },
+  { value: 'tovuq', label: 'Tovuq' },
   { value: 'pitsa', label: 'Pitsa' },
-  { value: 'sushi', label: 'Sushi va rollar' },
-  { value: 'nonushta', label: 'Nonushta' },
-  { value: 'shirinlik', label: 'Shirinlik / desert' },
-  { value: 'nonvoyxona', label: 'Non, somsa, patir' },
-  { value: 'ichimlik', label: 'Ichimliklar (bar)' },
-  { value: 'alkogol', label: 'Alkogolli ichimliklar' },
-  { value: 'boshqa', label: 'Boshqa' },
+  { value: 'sushi', label: 'Sushi' },
+  { value: 'evropa', label: 'Yevropa' },
+  { value: 'turetskaya', label: 'Turk taomlari' },
+  { value: 'koffe', label: 'Qahva' },
+  { value: 'shirinlik', label: 'Shirinlik' },
+  { value: 'salqin', label: 'Ichimlik' },
+  { value: 'magazin_oziq', label: "Do'kon mahsuloti" },
 ];
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -262,13 +268,17 @@ function DishForm({ onClose, onSaved }) {
           </select>
         </Field>
 
-        <Field label="Menyu bo'limi" hint="Bo'sh qoldirilsa kategoriya nomi ishlatiladi">
-          <input
+        <Field label="Menyu bo'limi" hint="Menyuda shu sarlavha ostida guruhlanadi">
+          <select
             value={form.section}
             onChange={(e) => set('section', e.target.value)}
-            placeholder="Masalan: Milliy taomlar"
             className="inp"
-          />
+          >
+            <option value="">Kategoriya nomi bilan bir xil</option>
+            {DISH_CATEGORIES.map((c) => (
+              <option key={c.value} value={c.label}>{c.label}</option>
+            ))}
+          </select>
         </Field>
 
         {/* 4. Narx */}
