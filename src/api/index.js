@@ -31,6 +31,7 @@ export const panelApi = {
     apiFetch(`/panel/reservations/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
 
   // O'z banneri
+  markOrderPaid: (id, paid = true) => apiFetch(`/panel/orders/${id}/paid`, { method: 'PATCH', body: JSON.stringify({ paid }) }),
   getBanner: () => apiFetch('/panel/banner'),
   setBanner: (data) => apiFetch('/panel/banner', { method: 'PUT', body: JSON.stringify(data) }),
   deleteBanner: () => apiFetch('/panel/banner', { method: 'DELETE' }),

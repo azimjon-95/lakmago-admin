@@ -123,7 +123,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} onAdvance={advance} onCancel={cancel} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} onAdvance={advance} onCancel={cancel} onPaid={markPaid} />
             ))}
           </div>
 
@@ -149,10 +149,16 @@ export function RestaurantOrdersPage() {
   );
 }
 
-function OrderCard({ order: o, flash, onAdvance, onCancel }) {
+function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
   const meta = flow[o.status] || {};
   const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
-  const elapsed = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
+  // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
+  const elapsedMin = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
+  const elapsed = elapsedMin < 60
+    ? `${elapsedMin} daq`
+    : elapsedMin < 1440
+      ? `${Math.floor(elapsedMin / 60)} soat`
+      : `${Math.floor(elapsedMin / 1440)} kun`;
 
   return (
     <div
@@ -166,14 +172,28 @@ function OrderCard({ order: o, flash, onAdvance, onCancel }) {
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${meta.color}20`, color: meta.color }}>
             {meta.label}
           </span>
+          {/* Yetkazish turi — darhol ko'rinsin */}
+          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 ${
+            o.fulfillment === 'pickup'
+              ? 'bg-violet-100 text-violet-700'
+              : 'bg-blue-50 text-blue-700'
+          }`}>
+            <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-bike'} text-sm`} />
+            {o.fulfillment === 'pickup' ? "O'zi olib ketadi" : 'Yetkazib berish'}
+          </span>
           <span className="text-xs text-muted">
             {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-            {elapsed > 0 && ` · ${elapsed} daq oldin`}
+            {elapsedMin > 0 && ` · ${elapsed} oldin`}
           </span>
         </div>
-        <div className="text-right">
-          <div className="font-semibold text-ink">{som(o.total)} so'm</div>
-          <div className="text-[11px] text-muted">{o.paymentMethod === 'cash' ? 'Naqd' : 'Karta'}</div>
+        <div className="text-right flex-none">
+          <div className="font-semibold text-ink whitespace-nowrap">{som(o.total)} so'm</div>
+          {/* To'lov: usuli va holati */}
+          <div className={`text-[11px] font-medium ${o.isPaid ? 'text-green-600' : 'text-amber-600'}`}>
+            {o.paymentMethod === 'cash' ? '💵 Naqd' : '💳 Karta'}
+            {' · '}
+            {o.isPaid ? "To'langan" : "To'lanmagan"}
+          </div>
         </div>
       </div>
 
@@ -187,11 +207,53 @@ function OrderCard({ order: o, flash, onAdvance, onCancel }) {
             <span className="text-muted">{som(it.unitPrice * it.quantity)}</span>
           </div>
         ))}
-        <div className="flex items-start gap-2 mt-3 pt-3 border-t border-line text-xs text-muted">
-          <i className="ti ti-map-pin mt-0.5" />
-          <div className="flex-1">
-            <div>{o.address}</div>
-            {o.phone && <div className="mt-0.5"><i className="ti ti-phone text-[11px]" /> {o.phone}</div>}
+        {/* To'lov qabul qilindi — naqd uchun */}
+        {!o.isPaid && o.paymentMethod === 'cash' && (
+          <button
+            onClick={() => onPaid?.(o._id)}
+            className="w-full mt-3 py-2 rounded-lg border border-green-300 text-green-700 text-xs font-medium hover:bg-green-50"
+          >
+            <i className="ti ti-cash" /> To'lov qabul qilindi deb belgilash
+          </button>
+        )}
+
+        {/* Vaqt: darhol yoki belgilangan */}
+        <div className={`flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-xs font-medium ${
+          o.timingMode === 'scheduled'
+            ? 'bg-amber-50 text-amber-700'
+            : 'bg-canvas text-muted'
+        }`}>
+          <i className="ti ti-clock" />
+          {o.timingMode === 'scheduled' && o.scheduledFor ? (
+            <span>
+              <b>{new Date(o.scheduledFor).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</b>
+              {' ga belgilangan'}
+              {new Date(o.scheduledFor).toDateString() !== new Date().toDateString() && (
+                <span> ({new Date(o.scheduledFor).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })})</span>
+              )}
+              {o.fulfillment === 'pickup' ? ' — mijoz keladi' : ' — yetkazish'}
+            </span>
+          ) : (
+            <span>Imkon qadar tez {o.fulfillment === 'pickup' ? '(mijoz kutmoqda)' : ''}</span>
+          )}
+        </div>
+
+        {/* Manzil yoki olib ketish */}
+        <div className="flex items-start gap-2 mt-2 pt-3 border-t border-line text-xs text-muted">
+          <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-map-pin'} mt-0.5 flex-none`} />
+          <div className="flex-1 min-w-0">
+            {o.fulfillment === 'pickup' ? (
+              <div className="text-violet-700 font-medium">
+                Mijoz o'zi olib ketadi — manzil kerak emas
+              </div>
+            ) : (
+              <div className="break-words">{o.address || 'Manzil ko\'rsatilmagan'}</div>
+            )}
+            {o.phone && (
+              <a href={`tel:${o.phone}`} className="mt-1 inline-flex items-center gap-1 text-brand-600 hover:underline">
+                <i className="ti ti-phone text-[11px]" /> {o.phone}
+              </a>
+            )}
           </div>
         </div>
       </div>
