@@ -2,23 +2,37 @@
 // RestaurantsPage va CreateRestaurantPage birgalikda ishlatadi.
 
 export const CATEGORIES = [
+  // Milliy yo'nalish
   { value: 'milliy', label: 'Milliy oshxona', icon: 'ti-bowl' },
-  { value: 'choyxona', label: 'Choyxona', icon: 'ti-tea' },
-  { value: 'osh', label: 'Oshxona / Osh markazi', icon: 'ti-cooker' },
+  { value: 'osh', label: 'Osh markazi', icon: 'ti-cooker' },
   { value: 'shashlik', label: 'Shashlik / Mangal', icon: 'ti-flame' },
+  { value: 'sup', label: "Sho'rvalar", icon: 'ti-soup' },
+  { value: 'choyxona', label: 'Choyxona', icon: 'ti-tea' },
+  // Vaqt bo'yicha
+  { value: 'zavtroki', label: 'Nonushta', icon: 'ti-egg-fried' },
+  { value: 'obed', label: 'Tushlik / Biznes-lanch', icon: 'ti-tools-kitchen-2' },
+  // Tez ovqat
   { value: 'fastfood', label: 'Fast food', icon: 'ti-pizza' },
   { value: 'lavash', label: 'Lavash / Shaurma', icon: 'ti-meat' },
   { value: 'burger', label: 'Burger', icon: 'ti-burger' },
-  { value: 'sushi', label: 'Sushi / Yapon', icon: 'ti-fish' },
+  { value: 'tovuq', label: 'Tovuq (fried chicken)', icon: 'ti-meat' },
   { value: 'pitsa', label: 'Pitseriya', icon: 'ti-pizza' },
+  // Xorijiy oshxona
+  { value: 'sushi', label: 'Sushi / Yapon', icon: 'ti-fish' },
+  { value: 'evropa', label: 'Yevropa oshxonasi', icon: 'ti-tools-kitchen-2' },
+  { value: 'turetskaya', label: 'Turk oshxonasi', icon: 'ti-meat' },
+  // Ichimlik va shirinlik
+  { value: 'koffe', label: 'Qahvaxona', icon: 'ti-coffee' },
   { value: 'kafe', label: 'Kafe', icon: 'ti-coffee' },
   { value: 'shirinlik', label: 'Shirinlik / Nonvoyxona', icon: 'ti-cake' },
-  { value: 'restoran', label: 'Restoran (yevropa)', icon: 'ti-tools-kitchen-2' },
-  { value: 'klub', label: 'Tungi klub / Lounge', icon: 'ti-disco' },
+  { value: 'salqin', label: 'Muzqaymoq / Salqin', icon: 'ti-ice-cream' },
   { value: 'bar', label: 'Bar / Pab', icon: 'ti-beer' },
+  // Muassasa turlari
+  { value: 'restoran', label: 'Restoran', icon: 'ti-tools-kitchen-2' },
+  { value: 'klub', label: 'Tungi klub / Lounge', icon: 'ti-disco' },
+  // Do'konlar
   { value: 'magazin_oziq', label: "Oziq-ovqat do'koni", icon: 'ti-building-store' },
   { value: 'magazin_meva', label: 'Meva-sabzavot', icon: 'ti-apple' },
-  { value: 'salqin', label: 'Muzqaymoq / Salqin', icon: 'ti-ice-cream' },
 ];
 
 export const KINDS = [
