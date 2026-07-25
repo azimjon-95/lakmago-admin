@@ -172,15 +172,6 @@ function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
           <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${meta.color}20`, color: meta.color }}>
             {meta.label}
           </span>
-          {/* Yetkazish turi — darhol ko'rinsin */}
-          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full flex items-center gap-1 ${
-            o.fulfillment === 'pickup'
-              ? 'bg-violet-100 text-violet-700'
-              : 'bg-blue-50 text-blue-700'
-          }`}>
-            <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-bike'} text-sm`} />
-            {o.fulfillment === 'pickup' ? "O'zi olib ketadi" : 'Yetkazib berish'}
-          </span>
           <span className="text-xs text-muted">
             {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             {elapsedMin > 0 && ` · ${elapsed} oldin`}
@@ -197,6 +188,53 @@ function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
         </div>
       </div>
 
+      {/* ===== ASOSIY KO'RSATKICH — restoran adashmasligi uchun ===== */}
+      <div className={`px-4 py-3 flex items-center gap-3 ${
+        o.fulfillment === 'pickup' ? 'bg-violet-50' : 'bg-blue-50'
+      }`}>
+        <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-bike'} text-2xl flex-none ${
+          o.fulfillment === 'pickup' ? 'text-violet-700' : 'text-blue-700'
+        }`} />
+        <div className="min-w-0 flex-1">
+          <div className={`font-semibold text-sm ${
+            o.fulfillment === 'pickup' ? 'text-violet-800' : 'text-blue-800'
+          }`}>
+            {o.fulfillment === 'pickup' ? "MIJOZ O'ZI OLIB KETADI" : 'YETKAZIB BERISH'}
+          </div>
+          <div className={`text-xs mt-0.5 ${
+            o.fulfillment === 'pickup' ? 'text-violet-700' : 'text-blue-700'
+          }`}>
+            {o.timingMode === 'scheduled' && o.scheduledFor ? (
+              <>
+                <b>{new Date(o.scheduledFor).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</b>
+                {new Date(o.scheduledFor).toDateString() !== new Date().toDateString()
+                  ? ` · ${new Date(o.scheduledFor).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })}`
+                  : ' (bugun)'}
+                {o.fulfillment === 'pickup' ? ' ga mijoz keladi' : ' ga yetkazish'}
+              </>
+            ) : (
+              <>Imkon qadar tez {o.fulfillment === 'pickup' ? '— mijoz kutmoqda' : ''}</>
+            )}
+          </div>
+        </div>
+        {/* Belgilangan vaqtga qancha qolgani */}
+        {o.timingMode === 'scheduled' && o.scheduledFor && (
+          <div className="text-right flex-none">
+            <div className="text-[10px] text-muted">qoldi</div>
+            <div className={`text-sm font-bold ${
+              (new Date(o.scheduledFor) - Date.now()) / 60000 < 30 ? 'text-red-600' : 'text-ink'
+            }`}>
+              {(() => {
+                const min = Math.round((new Date(o.scheduledFor) - Date.now()) / 60000);
+                if (min < 0) return "o'tdi";
+                if (min < 60) return `${min} daq`;
+                return `${Math.floor(min / 60)} soat`;
+              })()}
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* Taomlar */}
       <div className="p-4">
         {o.items?.map((it, idx) => (
@@ -207,6 +245,33 @@ function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
             <span className="text-muted">{som(it.unitPrice * it.quantity)}</span>
           </div>
         ))}
+        {/* Hisob taqsimoti — bonus yoki qo'shimcha haq bo'lsa */}
+        {(o.deliveryFee > 0 || o.serviceFee > 0 || o.bonusUsed > 0) && (
+          <div className="mt-2 pt-2 border-t border-line text-xs text-muted">
+            <div className="flex justify-between py-0.5">
+              <span>Taomlar</span><span>{som(o.subtotal)}</span>
+            </div>
+            {o.deliveryFee > 0 && (
+              <div className="flex justify-between py-0.5">
+                <span>Yetkazish</span><span>{som(o.deliveryFee)}</span>
+              </div>
+            )}
+            {o.serviceFee > 0 && (
+              <div className="flex justify-between py-0.5">
+                <span>Xizmat haqi</span><span>{som(o.serviceFee)}</span>
+              </div>
+            )}
+            {o.bonusUsed > 0 && (
+              <div className="flex justify-between py-0.5 text-green-600">
+                <span>Bonus bilan to'landi</span><span>−{som(o.bonusUsed)}</span>
+              </div>
+            )}
+            <div className="flex justify-between py-1 mt-1 border-t border-line font-semibold text-ink">
+              <span>Mijoz to'laydi</span><span>{som(o.total)} so'm</span>
+            </div>
+          </div>
+        )}
+
         {/* To'lov qabul qilindi — naqd uchun */}
         {!o.isPaid && o.paymentMethod === 'cash' && (
           <button
@@ -216,27 +281,6 @@ function OrderCard({ order: o, flash, onAdvance, onCancel, onPaid }) {
             <i className="ti ti-cash" /> To'lov qabul qilindi deb belgilash
           </button>
         )}
-
-        {/* Vaqt: darhol yoki belgilangan */}
-        <div className={`flex items-center gap-2 mt-3 px-3 py-2 rounded-lg text-xs font-medium ${
-          o.timingMode === 'scheduled'
-            ? 'bg-amber-50 text-amber-700'
-            : 'bg-canvas text-muted'
-        }`}>
-          <i className="ti ti-clock" />
-          {o.timingMode === 'scheduled' && o.scheduledFor ? (
-            <span>
-              <b>{new Date(o.scheduledFor).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</b>
-              {' ga belgilangan'}
-              {new Date(o.scheduledFor).toDateString() !== new Date().toDateString() && (
-                <span> ({new Date(o.scheduledFor).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })})</span>
-              )}
-              {o.fulfillment === 'pickup' ? ' — mijoz keladi' : ' — yetkazish'}
-            </span>
-          ) : (
-            <span>Imkon qadar tez {o.fulfillment === 'pickup' ? '(mijoz kutmoqda)' : ''}</span>
-          )}
-        </div>
 
         {/* Manzil yoki olib ketish */}
         <div className="flex items-start gap-2 mt-2 pt-3 border-t border-line text-xs text-muted">
