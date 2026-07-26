@@ -7,6 +7,27 @@ export function GroupsPage() {
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(true);
   const [checking, setChecking] = useState(false);
+  const [addingGroup, setAddingGroup] = useState(false);
+
+  // Bot allaqachon guruhga qo'shilgan bo'lsa — chat ID bilan qo'shamiz.
+  // Telegram bot qaysi guruhlarda ekanini o'zi aytmaydi (xavfsizlik).
+  const addManual = async () => {
+    const chatId = prompt(
+      "Guruh chat ID sini kiriting (masalan -1001234567890)\n\n" +
+      "Qanday bilish: guruhga @userinfobot ni qo'shing yoki\n" +
+      "botni guruhdan chiqarib qayta admin qiling — o'zi qo'shiladi.",
+    );
+    if (!chatId?.trim()) return;
+    setAddingGroup(true);
+    try {
+      await adminApi.addGroup(chatId.trim());
+      load();
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      setAddingGroup(false);
+    }
+  };
   const [busyId, setBusyId] = useState(null);
   const [composer, setComposer] = useState(null); // { chatId, title } | { all: true } | null
 
@@ -58,6 +79,9 @@ export function GroupsPage() {
         <div className="flex items-center gap-2">
           <button onClick={() => setComposer({ all: true })} disabled={groups.length === 0} className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
             <i className="ti ti-send" /> Barchaga reklama
+          </button>
+          <button onClick={addManual} disabled={addingGroup} className="border border-line text-muted font-medium px-4 py-2 rounded-xl hover:bg-canvas transition-colors disabled:opacity-50">
+            <i className="ti ti-plus" /> {addingGroup ? '...' : "Qo'lda qo'shish"}
           </button>
           <button onClick={runCheck} disabled={checking} className="border border-line text-muted font-medium px-4 py-2 rounded-xl hover:bg-canvas transition-colors disabled:opacity-50">
             <i className="ti ti-refresh" /> {checking ? 'Tekshirilmoqda...' : 'Tekshirish'}

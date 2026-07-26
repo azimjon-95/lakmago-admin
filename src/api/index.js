@@ -65,6 +65,7 @@ export const adminApi = {
 
   // Telegram guruhlar
   getGroups: () => apiFetch('/admin/groups'),
+  addGroup: (chatId) => apiFetch('/admin/groups/add', { method: 'POST', body: JSON.stringify({ chatId }) }),
   resendGroupPromo: (chatId) => apiFetch(`/admin/groups/${chatId}/resend`, { method: 'POST' }),
   runGroupCheck: () => apiFetch('/admin/groups/check', { method: 'POST' }),
   // Moslashuvchan reklama (rasm/matn/tugma)
