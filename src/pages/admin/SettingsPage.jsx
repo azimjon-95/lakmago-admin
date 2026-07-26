@@ -26,13 +26,18 @@ const MODES = [
 export function SettingsPage() {
   const [percent, setPercent] = useState(0);
   const [mode, setMode] = useState('none');
+  const [referralEnabled, setReferralEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     adminApi.getSettings()
-      .then((s) => { setPercent(s.commissionPercent); setMode(s.commissionMode); })
+      .then((s) => {
+        setPercent(s.commissionPercent);
+        setMode(s.commissionMode);
+        setReferralEnabled(s.referralEnabled !== false);
+      })
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -40,7 +45,11 @@ export function SettingsPage() {
   const save = async () => {
     setSaving(true);
     try {
-      await adminApi.updateSettings({ commissionPercent: Number(percent), commissionMode: mode });
+      await adminApi.updateSettings({
+        commissionPercent: Number(percent),
+        commissionMode: mode,
+        referralEnabled,
+      });
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e) {
@@ -126,6 +135,32 @@ export function SettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Referral tizimi */}
+      <section className="bg-surface border border-line rounded-2xl p-4 sm:p-5 mb-4">
+        <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
+          <i className="ti ti-users text-brand-600" /> Do'stlarni taklif qilish
+        </h2>
+        <p className="text-xs text-muted mb-4">
+          O'chirilsa: mijoz profilida karta ko'rinmaydi, havola ishlamaydi,
+          bonus berilmaydi
+        </p>
+
+        <label className="flex items-center justify-between gap-4 cursor-pointer">
+          <div className="min-w-0">
+            <div className="text-sm text-ink">Referral tizimi</div>
+            <div className={`text-xs mt-0.5 ${referralEnabled ? 'text-green-600' : 'text-muted'}`}>
+              {referralEnabled ? 'Yoqilgan — bonuslar beriladi' : "O'chirilgan"}
+            </div>
+          </div>
+          <input
+            type="checkbox"
+            checked={referralEnabled}
+            onChange={(e) => setReferralEnabled(e.target.checked)}
+            className="w-5 h-5 accent-brand-400 flex-none"
+          />
+        </label>
+      </section>
 
       <button
         onClick={save}
