@@ -11,6 +11,7 @@ const DISH_CATEGORIES = [
   { value: 'osh', label: 'Osh' },
   { value: 'shashlik', label: 'Shashlik' },
   { value: 'sup', label: "Sho'rva" },
+  { value: 'salat', label: 'Salatlar' },
   { value: 'choyxona', label: 'Choyxona' },
   { value: 'zavtroki', label: 'Nonushta' },
   { value: 'obed', label: 'Tushlik' },
@@ -188,6 +189,7 @@ function DishForm({ onClose, onSaved }) {
     imageUrl: '', name: '', description: '',
     category: 'issiq', section: '',
     price: '', oldPrice: '', prepMinutes: 15,
+    weight: '', calories: '', protein: '', fat: '', carbs: '',
     icon: 'ti-bowl',
   });
   const [err, setErr] = useState(null);
@@ -208,6 +210,12 @@ function DishForm({ onClose, onSaved }) {
         price: Number(form.price),
         ...(form.oldPrice ? { oldPrice: Number(form.oldPrice) } : {}),
         prepMinutes: Number(form.prepMinutes) || 15,
+        // Qo'shimcha ma'lumot — faqat to'ldirilganlari yuboriladi
+        ...(form.weight.trim() ? { weight: form.weight.trim() } : {}),
+        ...(form.calories ? { calories: Number(form.calories) } : {}),
+        ...(form.protein ? { protein: Number(form.protein) } : {}),
+        ...(form.fat ? { fat: Number(form.fat) } : {}),
+        ...(form.carbs ? { carbs: Number(form.carbs) } : {}),
         icon: form.icon,
         ...(form.imageUrl ? { imageUrl: form.imageUrl, images: [form.imageUrl] } : {}),
       });
@@ -251,12 +259,13 @@ function DishForm({ onClose, onSaved }) {
           />
         </Field>
 
-        <Field label="Tavsif">
-          <input
+        <Field label="Tavsif" hint="Tarkibi, tayyorlanish usuli — mijoz o'qiydi">
+          <textarea
             value={form.description}
             onChange={(e) => set('description', e.target.value)}
-            placeholder="Devzira guruch, mol go'shti"
-            className="inp"
+            placeholder="Devzira guruch, mol go'shti, sabzi va no'xat bilan"
+            rows={3}
+            className="inp resize-none"
           />
         </Field>
 
@@ -320,6 +329,68 @@ function DishForm({ onClose, onSaved }) {
             <span className="text-sm text-muted flex-none">daqiqa</span>
           </div>
         </Field>
+
+        {/* Qo'shimcha ma'lumot — barchasi ixtiyoriy */}
+        <details className="border border-line rounded-xl mb-4 overflow-hidden">
+          <summary className="px-3 py-2.5 text-sm text-ink cursor-pointer select-none bg-canvas">
+            Qo'shimcha ma'lumot
+            <span className="text-xs text-muted font-normal"> — ixtiyoriy</span>
+          </summary>
+
+          <div className="p-3 pt-1">
+            <Field
+              label="Og'irlik"
+              hint="Bitta taom: 150 г · Assorti: 150/30/30/20 г"
+            >
+              <input
+                value={form.weight}
+                onChange={(e) => set('weight', e.target.value)}
+                placeholder="150 г"
+                className="inp"
+              />
+            </Field>
+
+            <Field label="Kaloriya (ккал)">
+              <input
+                type="number" min="0"
+                value={form.calories}
+                onChange={(e) => set('calories', e.target.value)}
+                placeholder="336"
+                className="inp"
+              />
+            </Field>
+
+            <div className="grid grid-cols-3 gap-2">
+              <Field label="Oqsil (г)">
+                <input
+                  type="number" min="0" step="0.1"
+                  value={form.protein}
+                  onChange={(e) => set('protein', e.target.value)}
+                  placeholder="35"
+                  className="inp"
+                />
+              </Field>
+              <Field label="Yog' (г)">
+                <input
+                  type="number" min="0" step="0.1"
+                  value={form.fat}
+                  onChange={(e) => set('fat', e.target.value)}
+                  placeholder="12"
+                  className="inp"
+                />
+              </Field>
+              <Field label="Uglevod (г)">
+                <input
+                  type="number" min="0" step="0.1"
+                  value={form.carbs}
+                  onChange={(e) => set('carbs', e.target.value)}
+                  placeholder="21"
+                  className="inp"
+                />
+              </Field>
+            </div>
+          </div>
+        </details>
 
         {err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{err}</div>}
 
