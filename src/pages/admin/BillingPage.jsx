@@ -147,13 +147,25 @@ export function BillingPage() {
 
               <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
                 <div>
-                  <div className="text-xs text-muted">Qarzimiz</div>
-                  <div className="text-lg font-bold text-ink">{som(r.balans)} so'm</div>
+                  <div className="text-xs text-muted">
+                    {r.balans >= 0 ? 'Restoranga qarzimiz' : 'Restoran bizga qarz'}
+                  </div>
+                  <div className={`text-lg font-bold ${
+                    r.balans >= 0 ? 'text-ink' : 'text-red-600'
+                  }`}>
+                    {som(Math.abs(r.balans))} so'm
+                  </div>
+                  {r.balans < 0 && (
+                    <div className="text-[11px] text-muted mt-0.5">
+                      Naqd to'lovlar komissiyasi — keyingi karta
+                      to'lovlaridan yopiladi
+                    </div>
+                  )}
                 </div>
                 {r.balans > 0 && (
                   <button
                     onClick={() => doPayout(r)}
-                    className="bg-brand-400 text-brand-text text-sm font-medium px-4 py-2 rounded-lg"
+                    className="bg-brand-400 text-brand-text text-sm font-medium px-4 py-2 rounded-lg flex-none"
                   >
                     To'lash
                   </button>
