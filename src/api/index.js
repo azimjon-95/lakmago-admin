@@ -52,6 +52,13 @@ export const adminApi = {
 
   // Komissiya sozlamasi
   getSettings: () => apiFetch('/admin/settings'),
+
+  // ===== Moliya =====
+  getBillingOverview: (q = '') => apiFetch(`/admin/billing/overview${q}`),
+  getBillingByRestaurant: () => apiFetch('/admin/billing/restaurants'),
+  getLedger: (q = '') => apiFetch(`/admin/billing/ledger${q}`),
+  payout: (data) => apiFetch('/admin/billing/payout', { method: 'POST', body: JSON.stringify(data) }),
+  setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
   updateSettings: (data) => apiFetch('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Daromad hisobi

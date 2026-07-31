@@ -15,6 +15,7 @@ import { RestaurantSettingsPage } from '@/pages/admin/RestaurantSettingsPage';
 import { RestaurantDetailPage } from '@/pages/admin/RestaurantDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
+import { BillingPage } from '@/pages/admin/BillingPage';
 import { RevenuePage } from '@/pages/admin/RevenuePage';
 import { BannersPage } from '@/pages/admin/BannersPage';
 import { OrdersMonitorPage } from '@/pages/admin/OrdersMonitorPage';
@@ -60,6 +61,7 @@ function AdminRoutes() {
         <Route path="/revenue" element={<RevenuePage />} />
         <Route path="/banners" element={<BannersPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/billing" element={<BillingPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
