@@ -202,7 +202,6 @@ function DishForm({ onClose, onSaved }) {
     setErr(null); setSaving(true);
     try {
       await panelApi.createDish({
-        // Bo'lim ko'rsatilmasa kategoriya nomi ishlatiladi
         // Bo'lim kategoriya nomidan avtomatik olinadi
         section: DISH_CATEGORIES.find((c) => c.value === form.category)?.label || 'Menyu',
         category: form.category,
@@ -322,7 +321,7 @@ function DishForm({ onClose, onSaved }) {
         </Field>
 
         {/* Qo'shimcha ma'lumot — barchasi ixtiyoriy */}
-        <details className="border border-line rounded-xl mb-4 overflow-hidden">
+        <details open className="border border-line rounded-xl mb-4 overflow-hidden">
           <summary className="px-3 py-2.5 text-sm text-ink cursor-pointer select-none bg-canvas">
             Qo'shimcha ma'lumot
             <span className="text-xs text-muted font-normal"> — ixtiyoriy</span>
