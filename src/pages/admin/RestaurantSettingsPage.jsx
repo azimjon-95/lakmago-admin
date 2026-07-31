@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
+import { MapPicker } from '@/components/MapPicker';
 import { ImageUpload } from '@/components/ImageUpload';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
@@ -28,6 +29,7 @@ export function RestaurantSettingsPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const [mapOpen, setMapOpen] = useState(false);
   const [msg, setMsg] = useState(null);
 
   useEffect(() => {
@@ -49,6 +51,11 @@ export function RestaurantSettingsPage() {
             reservationNote: r.reservationNote || '',
             name: r.name,
             imageUrl: r.imageUrl || '',
+            // Joylashuv — kuryer va mijoz topishi uchun
+            address: r.address || '',
+            landmark: r.landmark || '',
+            lat: r.lat ?? null,
+            lng: r.lng ?? null,
           });
         }
       })
@@ -190,6 +197,20 @@ export function RestaurantSettingsPage() {
           </button>
         </div>
       </div>
+
+      {mapOpen && (
+        <MapPicker
+          lat={form.lat}
+          lng={form.lng}
+          address={form.address}
+          onPick={({ lat, lng, address }) => {
+            set('lat', lat);
+            set('lng', lng);
+            if (address && !form.address?.trim()) set('address', address);
+          }}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
     </div>
   );
 }

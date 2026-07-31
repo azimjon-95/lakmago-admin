@@ -1,7 +1,9 @@
 import { useCreateForm } from './context';
 import { Field, NumField } from './fields';
+import { MapPicker } from '@/components/MapPicker';
 
 export function Step2Address() {
+  const [mapOpen, setMapOpen] = useState(false);
   const { form, set, setErr } = useCreateForm();
 
   return (
@@ -40,7 +42,14 @@ export function Step2Address() {
                 }}
                 className="text-sm px-3 py-2 rounded-lg border border-line text-brand-600 hover:bg-canvas flex items-center gap-2 flex-none"
               >
-                <i className="ti ti-current-location" /> Hozirgi joyni olish
+                <i className="ti ti-current-location" /> Hozirgi joy
+              </button>
+              <button
+                type="button"
+                onClick={() => setMapOpen(true)}
+                className="text-sm px-3 py-2 rounded-lg bg-brand-400 text-brand-text hover:bg-brand-600 hover:text-white flex items-center gap-2 flex-none"
+              >
+                <i className="ti ti-map-pin" /> Xaritadan tanlash
               </button>
             </div>
             <div className="grid sm:grid-cols-2 gap-4">

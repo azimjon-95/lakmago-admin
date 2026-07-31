@@ -309,22 +309,91 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
           </button>
         )}
 
-        {/* Manzil yoki olib ketish */}
-        <div className="flex items-start gap-2 mt-2 pt-3 border-t border-line text-xs text-muted">
-          <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-map-pin'} mt-0.5 flex-none`} />
-          <div className="flex-1 min-w-0">
-            {o.fulfillment === 'pickup' ? (
-              <div className="text-violet-700 font-medium">
-                Mijoz o'zi olib ketadi — manzil kerak emas
-              </div>
+        {/* ===== MIJOZ MA'LUMOTLARI ===== */}
+        <div className="mt-2 pt-3 border-t border-line">
+          {/* Ism va aloqa */}
+          <div className="flex items-center gap-2.5 mb-2">
+            {o.customer?.photoUrl ? (
+              <img
+                src={o.customer.photoUrl}
+                alt=""
+                className="w-8 h-8 rounded-full object-cover flex-none"
+                onError={(e) => { e.currentTarget.style.display = 'none'; }}
+              />
             ) : (
-              <div className="break-words">{o.address || 'Manzil ko\'rsatilmagan'}</div>
+              <div className="w-8 h-8 rounded-full bg-brand-50 flex items-center justify-center flex-none">
+                <i className="ti ti-user text-brand-600 text-sm" />
+              </div>
             )}
-            {o.phone && (
-              <a href={`tel:${o.phone}`} className="mt-1 inline-flex items-center gap-1 text-brand-600 hover:underline">
-                <i className="ti ti-phone text-[11px]" /> {o.phone}
+
+            <div className="flex-1 min-w-0">
+              <div className="text-sm font-medium text-ink truncate">
+                {o.customer?.name || 'Mijoz'}
+              </div>
+              {o.customer?.username && (
+                <a
+                  href={`https://t.me/${o.customer.username}`}
+                  target="_blank" rel="noreferrer"
+                  className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
+                >
+                  <i className="ti ti-brand-telegram text-[11px]" />
+                  @{o.customer.username}
+                </a>
+              )}
+            </div>
+
+            {/* Qo'ng'iroq */}
+            {(o.phone || o.customer?.phone) && (
+              <a
+                href={`tel:${o.phone || o.customer.phone}`}
+                className="flex-none w-9 h-9 rounded-lg bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100"
+                title="Qo'ng'iroq qilish"
+              >
+                <i className="ti ti-phone" />
               </a>
             )}
+          </div>
+
+          {/* Telefon raqami matn sifatida */}
+          {(o.phone || o.customer?.phone) && (
+            <a
+              href={`tel:${o.phone || o.customer.phone}`}
+              className="text-xs text-brand-600 hover:underline block mb-2"
+            >
+              {o.phone || o.customer.phone}
+            </a>
+          )}
+
+          {/* Manzil */}
+          <div className="flex items-start gap-2 text-xs text-muted">
+            <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-map-pin'} mt-0.5 flex-none`} />
+            <div className="flex-1 min-w-0">
+              {o.fulfillment === 'pickup' ? (
+                <div className="text-violet-700 font-medium">
+                  Mijoz o'zi olib ketadi
+                </div>
+              ) : (
+                <>
+                  <div className="break-words text-ink">
+                    {o.address || 'Manzil ko\'rsatilmagan'}
+                  </div>
+                  {o.addressNote && (
+                    <div className="mt-0.5">{o.addressNote}</div>
+                  )}
+                  {/* Xaritada ko'rish */}
+                  {o.addressLat && o.addressLng && (
+                    <a
+                      href={`https://yandex.uz/maps/?pt=${o.addressLng},${o.addressLat}&z=17&l=map`}
+                      target="_blank" rel="noreferrer"
+                      className="mt-1.5 inline-flex items-center gap-1.5 text-brand-600 hover:underline font-medium"
+                    >
+                      <i className="ti ti-map-2 text-[13px]" />
+                      Xaritada ko'rish
+                    </a>
+                  )}
+                </>
+              )}
+            </div>
           </div>
         </div>
       </div>
