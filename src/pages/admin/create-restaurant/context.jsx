@@ -9,7 +9,7 @@ export const useCreateForm = () => useContext(Ctx);
 const EMPTY = {
   name: '', cuisine: '', category: 'milliy', kind: 'restaurant', imageUrl: '',
   phone: '', address: '', landmark: '', lat: '', lng: '',
-  deliveryMin: 25, deliveryMax: 40, deliveryFee: 0,
+  deliveryMin: 25, deliveryMax: 40, deliveryFee: null,
   shopTypes: [], pickupEnabled: true, pickupDiscountPercent: 0, prepMinutes: 20,
   reservationEnabled: false, reservationNote: '',
   login: '', password: '',
@@ -59,6 +59,19 @@ export function CreateRestaurantLayout() {
       // Koordinata matn — songa aylantiramiz
       if (form.lat) payload.lat = Number(form.lat); else delete payload.lat;
       if (form.lng) payload.lng = Number(form.lng); else delete payload.lng;
+
+      // Bo'sh raqam maydonlari (null) — serverga 0 sifatida yuboriladi.
+      // Foydalanuvchi maydonni bo'sh qoldirsa "belgilanmagan" degani.
+      const numFields = [
+        'deliveryFee', 'deliveryMin', 'deliveryMax', 'minOrderAmount',
+        'prepMinutes', 'pickupDiscountPercent', 'serviceFeePercent',
+        'serviceFeeMin', 'serviceFeeMax',
+      ];
+      for (const f of numFields) {
+        if (payload[f] === null || payload[f] === undefined || payload[f] === '') {
+          payload[f] = 0;
+        }
+      }
       await adminApi.createRestaurant(payload);
       navigate('/restaurants');
     } catch (e) {

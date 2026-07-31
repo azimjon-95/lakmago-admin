@@ -105,33 +105,45 @@ export function DashboardPage() {
         {orders.map((o) => (
           <div
             key={o._id}
-            className={`bg-surface border rounded-xl p-4 flex items-center gap-4 transition-all ${
+            className={`bg-surface border rounded-xl p-3 sm:p-4 transition-all ${
               flash === o._id ? 'border-brand-400 ring-2 ring-brand-400/20' : 'border-line'
             }`}
           >
-            <div className="w-11 h-11 rounded-xl bg-brand-50 flex items-center justify-center flex-none">
-              <i className="ti ti-receipt text-lg text-brand-600" />
+            {/* Yuqori qator: nomi, holati, summa */}
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-brand-50 flex items-center justify-center flex-none">
+                <i className="ti ti-receipt text-base sm:text-lg text-brand-600" />
+              </div>
+
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-ink truncate">{o.restaurantName}</span>
+                  <span className={`text-[11px] px-2 py-0.5 rounded-full flex-none ${STATUS_COLOR[o.status]}`}>
+                    {STATUS_LABEL[o.status] || o.status}
+                  </span>
+                </div>
+                <div className="text-xs sm:text-sm text-muted line-clamp-1 mt-0.5">
+                  {o.items?.map((i) => `${i.name} ×${i.quantity}`).join(', ')}
+                </div>
+              </div>
+
+              <div className="text-right flex-none">
+                <div className="font-semibold text-ink text-sm sm:text-base whitespace-nowrap">
+                  {som(o.total)}
+                </div>
+                <div className="text-[11px] text-muted">
+                  {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                </div>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2">
-                <span className="font-medium text-ink truncate">{o.restaurantName}</span>
-                <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_COLOR[o.status]}`}>
-                  {STATUS_LABEL[o.status] || o.status}
-                </span>
+
+            {/* Manzil — alohida qatorda, siqilmaydi */}
+            {o.address && (
+              <div className="text-xs text-muted mt-2 pt-2 border-t border-line flex items-start gap-1.5">
+                <i className="ti ti-map-pin text-[11px] mt-0.5 flex-none" />
+                <span className="break-words">{o.address}</span>
               </div>
-              <div className="text-sm text-muted truncate mt-0.5">
-                {o.items?.map((i) => `${i.name} ×${i.quantity}`).join(', ')}
-              </div>
-              <div className="text-xs text-muted mt-0.5">
-                <i className="ti ti-map-pin text-[11px]" /> {o.address}
-              </div>
-            </div>
-            <div className="text-right flex-none">
-              <div className="font-semibold text-ink">{som(o.total)} so'm</div>
-              <div className="text-xs text-muted mt-0.5">
-                {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
+            )}
           </div>
         ))}
       </div>

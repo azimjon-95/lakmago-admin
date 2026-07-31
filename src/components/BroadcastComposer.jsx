@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
+import { useLockScroll } from '@/hooks/useLockScroll';
 
 // Telegram reklama yaratish — rasm/matn/tugma har xil kombinatsiyada.
 // target: { chatId, title } (bitta guruh) yoki { all: true } (barcha guruhlar)
 export function BroadcastComposer({ target, onClose, onSent }) {
+  useLockScroll();
   const [text, setText] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [buttonText, setButtonText] = useState('🍽 Buyurtma berish');
@@ -46,7 +48,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+    <div onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
         {/* Sarlavha */}
         <div className="px-6 py-4 border-b border-line flex items-center justify-between">

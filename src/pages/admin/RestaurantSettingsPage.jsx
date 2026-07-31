@@ -1,10 +1,28 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
+import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
+// Yorliq bilan raqam maydoni
+function NumField({ label, value, onChange, hint, money, suffix, placeholder }) {
+  const Input = money ? MoneyInput : NumberInput;
+  return (
+    <div>
+      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
+      <Input
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        {...(money ? {} : { suffix })}
+      />
+      {hint && <p className="text-[11px] text-muted mt-1">{hint}</p>}
+    </div>
+  );
+}
+
 export function RestaurantSettingsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -23,7 +41,7 @@ export function RestaurantSettingsPage() {
             legalName: r.legalName || '',
             legalAddress: r.legalAddress || '',
             inn: r.inn || '',
-            minOrderAmount: r.minOrderAmount || 0,
+            minOrderAmount: r.minOrderAmount ?? null,
             serviceFeePercent: r.serviceFeePercent || 0,
             serviceFeeMin: r.serviceFeeMin || 0,
             serviceFeeMax: r.serviceFeeMax || 0,
@@ -113,11 +131,11 @@ export function RestaurantSettingsPage() {
           <p className="text-xs text-muted mb-4">0 qoldirilsa — mijozga "Bepul" deb ko'rsatiladi</p>
 
           <div className="grid gap-4">
-            <NumField label="Minimal buyurtma (so'm)" value={form.minOrderAmount} onChange={(v) => set('minOrderAmount', v)} hint="0 = cheklovsiz" />
-            <NumField label="Xizmat haqi (%)" value={form.serviceFeePercent} onChange={(v) => set('serviceFeePercent', v)} hint="Buyurtma summasidan foiz" />
+            <NumField label="Minimal buyurtma" value={form.minOrderAmount} onChange={(v) => set('minOrderAmount', v)} money hint="Bo'sh = cheklovsiz" />
+            <NumField label="Xizmat haqi" value={form.serviceFeePercent} onChange={(v) => set('serviceFeePercent', v)} suffix="%" hint="Buyurtma summasidan" />
             <div className="grid grid-cols-2 gap-4">
-              <NumField label="Eng kam xizmat haqi" value={form.serviceFeeMin} onChange={(v) => set('serviceFeeMin', v)} />
-              <NumField label="Eng ko'p xizmat haqi" value={form.serviceFeeMax} onChange={(v) => set('serviceFeeMax', v)} />
+              <NumField label="Eng kam" value={form.serviceFeeMin} onChange={(v) => set('serviceFeeMin', v)} money />
+              <NumField label="Eng ko'p" value={form.serviceFeeMax} onChange={(v) => set('serviceFeeMax', v)} money />
             </div>
           </div>
 
@@ -191,17 +209,4 @@ function Field({ label, value, onChange, placeholder, type = 'text' }) {
   );
 }
 
-function NumField({ label, value, onChange, hint }) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
-      <input
-        type="number" min="0"
-        value={value}
-        onChange={(e) => onChange(Number(e.target.value) || 0)}
-        className="w-full px-3.5 py-2.5 rounded-xl border border-line bg-canvas text-ink outline-none focus:border-brand-400 transition-colors"
-      />
-      {hint && <p className="text-[11px] text-muted mt-1">{hint}</p>}
-    </div>
-  );
-}
+

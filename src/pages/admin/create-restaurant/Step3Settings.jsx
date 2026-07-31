@@ -57,16 +57,20 @@ export function Step3Settings() {
           {form.pickupEnabled && (
             <div className="grid grid-cols-2 gap-4">
               <NumField
-                label="Tayyorlash vaqti (daqiqa)"
+                label="Tayyorlash vaqti"
                 value={form.prepMinutes}
                 onChange={(v) => set('prepMinutes', v)}
+                suffix="daq"
+                placeholder="20"
                 hint="Mijozga 'nechida tayyor' deb ko'rsatiladi"
               />
               <NumField
-                label="Olib ketish chegirmasi (%)"
+                label="Olib ketish chegirmasi"
                 value={form.pickupDiscountPercent}
                 onChange={(v) => set('pickupDiscountPercent', v)}
-                hint="0 = chegirma yo'q"
+                suffix="%"
+                placeholder="0"
+                hint="Bo'sh yoki 0 = chegirma yo'q"
               />
             </div>
           )}

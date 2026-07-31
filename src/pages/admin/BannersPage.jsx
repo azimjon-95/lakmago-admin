@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
+import { useLockScroll } from '@/hooks/useLockScroll';
 import { ImageUpload } from '@/components/ImageUpload';
 
 const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '' };
@@ -9,7 +10,8 @@ const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1
 export function BannersPage() {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null); // null | 'new' | banner obyekti
+  const [editing, setEditing] = useState(null);
+  useLockScroll(Boolean(editing)); // null | 'new' | banner obyekti
   const [form, setForm] = useState(EMPTY);
   const [saving, setSaving] = useState(false);
 
@@ -119,7 +121,7 @@ export function BannersPage() {
 
       {/* Tahrirlash modali */}
       {editing && (
-        <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+        <div onClick={() => setEditing(null)} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
           <div
             onClick={(e) => e.stopPropagation()}
             className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto

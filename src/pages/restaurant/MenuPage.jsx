@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
+import { useLockScroll } from '@/hooks/useLockScroll';
+import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
@@ -185,11 +187,12 @@ export function RestaurantMenuPage() {
 }
 
 function DishForm({ onClose, onSaved }) {
+  useLockScroll();
   const [form, setForm] = useState({
     imageUrl: '', name: '', description: '',
     category: 'milliy',
-    price: '', oldPrice: '', prepMinutes: 15,
-    weight: '', calories: '', protein: '', fat: '', carbs: '',
+    price: null, oldPrice: null, prepMinutes: 15,
+    weight: '', calories: null, protein: null, fat: null, carbs: null,
     icon: 'ti-bowl',
   });
   const [err, setErr] = useState(null);
@@ -207,8 +210,8 @@ function DishForm({ onClose, onSaved }) {
         category: form.category,
         name: form.name.trim(),
         description: form.description.trim(),
-        price: Number(form.price),
-        ...(form.oldPrice ? { oldPrice: Number(form.oldPrice) } : {}),
+        price: Number(form.price) || 0,
+        ...(form.oldPrice > 0 ? { oldPrice: Number(form.oldPrice) } : {}),
         prepMinutes: Number(form.prepMinutes) || 15,
         // Qo'shimcha ma'lumot — faqat to'ldirilganlari yuboriladi
         ...(form.weight.trim() ? { weight: form.weight.trim() } : {}),
@@ -224,7 +227,7 @@ function DishForm({ onClose, onSaved }) {
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+    <div onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto
@@ -287,37 +290,30 @@ function DishForm({ onClose, onSaved }) {
 
         {/* 4. Narx */}
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Narx (so'm) *">
-            <input
-              type="number" min="0"
+          <Field label="Narx *">
+            <MoneyInput
               value={form.price}
-              onChange={(e) => set('price', e.target.value)}
-              placeholder="45000"
-              className="inp"
+              onChange={(v) => set('price', v)}
+              placeholder="45 000"
             />
           </Field>
           <Field label="Eski narx" hint="Chegirma ko'rsatish uchun">
-            <input
-              type="number" min="0"
+            <MoneyInput
               value={form.oldPrice}
-              onChange={(e) => set('oldPrice', e.target.value)}
-              placeholder="55000"
-              className="inp"
+              onChange={(v) => set('oldPrice', v)}
+              placeholder="55 000"
             />
           </Field>
         </div>
 
         {/* 5. Tayyorlanish vaqti */}
         <Field label="Tayyorlanish vaqti" hint="Mijozga «nechida tayyor» shu bo'yicha hisoblanadi">
-          <div className="flex items-center gap-2">
-            <input
-              type="number" min="1" max="240"
-              value={form.prepMinutes}
-              onChange={(e) => set('prepMinutes', e.target.value)}
-              className="inp flex-1"
-            />
-            <span className="text-sm text-muted flex-none">daqiqa</span>
-          </div>
+          <NumberInput
+            value={form.prepMinutes}
+            onChange={(v) => set('prepMinutes', v)}
+            placeholder="15"
+            suffix="daqiqa"
+          />
         </Field>
 
         {/* Qo'shimcha ma'lumot — barchasi ixtiyoriy */}
@@ -341,41 +337,37 @@ function DishForm({ onClose, onSaved }) {
             </Field>
 
             <Field label="Kaloriya (ккал)">
-              <input
-                type="number" min="0"
+              <NumberInput
                 value={form.calories}
-                onChange={(e) => set('calories', e.target.value)}
+                onChange={(v) => set('calories', v)}
                 placeholder="336"
-                className="inp"
+                suffix="ккал"
               />
             </Field>
 
             <div className="grid grid-cols-3 gap-2">
               <Field label="Oqsil (г)">
-                <input
-                  type="number" min="0" step="0.1"
+                <NumberInput
                   value={form.protein}
-                  onChange={(e) => set('protein', e.target.value)}
+                  onChange={(v) => set('protein', v)}
                   placeholder="35"
-                  className="inp"
+                  suffix="г"
                 />
               </Field>
               <Field label="Yog' (г)">
-                <input
-                  type="number" min="0" step="0.1"
+                <NumberInput
                   value={form.fat}
-                  onChange={(e) => set('fat', e.target.value)}
+                  onChange={(v) => set('fat', v)}
                   placeholder="12"
-                  className="inp"
+                  suffix="г"
                 />
               </Field>
               <Field label="Uglevod (г)">
-                <input
-                  type="number" min="0" step="0.1"
+                <NumberInput
                   value={form.carbs}
-                  onChange={(e) => set('carbs', e.target.value)}
+                  onChange={(v) => set('carbs', v)}
                   placeholder="21"
-                  className="inp"
+                  suffix="г"
                 />
               </Field>
             </div>
@@ -413,6 +405,7 @@ function Field({ label, hint, children }) {
   );
 }
 function DishImageEditor({ dish, onClose, onSaved }) {
+  useLockScroll();
   const [imageUrl, setImageUrl] = useState(dish.imageUrl || '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -432,7 +425,7 @@ function DishImageEditor({ dish, onClose, onSaved }) {
   };
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-50 sm:p-4">
+    <div onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
       <div
         onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 sm:p-6 overflow-y-auto

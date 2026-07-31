@@ -59,9 +59,9 @@ export function Step2Address() {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-line">
-            <NumField label="Yetkazish (min daq)" value={form.deliveryMin} onChange={(v) => set('deliveryMin', v)} />
-            <NumField label="Yetkazish (max daq)" value={form.deliveryMax} onChange={(v) => set('deliveryMax', v)} />
-            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} hint="0 = bepul" />
+            <NumField label="Yetkazish (min)" value={form.deliveryMin} onChange={(v) => set('deliveryMin', v)} suffix="daq" placeholder="25" />
+            <NumField label="Yetkazish (max)" value={form.deliveryMax} onChange={(v) => set('deliveryMax', v)} suffix="daq" placeholder="40" />
+            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} money hint="Bo'sh yoki 0 = bepul" />
           </div>
         </section>
 
