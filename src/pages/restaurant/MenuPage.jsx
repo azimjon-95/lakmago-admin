@@ -187,7 +187,7 @@ export function RestaurantMenuPage() {
 function DishForm({ onClose, onSaved }) {
   const [form, setForm] = useState({
     imageUrl: '', name: '', description: '',
-    category: 'issiq', section: '',
+    category: 'milliy',
     price: '', oldPrice: '', prepMinutes: 15,
     weight: '', calories: '', protein: '', fat: '', carbs: '',
     icon: 'ti-bowl',
@@ -203,7 +203,8 @@ function DishForm({ onClose, onSaved }) {
     try {
       await panelApi.createDish({
         // Bo'lim ko'rsatilmasa kategoriya nomi ishlatiladi
-        section: form.section.trim() || DISH_CATEGORIES.find((c) => c.value === form.category)?.label || 'Menyu',
+        // Bo'lim kategoriya nomidan avtomatik olinadi
+        section: DISH_CATEGORIES.find((c) => c.value === form.category)?.label || 'Menyu',
         category: form.category,
         name: form.name.trim(),
         description: form.description.trim(),
@@ -270,7 +271,10 @@ function DishForm({ onClose, onSaved }) {
         </Field>
 
         {/* 3. Kategoriya — qaysi bo'limga kiradi */}
-        <Field label="Kategoriya *" hint="Mijoz shu bo'yicha qidiradi va filtrlaydi">
+        <Field
+          label="Kategoriya *"
+          hint="Mijoz bosh sahifadagi kategoriyalardan tanlaganda shu taom chiqadi. Menyuda ham shu sarlavha ostida guruhlanadi."
+        >
           <select
             value={form.category}
             onChange={(e) => set('category', e.target.value)}
@@ -278,19 +282,6 @@ function DishForm({ onClose, onSaved }) {
           >
             {DISH_CATEGORIES.map((c) => (
               <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Menyu bo'limi" hint="Menyuda shu sarlavha ostida guruhlanadi">
-          <select
-            value={form.section}
-            onChange={(e) => set('section', e.target.value)}
-            className="inp"
-          >
-            <option value="">Kategoriya nomi bilan bir xil</option>
-            {DISH_CATEGORIES.map((c) => (
-              <option key={c.value} value={c.label}>{c.label}</option>
             ))}
           </select>
         </Field>
