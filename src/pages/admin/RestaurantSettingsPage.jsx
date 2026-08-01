@@ -46,9 +46,6 @@ export function RestaurantSettingsPage() {
             minOrderAmount: r.minOrderAmount ?? null,
             deliveryFee: r.deliveryFee ?? null,
             freeDeliveryThreshold: r.freeDeliveryThreshold ?? null,
-            serviceFeePercent: r.serviceFeePercent || 0,
-            serviceFeeMin: r.serviceFeeMin || 0,
-            serviceFeeMax: r.serviceFeeMax || 0,
             reservationEnabled: r.reservationEnabled ?? false,
             reservationNote: r.reservationNote || '',
             name: r.name,
@@ -135,26 +132,61 @@ export function RestaurantSettingsPage() {
         {/* Xizmat haqi */}
         <section className="bg-surface border border-line rounded-2xl p-5">
           <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
-            <i className="ti ti-receipt text-brand-600" /> Xizmat haqi va shartlar
+            <i className="ti ti-truck-delivery text-brand-600" /> Yetkazib berish shartlari
           </h2>
-          <p className="text-xs text-muted mb-4">0 qoldirilsa — mijozga "Bepul" deb ko'rsatiladi</p>
+          <p className="text-xs text-muted mb-4">
+            Bo'sh qoldirilsa cheklov qo'llanilmaydi
+          </p>
 
           <div className="grid gap-4">
-            <NumField label="Minimal buyurtma" value={form.minOrderAmount} onChange={(v) => set('minOrderAmount', v)} money hint="Bo'sh = cheklovsiz" />
-            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} money hint="Bo'sh = bepul" />
-            <NumField label="Bepul yetkazish chegarasi" value={form.freeDeliveryThreshold} onChange={(v) => set('freeDeliveryThreshold', v)} money hint="Shu summadan boshlab yetkazish bepul" />
-            <NumField label="Xizmat haqi" value={form.serviceFeePercent} onChange={(v) => set('serviceFeePercent', v)} suffix="%" hint="Buyurtma summasidan" />
-            <div className="grid grid-cols-2 gap-4">
-              <NumField label="Eng kam" value={form.serviceFeeMin} onChange={(v) => set('serviceFeeMin', v)} money />
-              <NumField label="Eng ko'p" value={form.serviceFeeMax} onChange={(v) => set('serviceFeeMax', v)} money />
-            </div>
+            <NumField
+              label="Minimal buyurtma"
+              value={form.minOrderAmount}
+              onChange={(v) => set('minOrderAmount', v)}
+              money
+              hint="Shu summadan kam bo'lsa buyurtma berilmaydi"
+            />
+            <NumField
+              label="Yetkazish narxi"
+              value={form.deliveryFee}
+              onChange={(v) => set('deliveryFee', v)}
+              money
+              hint="Bo'sh yoki 0 = doim bepul"
+            />
+            <NumField
+              label="Bepul yetkazish chegarasi"
+              value={form.freeDeliveryThreshold}
+              onChange={(v) => set('freeDeliveryThreshold', v)}
+              money
+              hint="Shu summadan boshlab yetkazish bepul"
+            />
           </div>
 
-          {form.serviceFeePercent > 0 && form.serviceFeeMin > 0 && form.serviceFeeMax > 0 && (
-            <div className="mt-3 text-xs text-muted bg-canvas rounded-lg p-3">
-              Mijozga shunday ko'rinadi: "Servis haqi buyurtma summasining {form.serviceFeePercent}% ini
-              tashkil etadi, lekin {form.serviceFeeMax.toLocaleString('ru-RU')} so'mdan oshmaydi va{' '}
-              {form.serviceFeeMin.toLocaleString('ru-RU')} so'mdan kam bo'lmaydi"
+          {/* Mijoz nimani ko'rishini tushuntiramiz */}
+          {(form.minOrderAmount > 0 || form.deliveryFee > 0) && (
+            <div className="mt-4 text-xs text-muted bg-canvas rounded-lg p-3 leading-relaxed">
+              <div className="font-medium text-ink mb-1">Mijozga shunday ishlaydi:</div>
+              {form.minOrderAmount > 0 && (
+                <div>
+                  • Savat {form.minOrderAmount.toLocaleString('ru-RU')} so'mdan kam bo'lsa
+                  buyurtma tugmasi bloklanadi
+                </div>
+              )}
+              {form.deliveryFee > 0 ? (
+                <>
+                  <div>
+                    • Yetkazish {form.deliveryFee.toLocaleString('ru-RU')} so'm
+                  </div>
+                  {form.freeDeliveryThreshold > 0 && (
+                    <div>
+                      • {form.freeDeliveryThreshold.toLocaleString('ru-RU')} so'mdan
+                      oshsa yetkazish bepul
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div>• Yetkazish bepul</div>
+              )}
             </div>
           )}
         </section>

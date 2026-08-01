@@ -1,81 +1,46 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { adminApi } from '@/api';
 
 /**
- * Xaritada joylashuv tanlash.
+ * Yandex xaritada joylashuv tanlash.
  *
- * Leaflet + OpenStreetMap ishlatiladi — API kalit kerak emas,
- * bepul va cheklovsiz. Yandex Maps 2023 dan beri kalit talab
- * qiladi, shuning uchun u ishlatilmadi.
- *
- * Manzil Nominatim (OSM) orqali aniqlanadi.
+ * API kaliti serverdan olinadi (/api/maps/config) — kodda
+ * saqlanmaydi. Manzil qidirish va aniqlash ham server orqali
+ * ketadi, shunda geocoder kaliti brauzerga chiqmaydi.
  */
 
-// Toshkent markazi
-const DEFAULT_CENTER = [41.311081, 69.240562];
-
-// Yandex kaliti bo'lsa Yandex plitkalari ishlatiladi (O'zbekiston
-// uchun aniqroq). Bo'lmasa OpenStreetMap — kalit kerak emas.
-const YANDEX_KEY = import.meta.env.VITE_YANDEX_MAPS_KEY || '';
+const DEFAULT_CENTER = [41.311081, 69.240562]; // Toshkent
 
 let loadPromise = null;
 
-function loadLeaflet() {
-  if (window.L) return Promise.resolve(window.L);
+function loadYmaps(apiKey) {
+  if (window.ymaps?.Map) return Promise.resolve(window.ymaps);
   if (loadPromise) return loadPromise;
 
   loadPromise = new Promise((resolve, reject) => {
-    // CSS
-    if (!document.querySelector('link[data-leaflet]')) {
-      const link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-      link.setAttribute('data-leaflet', '1');
-      document.head.appendChild(link);
-    }
-
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
     script.async = true;
-    script.onload = () => resolve(window.L);
-    script.onerror = () => reject(new Error('Xarita yuklanmadi'));
+    script.onload = () => {
+      if (!window.ymaps) return reject(new Error('Xarita yuklanmadi'));
+      window.ymaps.ready(() => resolve(window.ymaps));
+    };
+    script.onerror = () => {
+      loadPromise = null;
+      reject(new Error('Xaritaga ulanib bo\u2018lmadi'));
+    };
     document.head.appendChild(script);
   });
   return loadPromise;
 }
 
-// Koordinatadan manzil (teskari geokodlash)
-async function reverseGeocode(lat, lng) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=uz,ru`,
-      { headers: { 'Accept-Language': 'uz,ru' } },
-    );
-    const data = await res.json();
-    return data.display_name || '';
-  } catch {
-    return '';
-  }
-}
-
-// Manzil bo'yicha qidirish
-async function searchPlace(query) {
-  try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&accept-language=uz,ru&countrycodes=uz`,
-    );
-    return await res.json();
-  } catch {
-    return [];
-  }
-}
-
 export function MapPicker({ lat, lng, address, onPick, onClose }) {
   useLockScroll();
 
-  const containerRef = useRef(null);
+  const boxRef = useRef(null);
   const mapRef = useRef(null);
-  const markerRef = useRef(null);
+  const markRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,120 +50,119 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
   const [searching, setSearching] = useState(false);
 
   const [picked, setPicked] = useState(
-    lat && lng
-      ? { lat: Number(lat), lng: Number(lng), address: address || '' }
-      : null,
+    lat && lng ? { lat: Number(lat), lng: Number(lng), address: address || '' } : null,
   );
 
   useEffect(() => {
-    let cancelled = false;
+    let dead = false;
 
-    loadLeaflet()
-      .then((L) => {
-        if (cancelled || !containerRef.current) return;
+    (async () => {
+      try {
+        // Kalitni serverdan olamiz
+        const cfg = await adminApi.getMapsConfig();
+        if (dead) return;
+
+        if (!cfg.enabled || !cfg.mapsKey) {
+          setError('Xarita sozlanmagan');
+          setLoading(false);
+          return;
+        }
+
+        const ymaps = await loadYmaps(cfg.mapsKey);
+        if (dead || !boxRef.current) return;
 
         const start = picked ? [picked.lat, picked.lng] : DEFAULT_CENTER;
-        const map = L.map(containerRef.current, {
+        const map = new ymaps.Map(boxRef.current, {
           center: start,
           zoom: picked ? 17 : 12,
-          zoomControl: true,
+          controls: ['zoomControl', 'geolocationControl'],
         });
-
-        // Plitka manbasi
-        if (YANDEX_KEY) {
-          L.tileLayer(
-            `https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=uz_UZ`,
-            { attribution: '© Yandex', maxZoom: 19 },
-          ).addTo(map);
-        } else {
-          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© OpenStreetMap',
-            maxZoom: 19,
-          }).addTo(map);
-        }
-
         mapRef.current = map;
 
-        if (picked) {
-          markerRef.current = L.marker(start, { draggable: true }).addTo(map);
-          markerRef.current.on('dragend', (e) => {
-            const { lat: la, lng: ln } = e.target.getLatLng();
-            selectPoint(la, ln);
-          });
-        }
+        if (picked) addMarker(ymaps, start);
 
-        map.on('click', (e) => {
-          selectPoint(e.latlng.lat, e.latlng.lng);
+        map.events.add('click', (e) => {
+          const [la, ln] = e.get('coords');
+          selectPoint(la, ln);
         });
 
-        // Konteyner o'lchami o'zgargach xarita qayta chizilsin
-        setTimeout(() => map.invalidateSize(), 200);
         setLoading(false);
-      })
-      .catch((e) => {
-        if (!cancelled) {
+      } catch (e) {
+        if (!dead) {
           setError(e.message);
           setLoading(false);
         }
-      });
+      }
+    })();
 
     return () => {
-      cancelled = true;
-      mapRef.current?.remove?.();
+      dead = true;
+      mapRef.current?.destroy?.();
       mapRef.current = null;
-      markerRef.current = null;
+      markRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Nuqta tanlash
-  const selectPoint = async (la, ln) => {
-    const L = window.L;
-    if (!L || !mapRef.current) return;
+  const addMarker = (ymaps, coords) => {
+    const pm = new ymaps.Placemark(coords, {}, {
+      preset: 'islands#redDotIcon',
+      draggable: true,
+    });
+    mapRef.current.geoObjects.add(pm);
+    markRef.current = pm;
+    pm.events.add('dragend', () => {
+      const [la, ln] = pm.geometry.getCoordinates();
+      selectPoint(la, ln);
+    });
+  };
 
-    if (markerRef.current) {
-      markerRef.current.setLatLng([la, ln]);
-    } else {
-      markerRef.current = L.marker([la, ln], { draggable: true }).addTo(mapRef.current);
-      markerRef.current.on('dragend', (e) => {
-        const p = e.target.getLatLng();
-        selectPoint(p.lat, p.lng);
-      });
-    }
+  const selectPoint = async (la, ln) => {
+    const ymaps = window.ymaps;
+    if (!ymaps || !mapRef.current) return;
+
+    if (markRef.current) markRef.current.geometry.setCoordinates([la, ln]);
+    else addMarker(ymaps, [la, ln]);
 
     setPicked({ lat: la, lng: ln, address: '' });
     setResolving(true);
-    const addr = await reverseGeocode(la, ln);
-    setPicked({ lat: la, lng: ln, address: addr });
-    setResolving(false);
+
+    try {
+      const { address: addr } = await adminApi.reverseGeocode(la, ln);
+      setPicked({ lat: la, lng: ln, address: addr || '' });
+    } catch {
+      setPicked({ lat: la, lng: ln, address: '' });
+    } finally {
+      setResolving(false);
+    }
   };
 
-  // Qidirish
   const doSearch = async (e) => {
     e?.preventDefault?.();
     if (!query.trim()) return;
     setSearching(true);
-    const found = await searchPlace(query.trim());
-    setResults(found);
-    setSearching(false);
+    try {
+      setResults(await adminApi.geocode(query.trim()));
+    } catch {
+      setResults([]);
+    } finally {
+      setSearching(false);
+    }
   };
 
   const goTo = (r) => {
-    const la = Number(r.lat);
-    const ln = Number(r.lon);
-    mapRef.current?.setView([la, ln], 17);
-    selectPoint(la, ln);
+    mapRef.current?.setCenter([r.lat, r.lng], 17);
+    selectPoint(r.lat, r.lng);
     setResults([]);
     setQuery('');
   };
 
-  // Hozirgi joy
   const useMyLocation = () => {
     if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        mapRef.current?.setView([latitude, longitude], 17);
+        mapRef.current?.setCenter([latitude, longitude], 17);
         selectPoint(latitude, longitude);
       },
       () => alert('Joylashuvni aniqlab bo\u2018lmadi'),
@@ -225,7 +189,6 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
         onClick={(e) => e.stopPropagation()}
         className="bg-white w-full max-w-2xl rounded-t-2xl sm:rounded-2xl overflow-hidden flex flex-col max-h-[92dvh]"
       >
-        {/* Sarlavha */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-line flex-none">
           <div className="min-w-0">
             <h3 className="font-semibold text-ink">Joylashuvni tanlang</h3>
@@ -238,7 +201,6 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
           </button>
         </div>
 
-        {/* Qidiruv */}
         <div className="px-4 py-2.5 border-b border-line flex-none">
           <div className="flex gap-2">
             <input
@@ -249,16 +211,13 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
               className="inp flex-1"
             />
             <button
-              type="button"
-              onClick={doSearch}
-              disabled={searching}
+              type="button" onClick={doSearch} disabled={searching}
               className="px-3 rounded-xl border border-line text-muted hover:bg-canvas flex-none"
             >
               <i className={`ti ${searching ? 'ti-loader-2 animate-spin' : 'ti-search'}`} />
             </button>
             <button
-              type="button"
-              onClick={useMyLocation}
+              type="button" onClick={useMyLocation}
               className="px-3 rounded-xl border border-line text-muted hover:bg-canvas flex-none"
               title="Hozirgi joyim"
             >
@@ -268,22 +227,21 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
 
           {results.length > 0 && (
             <div className="mt-2 max-h-36 overflow-y-auto border border-line rounded-xl">
-              {results.map((r) => (
+              {results.map((r, i) => (
                 <button
-                  key={r.place_id}
+                  key={i}
                   onClick={() => goTo(r)}
                   className="w-full text-left px-3 py-2 text-sm text-ink hover:bg-canvas border-b border-line last:border-0"
                 >
-                  {r.display_name}
+                  {r.name}
                 </button>
               ))}
             </div>
           )}
         </div>
 
-        {/* Xarita */}
         <div className="relative flex-1 min-h-[300px]">
-          <div ref={containerRef} className="absolute inset-0" />
+          <div ref={boxRef} className="absolute inset-0" />
 
           {loading && (
             <div className="absolute inset-0 flex items-center justify-center bg-canvas z-[500]">
@@ -292,16 +250,18 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
           )}
           {error && (
             <div className="absolute inset-0 flex items-center justify-center bg-canvas p-6 z-[500]">
-              <div className="text-center">
+              <div className="text-center max-w-xs">
                 <i className="ti ti-map-off text-3xl text-muted mb-2 block" />
                 <div className="text-sm text-ink font-medium">{error}</div>
-                <p className="text-xs text-muted mt-1">Internet aloqasini tekshiring</p>
+                <p className="text-xs text-muted mt-2 leading-relaxed">
+                  Server .env fayliga <b>YANDEX_MAPS_KEY</b> qo'shing.
+                  Kalit developer.tech.yandex.ru dan olinadi.
+                </p>
               </div>
             </div>
           )}
         </div>
 
-        {/* Natija va tugmalar */}
         <div className="px-4 py-3 border-t border-line flex-none">
           {picked ? (
             <div className="mb-3">
@@ -319,10 +279,7 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
           )}
 
           <div className="flex gap-2">
-            <button
-              onClick={onClose}
-              className="flex-1 border border-line text-muted py-2.5 rounded-xl hover:bg-canvas"
-            >
+            <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl hover:bg-canvas">
               Bekor
             </button>
             <button

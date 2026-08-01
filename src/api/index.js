@@ -51,6 +51,11 @@ export const adminApi = {
   getUsers: () => apiFetch('/admin/users'),
 
   // Komissiya sozlamasi
+  // ===== Xarita =====
+  getMapsConfig: () => apiFetch('/maps/config'),
+  geocode: (q) => apiFetch(`/maps/geocode?q=${encodeURIComponent(q)}`),
+  reverseGeocode: (lat, lng) => apiFetch(`/maps/reverse?lat=${lat}&lng=${lng}`),
+
   getSettings: () => apiFetch('/admin/settings'),
 
   // ===== Moliya =====
