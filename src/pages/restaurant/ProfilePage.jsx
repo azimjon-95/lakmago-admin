@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { MapPicker } from '@/components/MapPicker';
-import { ImageUpload } from '@/components/ImageUpload';
 
 /**
  * Restoran o'z ma'lumotlarini tahrirlaydi.
@@ -23,7 +22,6 @@ export function RestaurantProfilePage() {
         cuisine: r.cuisine || '',
         description: r.description || '',
         phone: r.phone || '',
-        imageUrl: r.imageUrl || '',
 
         address: r.address || '',
         landmark: r.landmark || '',
@@ -85,12 +83,6 @@ export function RestaurantProfilePage() {
       <div className="space-y-4">
         {/* Asosiy */}
         <Section title="Asosiy" icon="ti-building-store">
-          <ImageUpload
-            label="Muassasa rasmi"
-            value={form.imageUrl}
-            onChange={(url) => set('imageUrl', url)}
-          />
-
           <Field label="Nomi *">
             <input value={form.name} onChange={(e) => set('name', e.target.value)} className="inp" />
           </Field>

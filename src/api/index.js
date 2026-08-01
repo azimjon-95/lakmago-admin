@@ -13,6 +13,8 @@ export const auth = {
 // ===== Restoran paneli API (role: restaurant) =====
 export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
+  getPanelCatalog: (q = '') => apiFetch(`/panel/catalog${q}`),
+  addFromCatalog: (id, data) => apiFetch(`/panel/catalog/${id}/add`, { method: 'POST', body: JSON.stringify(data) }),
   updateProfile: (data) => apiFetch('/panel/me', { method: 'PATCH', body: JSON.stringify(data) }),
   profile: () => apiFetch('/panel/me'),
   toggleActive: (isActive) =>
@@ -53,6 +55,12 @@ export const adminApi = {
   getUsers: () => apiFetch('/admin/users'),
 
   // Komissiya sozlamasi
+  // ===== Umumiy katalog =====
+  getCatalog: (q = '') => apiFetch(`/admin/catalog${q}`),
+  createCatalogProduct: (d) => apiFetch('/admin/catalog', { method: 'POST', body: JSON.stringify(d) }),
+  updateCatalogProduct: (id, d) => apiFetch(`/admin/catalog/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  deleteCatalogProduct: (id) => apiFetch(`/admin/catalog/${id}`, { method: 'DELETE' }),
+
   // ===== Xarita =====
   getMapsConfig: () => apiFetch('/maps/config'),
   geocode: (q) => apiFetch(`/maps/geocode?q=${encodeURIComponent(q)}`),

@@ -11,6 +11,7 @@ const adminNav = [
   { to: '/banners', icon: 'ti-photo', label: 'Bannerlar' },
   { to: '/support', icon: 'ti-message-circle', label: 'Xabarlar' },
   { to: '/groups', icon: 'ti-brand-telegram', label: 'Guruhlar' },
+  { to: '/catalog', icon: 'ti-package', label: 'Katalog' },
   { to: '/billing', icon: 'ti-report-money', label: 'Moliya' },
   { to: '/settings', icon: 'ti-settings', label: 'Sozlamalar' },
   { to: '/users', icon: 'ti-users', label: 'Mijozlar' },
