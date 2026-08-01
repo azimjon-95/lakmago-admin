@@ -12,6 +12,8 @@ export const auth = {
 
 // ===== Restoran paneli API (role: restaurant) =====
 export const panelApi = {
+  getProfile: () => apiFetch('/panel/me'),
+  updateProfile: (data) => apiFetch('/panel/me', { method: 'PATCH', body: JSON.stringify(data) }),
   profile: () => apiFetch('/panel/me'),
   toggleActive: (isActive) =>
     apiFetch('/panel/me/active', { method: 'PATCH', body: JSON.stringify({ isActive }) }),

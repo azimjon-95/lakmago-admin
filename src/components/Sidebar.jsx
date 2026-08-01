@@ -20,6 +20,7 @@ const restaurantNav = [
   { to: '/menu', icon: 'ti-book', label: 'Menyu' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
+  { to: '/profile', icon: 'ti-settings', label: 'Sozlamalar' },
 ];
 
 // Mobilda pastki panelda ko'rinadigan asosiy bandlar soni (qolgani "Ko'proq"da)
