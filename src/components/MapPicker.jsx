@@ -14,6 +14,10 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 // Toshkent markazi
 const DEFAULT_CENTER = [41.311081, 69.240562];
 
+// Yandex kaliti bo'lsa Yandex plitkalari ishlatiladi (O'zbekiston
+// uchun aniqroq). Bo'lmasa OpenStreetMap — kalit kerak emas.
+const YANDEX_KEY = import.meta.env.VITE_YANDEX_MAPS_KEY || '';
+
 let loadPromise = null;
 
 function loadLeaflet() {
@@ -100,10 +104,18 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
           zoomControl: true,
         });
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '© OpenStreetMap',
-          maxZoom: 19,
-        }).addTo(map);
+        // Plitka manbasi
+        if (YANDEX_KEY) {
+          L.tileLayer(
+            `https://core-renderer-tiles.maps.yandex.net/tiles?l=map&x={x}&y={y}&z={z}&scale=1&lang=uz_UZ`,
+            { attribution: '© Yandex', maxZoom: 19 },
+          ).addTo(map);
+        } else {
+          L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap',
+            maxZoom: 19,
+          }).addTo(map);
+        }
 
         mapRef.current = map;
 

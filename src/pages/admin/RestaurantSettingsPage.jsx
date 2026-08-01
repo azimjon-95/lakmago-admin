@@ -44,6 +44,8 @@ export function RestaurantSettingsPage() {
             legalAddress: r.legalAddress || '',
             inn: r.inn || '',
             minOrderAmount: r.minOrderAmount ?? null,
+            deliveryFee: r.deliveryFee ?? null,
+            freeDeliveryThreshold: r.freeDeliveryThreshold ?? null,
             serviceFeePercent: r.serviceFeePercent || 0,
             serviceFeeMin: r.serviceFeeMin || 0,
             serviceFeeMax: r.serviceFeeMax || 0,
@@ -139,6 +141,8 @@ export function RestaurantSettingsPage() {
 
           <div className="grid gap-4">
             <NumField label="Minimal buyurtma" value={form.minOrderAmount} onChange={(v) => set('minOrderAmount', v)} money hint="Bo'sh = cheklovsiz" />
+            <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} money hint="Bo'sh = bepul" />
+            <NumField label="Bepul yetkazish chegarasi" value={form.freeDeliveryThreshold} onChange={(v) => set('freeDeliveryThreshold', v)} money hint="Shu summadan boshlab yetkazish bepul" />
             <NumField label="Xizmat haqi" value={form.serviceFeePercent} onChange={(v) => set('serviceFeePercent', v)} suffix="%" hint="Buyurtma summasidan" />
             <div className="grid grid-cols-2 gap-4">
               <NumField label="Eng kam" value={form.serviceFeeMin} onChange={(v) => set('serviceFeeMin', v)} money />

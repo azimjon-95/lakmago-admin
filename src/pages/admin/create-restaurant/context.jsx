@@ -10,6 +10,7 @@ const EMPTY = {
   name: '', cuisine: '', category: 'milliy', kind: 'restaurant', imageUrl: '',
   phone: '', address: '', landmark: '', lat: '', lng: '',
   deliveryMin: 25, deliveryMax: 40, deliveryFee: null,
+  freeDeliveryThreshold: null, minOrderAmount: null,
   shopTypes: [], pickupEnabled: true, pickupDiscountPercent: 0, prepMinutes: 20,
   reservationEnabled: false, reservationNote: '',
   login: '', password: '',
@@ -64,7 +65,7 @@ export function CreateRestaurantLayout() {
       // Foydalanuvchi maydonni bo'sh qoldirsa "belgilanmagan" degani.
       const numFields = [
         'deliveryFee', 'deliveryMin', 'deliveryMax', 'minOrderAmount',
-        'prepMinutes', 'pickupDiscountPercent', 'serviceFeePercent',
+        'prepMinutes', 'pickupDiscountPercent', 'freeDeliveryThreshold', 'serviceFeePercent',
         'serviceFeeMin', 'serviceFeeMax',
       ];
       for (const f of numFields) {
