@@ -73,9 +73,40 @@ export function Step2Address() {
             <NumField label="Yetkazish (max)" value={form.deliveryMax} onChange={(v) => set('deliveryMax', v)} suffix="daq" placeholder="40" />
             <NumField label="Yetkazish narxi" value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} money hint="Bo'sh = bepul" />
           </div>
+
+          <div className="grid sm:grid-cols-2 gap-4 mt-4">
+            <NumField
+              label="Minimal buyurtma"
+              value={form.minOrderAmount}
+              onChange={(v) => set('minOrderAmount', v)}
+              money
+              hint="Shu summadan kam bo'lsa buyurtma berilmaydi"
+            />
+            <NumField
+              label="Bepul yetkazish chegarasi"
+              value={form.freeDeliveryThreshold}
+              onChange={(v) => set('freeDeliveryThreshold', v)}
+              money
+              hint="Shu summadan boshlab yetkazish bepul"
+            />
+          </div>
         </section>
 
-        {/* ===== 3-BOSQICH: sozlamalar va akkaunt ===== */}
+      {/* Xaritadan joylashuv tanlash */}
+      {mapOpen && (
+        <MapPicker
+          lat={form.lat}
+          lng={form.lng}
+          address={form.address}
+          onPick={({ lat, lng, address }) => {
+            set('lat', String(lat));
+            set('lng', String(lng));
+            // Manzil bo'sh bo'lsa xaritadan olinganini qo'yamiz
+            if (address && !form.address?.trim()) set('address', address);
+          }}
+          onClose={() => setMapOpen(false)}
+        />
+      )}
     </>
   );
 }
