@@ -106,14 +106,55 @@ export function ReservationsPage() {
                         {st.label || r.status}
                       </span>
                     </div>
-                    <div className="text-sm text-muted">
-                      <i className="ti ti-phone text-xs" /> {r.phone}
+                    {/* Aloqa — telefon va Telegram */}
+                    <div className="flex items-center gap-3 flex-wrap text-sm">
+                      <a href={`tel:${r.phone}`} className="text-brand-600 hover:underline">
+                        <i className="ti ti-phone text-xs" /> {r.phone}
+                      </a>
+                      {r.customer?.username && (
+                        <a
+                          href={`https://t.me/${r.customer.username}`}
+                          target="_blank" rel="noreferrer"
+                          className="text-blue-600 hover:underline"
+                        >
+                          <i className="ti ti-brand-telegram text-xs" /> @{r.customer.username}
+                        </a>
+                      )}
                     </div>
                     <div className="text-sm text-ink mt-1.5">
                       <i className="ti ti-calendar text-xs" /> {r.date} · {r.time}
                       <span className="mx-2 text-muted">|</span>
                       <i className="ti ti-users text-xs" /> {r.guests} kishi
                     </div>
+                    {/* Oldindan tanlangan taomlar */}
+                    {r.preOrder?.length > 0 && (
+                      <div className="mt-2 bg-canvas rounded-lg px-3 py-2">
+                        <div className="text-xs font-medium text-ink mb-1">
+                          <i className="ti ti-tools-kitchen-2 text-[11px]" /> Oldindan buyurtma
+                        </div>
+                        {r.preOrder.map((d, i) => (
+                          <div key={i} className="text-xs text-muted flex justify-between gap-3">
+                            <span>{d.name} ×{d.quantity}</span>
+                            {d.price > 0 && (
+                              <span className="flex-none">
+                                {(d.price * d.quantity).toLocaleString('ru-RU')} so'm
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                        {r.preOrder.some((d) => d.price > 0) && (
+                          <div className="text-xs font-semibold text-ink mt-1 pt-1 border-t border-line flex justify-between">
+                            <span>Jami</span>
+                            <span>
+                              {r.preOrder
+                                .reduce((s, d) => s + d.price * d.quantity, 0)
+                                .toLocaleString('ru-RU')} so'm
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
                     {r.note && <div className="text-xs text-muted mt-1">Izoh: {r.note}</div>}
                     {r.rejectReason && (
                       <div className="text-xs text-red-600 mt-1">Rad sababi: {r.rejectReason}</div>

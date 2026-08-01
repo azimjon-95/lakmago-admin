@@ -48,6 +48,7 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState([]);
   const [searching, setSearching] = useState(false);
+  const [nearMe, setNearMe] = useState(false);
 
   const [picked, setPicked] = useState(
     lat && lng ? { lat: Number(lat), lng: Number(lng), address: address || '' } : null,
@@ -80,6 +81,26 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
         mapRef.current = map;
 
         if (picked) addMarker(ymaps, start);
+
+        // Joylashuv oldindan tanlanmagan bo'lsa foydalanuvchi
+        // turgan joyni ko'rsatamiz — u yerdan izlash qulayroq.
+        // Nuqta QO'YILMAYDI, faqat xarita markazi ko'chadi.
+        if (!picked && navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              if (dead || !mapRef.current) return;
+              const { latitude, longitude } = pos.coords;
+              mapRef.current.setCenter([latitude, longitude], 16, {
+                duration: 400,
+              });
+              setNearMe(true);
+            },
+            () => {
+              // Ruxsat berilmadi yoki aniqlanmadi — Toshkent markazi qoladi
+            },
+            { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+          );
+        }
 
         map.events.add('click', (e) => {
           const [la, ln] = e.get('coords');
@@ -275,7 +296,11 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
               </div>
             </div>
           ) : (
-            <p className="text-sm text-muted mb-3">Xaritada binoni bosing</p>
+            <p className="text-sm text-muted mb-3">
+              {nearMe
+                ? 'Siz turgan joy ko\'rsatildi. Kerakli binoni bosing'
+                : 'Xaritada binoni bosing'}
+            </p>
           )}
 
           <div className="flex gap-2">
