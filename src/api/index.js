@@ -13,6 +13,8 @@ export const auth = {
 // ===== Restoran paneli API (role: restaurant) =====
 export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
+  getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
+  getStoppedCount: () => apiFetch('/panel/dishes/stopped/count'),
   getPanelCatalog: (q = '') => apiFetch(`/panel/catalog${q}`),
   addFromCatalog: (id, data) => apiFetch(`/panel/catalog/${id}/add`, { method: 'POST', body: JSON.stringify(data) }),
   updateProfile: (data) => apiFetch('/panel/me', { method: 'PATCH', body: JSON.stringify(data) }),

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
+import { useStoppedCount } from '@/hooks/useStoppedCount';
 
 // Rolga qarab menyu: admin (dastur egasi) yoki restaurant (restoran)
 const adminNav = [
@@ -19,6 +20,7 @@ const adminNav = [
 const restaurantNav = [
   { to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', end: true },
   { to: '/menu', icon: 'ti-book', label: 'Menyu' },
+  { to: '/stop-list', icon: 'ti-ban', label: 'Stop List', badge: 'stopped' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
   { to: '/profile', icon: 'ti-settings', label: 'Sozlamalar' },
@@ -33,6 +35,9 @@ export function Sidebar() {
   const logout = useAuth((s) => s.logout);
   const isAdmin = user?.role === 'admin';
   const nav = isAdmin ? adminNav : restaurantNav;
+
+  // Stop'dagi taomlar soni — faqat restoran panelida
+  const { count: stoppedCount } = useStoppedCount(!isAdmin);
   const location = useLocation();
 
   const [open, setOpen] = useState(false); // mobil drawer holati
@@ -64,8 +69,14 @@ export function Sidebar() {
         }`
       }
     >
-      <i className={`ti ${item.icon} text-lg`} />
-      {item.label}
+      <i className={`ti ${item.icon} text-lg flex-none`} />
+      <span className="flex-1 min-w-0 truncate">{item.label}</span>
+      {/* Stop'dagi taomlar soni — 0 bo'lsa ko'rsatilmaydi */}
+      {item.badge === 'stopped' && stoppedCount > 0 && (
+        <span className="flex-none min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
+          {stoppedCount}
+        </span>
+      )}
     </NavLink>
   );
 
