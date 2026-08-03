@@ -15,6 +15,23 @@ export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
+  // Продвижение
+  getPromoOverview: () => apiFetch('/panel/promo/overview'),
+  getPromotions: () => apiFetch('/panel/promotions'),
+  createPromotion: (d) => apiFetch('/panel/promotions', { method: 'POST', body: JSON.stringify(d) }),
+  updatePromotion: (id, d) => apiFetch(`/panel/promotions/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  deletePromotion: (id) => apiFetch(`/panel/promotions/${id}`, { method: 'DELETE' }),
+
+  getBonuses: () => apiFetch('/panel/bonuses'),
+  createBonus: (d) => apiFetch('/panel/bonuses', { method: 'POST', body: JSON.stringify(d) }),
+  updateBonus: (id, d) => apiFetch(`/panel/bonuses/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  deleteBonus: (id) => apiFetch(`/panel/bonuses/${id}`, { method: 'DELETE' }),
+
+  getAds: () => apiFetch('/panel/ads'),
+  createAd: (d) => apiFetch('/panel/ads', { method: 'POST', body: JSON.stringify(d) }),
+  updateAd: (id, d) => apiFetch(`/panel/ads/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  deleteAd: (id) => apiFetch(`/panel/ads/${id}`, { method: 'DELETE' }),
+
   // Menyu ko'chirish
   searchBranches: (q) => apiFetch(`/panel/restaurants/search?q=${encodeURIComponent(q)}`),
   createTransfer: (d) => apiFetch('/panel/menu-transfers', { method: 'POST', body: JSON.stringify(d) }),

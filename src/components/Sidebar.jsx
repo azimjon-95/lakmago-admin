@@ -24,6 +24,7 @@ const restaurantNav = [
   { to: '/stop-list', icon: 'ti-ban', label: 'Stop List', badge: 'stopped' },
   { to: '/menu-transfer', icon: 'ti-transfer', label: "Ko'chirish", badge: 'transfers' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
+  { to: '/promotion', icon: 'ti-speakerphone', label: 'Продвижение' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
   { to: '/profile', icon: 'ti-settings', label: 'Sozlamalar' },
 ];
