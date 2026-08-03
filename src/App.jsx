@@ -28,6 +28,7 @@ import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
 import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
 import { RestaurantProfilePage } from '@/pages/restaurant/ProfilePage';
 import { StopListPage } from '@/pages/restaurant/StopListPage';
+import { MenuTransferPage } from '@/pages/restaurant/MenuTransferPage';
 import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 
 // Panel karkasi (sidebar + sahifa).
@@ -83,6 +84,7 @@ function RestaurantRoutes() {
         <Route path="/banner" element={<RestaurantBannerPage />} />
         <Route path="/profile" element={<RestaurantProfilePage />} />
         <Route path="/stop-list" element={<StopListPage />} />
+        <Route path="/menu-transfer" element={<MenuTransferPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

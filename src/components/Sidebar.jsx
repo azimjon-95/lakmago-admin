@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { useStoppedCount } from '@/hooks/useStoppedCount';
+import { usePendingTransfers } from '@/hooks/usePendingTransfers';
 
 // Rolga qarab menyu: admin (dastur egasi) yoki restaurant (restoran)
 const adminNav = [
@@ -21,6 +22,7 @@ const restaurantNav = [
   { to: '/', icon: 'ti-clipboard-list', label: 'Buyurtmalar', end: true },
   { to: '/menu', icon: 'ti-book', label: 'Menyu' },
   { to: '/stop-list', icon: 'ti-ban', label: 'Stop List', badge: 'stopped' },
+  { to: '/menu-transfer', icon: 'ti-transfer', label: "Ko'chirish", badge: 'transfers' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
   { to: '/profile', icon: 'ti-settings', label: 'Sozlamalar' },
@@ -38,6 +40,7 @@ export function Sidebar() {
 
   // Stop'dagi taomlar soni — faqat restoran panelida
   const { count: stoppedCount } = useStoppedCount(!isAdmin);
+  const { count: transferCount } = usePendingTransfers(!isAdmin);
   const location = useLocation();
 
   const [open, setOpen] = useState(false); // mobil drawer holati
@@ -75,6 +78,11 @@ export function Sidebar() {
       {item.badge === 'stopped' && stoppedCount > 0 && (
         <span className="flex-none min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[11px] font-bold flex items-center justify-center">
           {stoppedCount}
+        </span>
+      )}
+      {item.badge === 'transfers' && transferCount > 0 && (
+        <span className="flex-none min-w-[20px] h-5 px-1.5 rounded-full bg-brand-400 text-brand-text text-[11px] font-bold flex items-center justify-center">
+          {transferCount}
         </span>
       )}
     </NavLink>

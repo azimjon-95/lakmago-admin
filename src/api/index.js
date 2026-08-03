@@ -14,6 +14,14 @@ export const auth = {
 export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
+
+  // Menyu ko'chirish
+  searchBranches: (q) => apiFetch(`/panel/restaurants/search?q=${encodeURIComponent(q)}`),
+  createTransfer: (d) => apiFetch('/panel/menu-transfers', { method: 'POST', body: JSON.stringify(d) }),
+  getTransfers: (box) => apiFetch(`/panel/menu-transfers?box=${box}`),
+  getTransfer: (id) => apiFetch(`/panel/menu-transfers/${id}`),
+  respondTransfer: (id, action, reason) => apiFetch(`/panel/menu-transfers/${id}/respond`, { method: 'PATCH', body: JSON.stringify({ action, reason }) }),
+  getPendingTransfers: () => apiFetch('/panel/menu-transfers/pending/count'),
   getStoppedCount: () => apiFetch('/panel/dishes/stopped/count'),
   getPanelCatalog: (q = '') => apiFetch(`/panel/catalog${q}`),
   addFromCatalog: (id, data) => apiFetch(`/panel/catalog/${id}/add`, { method: 'POST', body: JSON.stringify(data) }),
