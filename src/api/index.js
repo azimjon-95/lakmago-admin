@@ -15,6 +15,15 @@ export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
+  // Mijozlarni jalb qilish — Super Admin
+  getPromoAdminOverview: () => apiFetch('/admin/promo/overview'),
+  getPromoRestaurants: (q = '') => apiFetch(`/admin/promo/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  getPromoBilling: (id) => apiFetch(`/admin/promo/billing/${id}`),
+  markPromoPaid: (id) => apiFetch(`/admin/promo/billing/${id}/pay`, { method: 'POST' }),
+  setPromoStatus: (id, status, reason) => apiFetch(`/admin/promo/subscription/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+  getPromoTariff: () => apiFetch('/admin/promo/tariff'),
+  updatePromoTariff: (d) => apiFetch('/admin/promo/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
+
   // Продвижение
   getPromoOverview: () => apiFetch('/panel/promo/overview'),
   getPromotions: () => apiFetch('/panel/promotions'),

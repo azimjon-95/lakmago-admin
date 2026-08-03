@@ -14,6 +14,7 @@ const adminNav = [
   { to: '/support', icon: 'ti-message-circle', label: 'Xabarlar' },
   { to: '/groups', icon: 'ti-brand-telegram', label: 'Guruhlar' },
   { to: '/catalog', icon: 'ti-package', label: 'Katalog' },
+  { to: '/promo-admin', icon: 'ti-speakerphone', label: 'Mijoz jalb qilish' },
   { to: '/billing', icon: 'ti-report-money', label: 'Moliya' },
   { to: '/settings', icon: 'ti-settings', label: 'Sozlamalar' },
   { to: '/users', icon: 'ti-users', label: 'Mijozlar' },
@@ -24,7 +25,7 @@ const restaurantNav = [
   { to: '/stop-list', icon: 'ti-ban', label: 'Stop List', badge: 'stopped' },
   { to: '/menu-transfer', icon: 'ti-transfer', label: "Ko'chirish", badge: 'transfers' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
-  { to: '/promotion', icon: 'ti-speakerphone', label: 'Продвижение' },
+  { to: '/promotion', icon: 'ti-speakerphone', label: 'Mijoz jalb qilish' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },
   { to: '/profile', icon: 'ti-settings', label: 'Sozlamalar' },
 ];

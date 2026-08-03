@@ -32,10 +32,43 @@ export function PromotionPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="text-xl font-semibold text-ink mb-1">Продвижение</h1>
+      <h1 className="text-xl font-semibold text-ink mb-1">Mijozlarni jalb qilish</h1>
       <p className="text-sm text-muted mb-5">
         Aksiya, reklama va bonuslar bilan mijoz jalb qiling
       </p>
+
+      {/* Xizmat narxi va qarz */}
+      {overview?.xizmat && (
+        <div className="bg-surface border border-line rounded-xl p-4 mb-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <div className="text-xs text-muted">Xizmat narxi</div>
+              <div className="text-sm font-semibold text-ink">
+                {som(overview.xizmat.kunlikNarx)} so'm / 24 soat
+              </div>
+            </div>
+
+            <div className="text-right">
+              <div className="text-xs text-muted">Joriy qarz</div>
+              <div className={`text-lg font-bold ${
+                overview.xizmat.qarz > 0 ? 'text-red-600' : 'text-green-600'
+              }`}>
+                {som(overview.xizmat.qarz)} so'm
+              </div>
+              {overview.xizmat.kunlar > 0 && (
+                <div className="text-[11px] text-muted">
+                  {overview.xizmat.kunlar} kun
+                </div>
+              )}
+            </div>
+          </div>
+
+          <p className="text-[11px] text-muted mt-3 leading-relaxed">
+            Aksiya va reklama birga ishlatilsa ham bitta narx olinadi.
+            Bonus narxni oshirmaydi.
+          </p>
+        </div>
+      )}
 
       {/* Umumiy ko'rsatkichlar */}
       {overview && (
