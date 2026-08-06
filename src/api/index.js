@@ -44,6 +44,8 @@ export const panelApi = {
 
   // Dine-in buyurtmalar
   getDineInOrders: (active) => apiFetch(`/panel/dine-in/orders${active ? '?active=1' : ''}`),
+  getDineInHistory: (q) => apiFetch(`/panel/dine-in/orders?${new URLSearchParams(q)}`),
+  getWaiterEarningsRange: (from, to) => apiFetch(`/panel/waiters/earnings?period=custom&from=${from}&to=${to}`),
   setDineInOrderStatus: (id, status) => apiFetch(`/panel/dine-in/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),

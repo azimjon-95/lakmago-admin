@@ -27,6 +27,7 @@ const restaurantNav = [
   { to: '/menu-transfer', icon: 'ti-transfer', label: "Ko'chirish", badge: 'transfers' },
   { to: '/dine-in-live', icon: 'ti-bell-ringing', label: 'Zal buyurtmalari' },
   { to: '/dine-in', icon: 'ti-armchair', label: 'Dine-in' },
+  { to: '/dine-in-history', icon: 'ti-history', label: 'Zal tarixi' },
   { to: '/reservations', icon: 'ti-calendar-check', label: 'Bronlar' },
   { to: '/promotion', icon: 'ti-speakerphone', label: 'Mijoz jalb qilish' },
   { to: '/banner', icon: 'ti-photo', label: 'Banner' },

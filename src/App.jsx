@@ -32,6 +32,7 @@ import { RestaurantProfilePage } from '@/pages/restaurant/ProfilePage';
 import { StopListPage } from '@/pages/restaurant/StopListPage';
 import { DineInPage } from '@/pages/restaurant/DineInPage';
 import { DineInLivePage } from '@/pages/restaurant/DineInLivePage';
+import { DineInHistoryPage } from '@/pages/restaurant/DineInHistoryPage';
 import { MenuTransferPage } from '@/pages/restaurant/MenuTransferPage';
 import { PromotionPage } from '@/pages/restaurant/PromotionPage';
 import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
@@ -93,6 +94,7 @@ function RestaurantRoutes() {
         <Route path="/stop-list" element={<StopListPage />} />
         <Route path="/dine-in" element={<DineInPage />} />
         <Route path="/dine-in-live" element={<DineInLivePage />} />
+        <Route path="/dine-in-history" element={<DineInHistoryPage />} />
         <Route path="/menu-transfer" element={<MenuTransferPage />} />
         <Route path="/promotion" element={<PromotionPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />

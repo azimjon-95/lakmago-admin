@@ -891,15 +891,22 @@ function ServiceFee({ cfg, onSaved }) {
 /* ═══ OFITSIANT DAROMADI ═══ */
 function Earnings() {
   const [period, setPeriod] = useState('month');
+  const [range, setRange] = useState({
+    from: new Date(Date.now() - 29 * 864e5).toISOString().slice(0, 10),
+    to: new Date().toISOString().slice(0, 10),
+  });
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(null);
 
   const load = useCallback(() => {
     setLoading(true);
-    panelApi.getWaiterEarnings(period)
-      .then(setData).catch(() => {}).finally(() => setLoading(false));
-  }, [period]);
+    const req = period === 'custom'
+      ? panelApi.getWaiterEarningsRange(range.from, range.to)
+      : panelApi.getWaiterEarnings(period);
+
+    req.then(setData).catch(() => {}).finally(() => setLoading(false));
+  }, [period, range]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -914,7 +921,7 @@ function Earnings() {
     <>
       {/* Davr */}
       <div className="flex gap-2 mb-4">
-        {[['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy']].map(([k, label]) => (
+        {[['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy'], ['custom', 'Davr']].map(([k, label]) => (
           <button key={k} onClick={() => setPeriod(k)}
             className={`px-4 py-2 rounded-xl text-sm font-medium border ${
               period === k
@@ -925,6 +932,17 @@ function Earnings() {
           </button>
         ))}
       </div>
+
+      {period === 'custom' && (
+        <div className="grid grid-cols-2 gap-2 mb-4">
+          <input type="date" value={range.from}
+            onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
+            className="inp" />
+          <input type="date" value={range.to}
+            onChange={(e) => setRange((r) => ({ ...r, to: e.target.value }))}
+            className="inp" />
+        </div>
+      )}
 
       {totalRemaining > 0 && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
