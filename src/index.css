@@ -23,3 +23,16 @@ body {
   @apply w-full border border-line rounded-lg px-3 py-2 text-ink outline-none
          focus:border-brand-400 transition-colors bg-white;
 }
+
+/* Chek chop etish — faqat chek ko'rinadi */
+@media print {
+  body * { visibility: hidden; }
+  .receipt-area, .receipt-area * { visibility: visible; }
+  .receipt-area {
+    position: absolute;
+    left: 0; top: 0;
+    width: 100%;
+    padding: 12px !important;
+  }
+  .no-print { display: none !important; }
+}

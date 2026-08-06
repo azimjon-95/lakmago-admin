@@ -33,6 +33,15 @@ export const panelApi = {
   resetWaiterDevice: (id) => apiFetch(`/panel/waiters/${id}/reset-device`, { method: 'POST' }),
   deleteWaiter: (id) => apiFetch(`/panel/waiters/${id}`, { method: 'DELETE' }),
 
+  // Dine-in jonli
+  getDineInDashboard: () => apiFetch('/panel/dine-in/dashboard'),
+  getTableRequests: () => apiFetch('/panel/dine-in/requests'),
+  updateTableRequest: (id, status) => apiFetch(`/panel/dine-in/requests/${id}`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  closeTable: (tableId, force) => apiFetch(`/panel/dine-in/tables/${tableId}/close`, { method: 'POST', body: JSON.stringify({ force }) }),
+  getReceipt: (sessionId) => apiFetch(`/dine-in/receipt/${sessionId}`),
+  getWaiterEarnings: (period) => apiFetch(`/panel/waiters/earnings?period=${period}`),
+  payWaiter: (id, amount, note) => apiFetch(`/panel/waiters/${id}/payout`, { method: 'POST', body: JSON.stringify({ amount, note }) }),
+
   // Dine-in buyurtmalar
   getDineInOrders: (active) => apiFetch(`/panel/dine-in/orders${active ? '?active=1' : ''}`),
   setDineInOrderStatus: (id, status) => apiFetch(`/panel/dine-in/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),

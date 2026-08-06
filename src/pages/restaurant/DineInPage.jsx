@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
-import { NumberInput } from '@/components/form/NumberInput';
+import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { getSocket } from '@/lib/socket';
@@ -168,6 +168,7 @@ export function DineInPage() {
           {[
             ['tables', 'Stollar'],
             ['waiters', 'Ofitsiantlar'],
+            ['earnings', 'Daromad'],
             ['settings', 'Xizmat haqi'],
           ].map(([k, label]) => (
             <button
@@ -184,6 +185,7 @@ export function DineInPage() {
       )}
 
       {cfg?.status === 'active' && tab === 'waiters' && <Waiters tables={tables} />}
+      {cfg?.status === 'active' && tab === 'earnings' && <Earnings />}
       {cfg?.status === 'active' && tab === 'settings' && (
         <ServiceFee cfg={cfg} onSaved={load} />
       )}
@@ -883,5 +885,183 @@ function ServiceFee({ cfg, onSaved }) {
         {saving ? 'Saqlanmoqda...' : 'Saqlash'}
       </button>
     </div>
+  );
+}
+
+/* ═══ OFITSIANT DAROMADI ═══ */
+function Earnings() {
+  const [period, setPeriod] = useState('month');
+  const [data, setData] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [paying, setPaying] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    panelApi.getWaiterEarnings(period)
+      .then(setData).catch(() => {}).finally(() => setLoading(false));
+  }, [period]);
+
+  useEffect(() => { load(); }, [load]);
+
+  const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
+
+  if (loading) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
+
+  const waiters = data?.waiters || [];
+  const totalRemaining = waiters.reduce((s, w) => s + w.qoldiq, 0);
+
+  return (
+    <>
+      {/* Davr */}
+      <div className="flex gap-2 mb-4">
+        {[['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy']].map(([k, label]) => (
+          <button key={k} onClick={() => setPeriod(k)}
+            className={`px-4 py-2 rounded-xl text-sm font-medium border ${
+              period === k
+                ? 'border-brand-400 bg-brand-50 text-brand-600'
+                : 'border-line text-muted'
+            }`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {totalRemaining > 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+          <div className="text-xs text-amber-700">To&apos;lanmagan xizmat haqi</div>
+          <div className="text-xl font-bold text-amber-800">{som(totalRemaining)} so&apos;m</div>
+        </div>
+      )}
+
+      {waiters.length === 0 ? (
+        <div className="text-center py-12">
+          <i className="ti ti-users text-4xl text-muted mb-3 block" />
+          <div className="text-ink font-medium">Ofitsiant yo&apos;q</div>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {waiters.map((w) => (
+            <div key={w._id} className="bg-surface border border-line rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <div className="font-medium text-ink">{w.fullName}</div>
+                {!w.isActive && (
+                  <span className="text-[11px] px-2 py-1 rounded-full bg-canvas text-muted flex-none">
+                    O&apos;chiq
+                  </span>
+                )}
+              </div>
+
+              {/* Davr bo'yicha */}
+              <div className="grid grid-cols-3 gap-2 text-center mb-3">
+                <div className="bg-canvas rounded-lg py-2">
+                  <div className="text-[10px] text-muted">Savdo</div>
+                  <div className="text-sm font-semibold text-ink">{som(w.savdo)}</div>
+                </div>
+                <div className="bg-canvas rounded-lg py-2">
+                  <div className="text-[10px] text-muted">Xizmat haqi</div>
+                  <div className="text-sm font-semibold text-brand-600">{som(w.xizmatHaqi)}</div>
+                </div>
+                <div className="bg-canvas rounded-lg py-2">
+                  <div className="text-[10px] text-muted">Buyurtma</div>
+                  <div className="text-sm font-semibold text-ink">{w.buyurtmalar}</div>
+                </div>
+              </div>
+
+              {/* Umumiy hisob */}
+              <div className="text-xs text-muted space-y-1 mb-3 pt-2 border-t border-line">
+                <div className="flex justify-between">
+                  <span>Jami daromad</span>
+                  <span className="text-ink">{som(w.jamiDaromad)} so&apos;m</span>
+                </div>
+                <div className="flex justify-between">
+                  <span>To&apos;langan</span>
+                  <span className="text-green-600">{som(w.tolangan)} so&apos;m</span>
+                </div>
+                <div className="flex justify-between font-medium">
+                  <span className="text-ink">Qoldiq</span>
+                  <span className={w.qoldiq > 0 ? 'text-amber-700' : 'text-muted'}>
+                    {som(w.qoldiq)} so&apos;m
+                  </span>
+                </div>
+              </div>
+
+              {w.qoldiq > 0 && (
+                <button onClick={() => setPaying(w)}
+                  className="w-full bg-green-500 text-white font-medium py-2 rounded-lg text-sm">
+                  To&apos;lash
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {paying && (
+        <PayoutModal
+          waiter={paying}
+          period={period}
+          onClose={() => setPaying(null)}
+          onPaid={() => { setPaying(null); load(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function PayoutModal({ waiter, period, onClose, onPaid }) {
+  useLockScroll();
+  const [amount, setAmount] = useState(waiter.qoldiq);
+  const [note, setNote] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
+
+  const submit = async () => {
+    const value = Number(amount);
+    if (!value || value <= 0) { setErr('Summani kiriting'); return; }
+
+    setSaving(true); setErr(null);
+    try {
+      const r = await panelApi.payWaiter(waiter._id, value, note);
+      alert(`${som(r.paid)} so'm to'landi. Qoldiq: ${som(r.remaining)} so'm`);
+      onPaid();
+    } catch (e) {
+      setErr(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title="Xizmat haqini to'lash" onClose={onClose}>
+      <div className="bg-canvas rounded-xl p-3.5 mb-4 text-sm">
+        <div className="flex justify-between py-1">
+          <span className="text-muted">Ofitsiant</span>
+          <span className="text-ink">{waiter.fullName}</span>
+        </div>
+        <div className="flex justify-between py-1">
+          <span className="text-muted">Qoldiq</span>
+          <b className="text-ink">{som(waiter.qoldiq)} so&apos;m</b>
+        </div>
+      </div>
+
+      <Field label="To'lov summasi" hint="Qoldiqdan ko'p bo'lmasligi kerak">
+        <MoneyInput value={amount} onChange={setAmount} />
+      </Field>
+
+      <Field label="Izoh">
+        <input value={note} onChange={(e) => setNote(e.target.value)}
+          placeholder={`${period === 'today' ? 'Bugungi' : period === 'week' ? 'Haftalik' : 'Oylik'} to'lov`}
+          className="inp" />
+      </Field>
+
+      <div className="text-xs text-muted bg-canvas rounded-lg p-3 mb-3 leading-relaxed">
+        To&apos;lov moliyaviy jurnalga yoziladi. Bir summa ikki marta
+        to&apos;lanmaydi — qoldiq avtomatik hisoblanadi.
+      </div>
+
+      {err && <ErrBox text={err} />}
+      <Actions onClose={onClose} onSubmit={submit} saving={saving} />
+    </Modal>
   );
 }
