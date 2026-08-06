@@ -60,3 +60,19 @@ body {
  font-size:11px;
  font-weight:700;
 }
+/* ═══ Mobil menyu animatsiyalari ═══ */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+/* Pastki panel kontentni yopmasin */
+@media (max-width: 1023px) {
+  main, .page-content {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+}

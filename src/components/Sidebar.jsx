@@ -167,9 +167,21 @@ const {isActive: dineInActive}=useDineInStatus(!isAdmin);
 const nav = (isAdmin ? adminNav : restaurantNav)
   .filter((item) => !item.dineInOnly || dineInActive);
 
+// Mobilda pastda 4 ta, qolgani "Ko'proq" da
+const MOBILE_TABS = 4;
+const primaryNav = nav.slice(0, MOBILE_TABS);
+const moreNav = nav.slice(MOBILE_TABS);
+
 
 const {count: stoppedCount}=useStoppedCount(!isAdmin);
 const {count: transferCount}=usePendingTransfers(!isAdmin);
+
+// "Ko'proq" ichidagi bildirishnomalar yig'indisi
+const moreBadge = moreNav.reduce((sum, item) => {
+  if (item.badge === "stopped") return sum + stoppedCount;
+  if (item.badge === "transfers") return sum + transferCount;
+  return sum;
+}, 0);
 
 
 
@@ -324,6 +336,58 @@ item.badge==="transfers" && transferCount>0 &&
 
 
 
+
+
+/* Pastki panel bandi */
+const MobileTab=({item,badge})=>(
+  <NavLink
+    to={item.to}
+    end={item.end}
+    className={({isActive})=>
+      `flex-1 flex flex-col items-center justify-center gap-1 py-2 transition-opacity active:opacity-60 ${
+        isActive ? "text-brand-100" : "text-[#D9B98C]"
+      }`
+    }
+  >
+    <div className="relative">
+      <i className={`ti ${item.icon} text-[21px]`}/>
+      {badge>0 && (
+        <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+          {badge}
+        </span>
+      )}
+    </div>
+    <span className="text-[10px] font-medium leading-none truncate max-w-[68px]">
+      {item.label}
+    </span>
+  </NavLink>
+);
+
+
+/* "Ko'proq" varag'idagi karta */
+const MobileCard=({item,onClick,badge})=>(
+  <NavLink
+    to={item.to}
+    end={item.end}
+    onClick={onClick}
+    className={({isActive})=>
+      `relative flex flex-col gap-2 p-3.5 rounded-2xl border transition-colors active:scale-[.97] ${
+        isActive
+          ? "bg-brand-400/20 border-brand-400/40 text-brand-100"
+          : "bg-white/5 border-white/8 text-[#D9B98C]"
+      }`
+    }
+  >
+    <i className={`ti ${item.icon} text-xl`}/>
+    <span className="text-[13px] font-medium leading-tight">{item.label}</span>
+
+    {badge>0 && (
+      <span className="absolute top-2.5 right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+        {badge}
+      </span>
+    )}
+  </NavLink>
+);
 
 
 const Brand=()=>(
@@ -534,144 +598,112 @@ border-white/10
 
 
 
-{/* MOBILE HEADER */}
+{/* ══════════ MOBIL: yuqori panel ══════════ */}
 
-<header className="
-lg:hidden
-sticky
-top:0
-z-30
-bg-sidebar
-px-4
-py-3
-flex
-justify-between
-items-center
-">
+<header className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 bg-sidebar/85 backdrop-blur-xl border-b border-white/10">
+  <Brand/>
 
-
-<Brand/>
-
-
-<button
-
-onClick={()=>setOpen(true)}
-
-className="
-text-white
-text-2xl
-"
-
->
-
-<i className="ti ti-menu-2"/>
-
-</button>
-
-
+  <button
+    onClick={()=>setOpen(true)}
+    aria-label="Menyu"
+    className="w-9 h-9 rounded-full bg-white/8 text-white flex items-center justify-center active:scale-90 transition-transform"
+  >
+    <i className="ti ti-dots text-lg"/>
+  </button>
 </header>
 
 
+{/* ══════════ MOBIL: pastki navigatsiya ══════════ */}
 
+<nav className="lg:hidden fixed bottom-0 left-0 right-0 z-30 bg-sidebar/90 backdrop-blur-xl border-t border-white/10 pb-[env(safe-area-inset-bottom)]">
+  <div className="flex items-stretch">
+    {primaryNav.map((item)=>(
+      <MobileTab
+        key={item.to}
+        item={item}
+        badge={
+          item.badge==="stopped" ? stoppedCount
+          : item.badge==="transfers" ? transferCount
+          : 0
+        }
+      />
+    ))}
 
-
-{/* MOBILE DRAWER */}
-
-{
-open &&
-
-<div className="
-fixed
-inset-0
-z-50
-lg:hidden
-flex
-">
-
-<div
-
-onClick={()=>setOpen(false)}
-
-className="
-absolute
-inset-0
-bg-black/50
-"
-
-/>
-
-
-<aside className="
-relative
-w-72
-bg-sidebar
-h-full
-flex
-flex-col
-">
-
-
-<div className="
-p-5
-border-b
-border-white/10
-">
-
-<Brand/>
-
-</div>
-
-
-
-<div className="
-flex-1
-overflow-y-auto
-sidebar-scroll
-p-4
-">
-
-
-<nav className="space-y-1">
-
-{
-nav.map(item=>(
-
-<NavItem
-key={item.to}
-item={item}
-onClick={()=>setOpen(false)}
-/>
-
-))
-
-}
-
+    {moreNav.length>0 && (
+      <button
+        onClick={()=>setOpen(true)}
+        className="flex-1 flex flex-col items-center justify-center gap-1 py-2 text-[#D9B98C] active:opacity-60 transition-opacity"
+      >
+        <div className="relative">
+          <i className="ti ti-dots text-[21px]"/>
+          {moreBadge>0 && (
+            <span className="absolute -top-1 -right-2 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+              {moreBadge}
+            </span>
+          )}
+        </div>
+        <span className="text-[10px] font-medium">Ko'proq</span>
+      </button>
+    )}
+  </div>
 </nav>
 
 
-</div>
+{/* ══════════ MOBIL: to'liq menyu ══════════ */}
 
+{open && (
+  <div className="lg:hidden fixed inset-0 z-50 flex flex-col justify-end">
 
+    {/* Orqa fon */}
+    <div
+      onClick={()=>setOpen(false)}
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-[fadeIn_.2s_ease]"
+    />
 
-<div className="
-p-4
-border-t
-border-white/10
-">
+    {/* Pastdan chiqadigan varaq */}
+    <div className="relative bg-sidebar rounded-t-3xl max-h-[85dvh] flex flex-col animate-[slideUp_.28s_cubic-bezier(.32,.72,0,1)]">
 
-<Account/>
+      {/* Tutqich */}
+      <div className="flex-none pt-2.5 pb-1">
+        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto"/>
+      </div>
 
-</div>
+      {/* Sarlavha */}
+      <div className="flex-none flex items-center justify-between px-5 py-3">
+        <Brand/>
+        <button
+          onClick={()=>setOpen(false)}
+          className="w-8 h-8 rounded-full bg-white/8 text-white/70 flex items-center justify-center"
+        >
+          <i className="ti ti-x text-base"/>
+        </button>
+      </div>
 
+      {/* Bandlar — ikki ustunda */}
+      <div className="flex-1 overflow-y-auto px-4 pb-2">
+        <div className="grid grid-cols-2 gap-2">
+          {nav.map((item)=>(
+            <MobileCard
+              key={item.to}
+              item={item}
+              onClick={()=>setOpen(false)}
+              badge={
+                item.badge==="stopped" ? stoppedCount
+                : item.badge==="transfers" ? transferCount
+                : 0
+              }
+            />
+          ))}
+        </div>
+      </div>
 
-</aside>
-
-
-</div>
-
-}
-
-
+      {/* Akkaunt */}
+      <div className="flex-none px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-white/10">
+        <Account/>
+      </div>
+    </div>
+  </div>
+)}
 
 </>
 
