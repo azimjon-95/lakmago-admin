@@ -107,7 +107,8 @@ const restaurantNav = [
   {
     to:"/dine-in-live",
     icon:"ti-bell-ringing",
-    label:"Zal buyurtmalari"
+    label:"Zal buyurtmalari",
+    dineInOnly:true
   },
   {
     to:"/dine-in",
@@ -117,7 +118,8 @@ const restaurantNav = [
   {
     to:"/dine-in-history",
     icon:"ti-history",
-    label:"Zal tarixi"
+    label:"Zal tarixi",
+    dineInOnly:true
   },
   {
     to:"/reservations",
@@ -158,7 +160,11 @@ const logout = useAuth((s)=>s.logout);
 
 const isAdmin = user?.role==="admin";
 
-const nav = isAdmin ? adminNav : restaurantNav;
+// Dine-in tasdiqlanmaguncha zal bo'limlari ko'rinmaydi
+const {isActive: dineInActive}=useDineInStatus(!isAdmin);
+
+const nav = (isAdmin ? adminNav : restaurantNav)
+  .filter((item) => !item.dineInOnly || dineInActive);
 
 
 const {count: stoppedCount}=useStoppedCount(!isAdmin);

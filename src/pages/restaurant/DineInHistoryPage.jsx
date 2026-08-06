@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
+import { useDineInStatus } from '@/hooks/useDineInStatus';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDT = (d) => new Date(d).toLocaleString('ru-RU', {
@@ -20,6 +21,7 @@ const today = () => new Date().toISOString().slice(0, 10);
 const daysAgo = (n) => new Date(Date.now() - n * 864e5).toISOString().slice(0, 10);
 
 export function DineInHistoryPage() {
+  const { status: dineInStatus } = useDineInStatus();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -51,6 +53,8 @@ export function DineInHistoryPage() {
     setFilters((f) => ({ ...f, from: daysAgo(days), to: today() }));
     setPage(1);
   };
+
+  if (dineInStatus && dineInStatus !== 'active') return <DineInLocked />;
 
   return (
     <div className="p-4 sm:p-6">
@@ -219,6 +223,26 @@ function Stat({ label, value, raw, accent }) {
       <div className={`text-lg font-bold ${accent ? 'text-brand-600' : 'text-ink'}`}>
         {raw ? value : som(value)}
       </div>
+    </div>
+  );
+}
+
+/**
+ * Dine-in faol emas — bo'limga kirib bo'lmaydi.
+ * Sidebar'da yashirilgan, lekin to'g'ridan URL ham bloklanadi.
+ */
+function DineInLocked() {
+  return (
+    <div className="p-6 text-center py-16">
+      <i className="ti ti-lock text-4xl text-muted mb-3 block" />
+      <div className="text-ink font-medium">Dine-in yoqilmagan</div>
+      <p className="text-sm text-muted mt-1.5 max-w-xs mx-auto">
+        Bu bo'lim Dine-in xizmati tasdiqlangandan keyin ochiladi
+      </p>
+      <a href="/dine-in"
+        className="inline-block mt-5 border border-line text-muted px-4 py-2 rounded-xl text-sm">
+        Dine-in bo'limiga
+      </a>
     </div>
   );
 }

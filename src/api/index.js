@@ -52,22 +52,6 @@ export const panelApi = {
 
   // Mijozlarni jalb qilish — Super Admin
   // Dine-in — Super Admin
-  getDineInRequests: () => apiFetch('/admin/dine-in'),
-  setDineInStatus: (id, status, reason) => apiFetch(`/admin/dine-in/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
-
-  getDineInTariff: () => apiFetch('/admin/dine-in/tariff'),
-  updateDineInTariff: (d) => apiFetch('/admin/dine-in/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
-  getDineInBilling: (id) => apiFetch(`/admin/dine-in/billing/${id}`),
-  markDineInPaid: (id) => apiFetch(`/admin/dine-in/billing/${id}/pay`, { method: 'POST' }),
-
-  getPromoAdminOverview: () => apiFetch('/admin/promo/overview'),
-  getPromoRestaurants: (q = '') => apiFetch(`/admin/promo/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
-  getPromoBilling: (id) => apiFetch(`/admin/promo/billing/${id}`),
-  markPromoPaid: (id) => apiFetch(`/admin/promo/billing/${id}/pay`, { method: 'POST' }),
-  setPromoStatus: (id, status, reason) => apiFetch(`/admin/promo/subscription/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
-  getPromoTariff: () => apiFetch('/admin/promo/tariff'),
-  updatePromoTariff: (d) => apiFetch('/admin/promo/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
-
   // Продвижение
   getPromoOverview: () => apiFetch('/panel/promo/overview'),
   getPromotions: () => apiFetch('/panel/promotions'),
@@ -123,6 +107,23 @@ export const panelApi = {
 
 // ===== Admin paneli API (role: admin) =====
 export const adminApi = {
+  // ===== Dine-in =====
+  getDineInRequests: () => apiFetch('/admin/dine-in'),
+  setDineInStatus: (id, status, reason) => apiFetch(`/admin/dine-in/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+
+  getDineInTariff: () => apiFetch('/admin/dine-in/tariff'),
+  updateDineInTariff: (d) => apiFetch('/admin/dine-in/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
+  getDineInBilling: (id) => apiFetch(`/admin/dine-in/billing/${id}`),
+  markDineInPaid: (id) => apiFetch(`/admin/dine-in/billing/${id}/pay`, { method: 'POST' }),
+
+  getPromoAdminOverview: () => apiFetch('/admin/promo/overview'),
+  getPromoRestaurants: (q = '') => apiFetch(`/admin/promo/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  getPromoBilling: (id) => apiFetch(`/admin/promo/billing/${id}`),
+  markPromoPaid: (id) => apiFetch(`/admin/promo/billing/${id}/pay`, { method: 'POST' }),
+  setPromoStatus: (id, status, reason) => apiFetch(`/admin/promo/subscription/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+  getPromoTariff: () => apiFetch('/admin/promo/tariff'),
+  updatePromoTariff: (d) => apiFetch('/admin/promo/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
+
   getStats: () => apiFetch('/admin/stats'),
   getRestaurants: (status) => apiFetch(`/admin/restaurants${status ? `?status=${status}` : ''}`),
   createRestaurant: (data) => apiFetch('/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),

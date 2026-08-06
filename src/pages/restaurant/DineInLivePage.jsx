@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { panelApi } from '@/api';
+import { useDineInStatus } from '@/hooks/useDineInStatus';
 import { getSocket } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
 
@@ -19,6 +20,7 @@ const ORDER_STATUS = {
 };
 
 export function DineInLivePage() {
+  const { status: dineInStatus } = useDineInStatus();
   const [dash, setDash] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +123,8 @@ export function DineInLivePage() {
       }
     }
   };
+
+  if (dineInStatus && dineInStatus !== 'active') return <DineInLocked />;
 
   if (loading) return <div className="p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
@@ -423,4 +427,24 @@ function notify(title, body) {
     if (Notification.permission !== 'granted') return;
     new Notification(title, { body, icon: '/logo-192.png' });
   } catch { /* ignore */ }
+}
+
+/**
+ * Dine-in faol emas — bo'limga kirib bo'lmaydi.
+ * Sidebar'da yashirilgan, lekin to'g'ridan URL ham bloklanadi.
+ */
+function DineInLocked() {
+  return (
+    <div className="p-6 text-center py-16">
+      <i className="ti ti-lock text-4xl text-muted mb-3 block" />
+      <div className="text-ink font-medium">Dine-in yoqilmagan</div>
+      <p className="text-sm text-muted mt-1.5 max-w-xs mx-auto">
+        Bu bo'lim Dine-in xizmati tasdiqlangandan keyin ochiladi
+      </p>
+      <a href="/dine-in"
+        className="inline-block mt-5 border border-line text-muted px-4 py-2 rounded-xl text-sm">
+        Dine-in bo'limiga
+      </a>
+    </div>
+  );
 }

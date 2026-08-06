@@ -100,7 +100,12 @@ export function DineInPage() {
 
   if (loading) return <div className="p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
-  const st = STATUS[cfg?.status || 'none'];
+  // Hali so'rov yubormagan — tanishtiruv ekrani
+  if (!cfg || cfg.status === 'none') {
+    return <DineInIntro onRequest={request} />;
+  }
+
+  const st = STATUS[cfg.status];
 
   return (
     <div className="p-4 sm:p-6">
@@ -118,19 +123,6 @@ export function DineInPage() {
           </span>
         </div>
 
-        {cfg?.status === 'none' && (
-          <>
-            <p className="text-xs text-muted mb-3 leading-relaxed">
-              Dine-in yoqilsa mijozlar stoldagi QR kodni skanerlab
-              menyuni ochadi va joyidan buyurtma beradi.
-            </p>
-            <button onClick={request}
-              className="w-full bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl">
-              So'rov yuborish
-            </button>
-          </>
-        )}
-
         {cfg?.status === 'pending' && (
           <p className="text-xs text-muted">
             So'rovingiz ko'rib chiqilmoqda. Tasdiqlangach xabar beramiz.
@@ -139,14 +131,13 @@ export function DineInPage() {
 
         {['approved', 'payment_required'].includes(cfg?.status) && (
           <p className="text-xs text-amber-700">
-            Tasdiqlandi. Xizmatni yoqish uchun administrator bilan
-            bog'laning.
+            Tasdiqlandi. Xizmatni yoqish uchun administrator bilan bog'laning.
           </p>
         )}
 
         {cfg?.status === 'suspended' && (
           <p className="text-xs text-red-600">
-            {cfg.suspendReason || 'Xizmat vaqtincha to\'xtatilgan'}
+            {cfg.suspendReason || "Xizmat vaqtincha to'xtatilgan"}
           </p>
         )}
 
@@ -1081,5 +1072,155 @@ function PayoutModal({ waiter, period, onClose, onPaid }) {
       {err && <ErrBox text={err} />}
       <Actions onClose={onClose} onSubmit={submit} saving={saving} />
     </Modal>
+  );
+}
+
+/* ═══ TANISHTIRUV ═══ */
+function DineInIntro({ onRequest }) {
+  const [sending, setSending] = useState(false);
+
+  const send = async () => {
+    setSending(true);
+    await onRequest();
+    setSending(false);
+  };
+
+  return (
+    <div className="p-4 sm:p-6 max-w-2xl">
+      {/* Sarlavha */}
+      <div className="text-center mb-7">
+        <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mx-auto mb-4">
+          <i className="ti ti-qrcode text-3xl text-brand-600" />
+        </div>
+        <h1 className="text-2xl font-bold text-ink mb-2">
+          Zal ichida QR orqali buyurtma
+        </h1>
+        <p className="text-sm text-muted leading-relaxed max-w-md mx-auto">
+          Mijoz stoldagi QR kodni skanerlab menyuni ochadi va
+          ofitsiantni kutmasdan buyurtma beradi
+        </p>
+      </div>
+
+      {/* Qanday ishlaydi */}
+      <div className="bg-surface border border-line rounded-2xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-ink mb-4">Qanday ishlaydi</h2>
+
+        <div className="space-y-4">
+          <Step n={1} title="Stollarni yaratasiz"
+            text="Har stolga raqam va nom berasiz. Tizim avtomatik QR kod yaratadi." />
+          <Step n={2} title="QR kodlarni chop etasiz"
+            text="Bitta stol yoki barchasi uchun PDF yuklab olasiz. Dizaynni o'zingiz sozlaysiz — logo, rang, fon rasmi." />
+          <Step n={3} title="Mijoz skanerlaydi"
+            text="Ilova o'rnatish shart emas. QR bosilishi bilan menyu ochiladi va stol avtomatik aniqlanadi." />
+          <Step n={4} title="Buyurtma sizga keladi"
+            text="Panelda ovoz bilan bildirishnoma chiqadi. Holatni o'zgartirasiz — mijoz kuzatib turadi." />
+        </div>
+      </div>
+
+      {/* Namuna */}
+      <div className="bg-surface border border-line rounded-2xl p-5 mb-4">
+        <h2 className="text-sm font-semibold text-ink mb-4">
+          Mijoz shuni ko&apos;radi
+        </h2>
+
+        <div className="flex gap-4 items-start">
+          {/* Telefon namunasi */}
+          <div className="w-[132px] flex-none rounded-xl overflow-hidden border border-line bg-[#14110F]">
+            <div className="px-3 py-2.5 border-b border-white/10">
+              <div className="text-[11px] font-bold text-white">Sizning kafe</div>
+              <div className="text-[9px] text-amber-400 mt-0.5">Stol 12</div>
+            </div>
+
+            <div className="flex gap-1 px-2 py-1.5">
+              <span className="text-[8px] bg-amber-400 text-black px-2 py-0.5 rounded-full font-semibold">
+                Hammasi
+              </span>
+              <span className="text-[8px] bg-white/10 text-white/60 px-2 py-0.5 rounded-full">
+                Issiq
+              </span>
+            </div>
+
+            {[['Osh', '32 000'], ['Lag\u2018mon', '28 000']].map(([name, price]) => (
+              <div key={name} className="flex items-center gap-2 px-2 py-1.5">
+                <div className="w-8 h-8 rounded-lg bg-white/10 flex-none" />
+                <div className="min-w-0">
+                  <div className="text-[9px] text-white truncate">{name}</div>
+                  <div className="text-[9px] text-amber-400 font-semibold">{price}</div>
+                </div>
+              </div>
+            ))}
+
+            <div className="m-2 py-1.5 rounded-lg bg-amber-400 text-black text-[9px] font-bold text-center">
+              Savat · 60 000
+            </div>
+          </div>
+
+          {/* Imkoniyatlar */}
+          <ul className="flex-1 space-y-2.5 text-sm">
+            {[
+              'Menyu zal narxlari bilan',
+              "Bir sessiyada bir necha buyurtma",
+              'Ofitsiant chaqirish tugmasi',
+              'Hisobni so\u2018rash',
+              'Buyurtma holatini kuzatish',
+            ].map((t) => (
+              <li key={t} className="flex items-start gap-2.5">
+                <i className="ti ti-circle-check text-green-600 text-base flex-none mt-0.5" />
+                <span className="text-ink">{t}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+
+      {/* Foyda */}
+      <div className="grid grid-cols-3 gap-3 mb-5">
+        {[
+          ['ti-clock-hour-3', 'Tezroq', "Ofitsiant kutilmaydi"],
+          ['ti-users', 'Kamroq xodim', 'Bir ofitsiant ko\u2018p stolga'],
+          ['ti-receipt-off', 'Xatosiz', 'Buyurtma to\u2018g\u2018ridan tizimga'],
+        ].map(([icon, title, text]) => (
+          <div key={title} className="bg-surface border border-line rounded-xl p-3.5 text-center">
+            <i className={`ti ${icon} text-xl text-brand-600 mb-1.5 block`} />
+            <div className="text-sm font-medium text-ink">{title}</div>
+            <div className="text-[11px] text-muted mt-0.5 leading-snug">{text}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Ariza */}
+      <div className="bg-brand-50 border border-brand-400/40 rounded-2xl p-5">
+        <h2 className="text-base font-semibold text-ink mb-1">
+          Ulanish uchun ariza qoldiring
+        </h2>
+        <p className="text-sm text-muted mb-4 leading-relaxed">
+          So&apos;rovingiz LokmaGo administratoriga boradi. Tasdiqlangach
+          Dine-in bo&apos;limlari ochiladi va stollarni yarata boshlaysiz.
+        </p>
+
+        <button onClick={send} disabled={sending}
+          className="w-full bg-brand-400 text-brand-text font-semibold py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
+          {sending ? 'Yuborilmoqda...' : 'Ariza qoldirish'}
+        </button>
+
+        <p className="text-[11px] text-muted mt-3 text-center">
+          Ariza bepul. Tarif va shartlar tasdiqlangandan keyin ko&apos;rsatiladi.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function Step({ n, title, text }) {
+  return (
+    <div className="flex gap-3.5">
+      <div className="w-7 h-7 rounded-full bg-brand-400 text-brand-text font-bold text-sm flex items-center justify-center flex-none">
+        {n}
+      </div>
+      <div className="min-w-0 pt-0.5">
+        <div className="text-sm font-medium text-ink">{title}</div>
+        <div className="text-xs text-muted mt-0.5 leading-relaxed">{text}</div>
+      </div>
+    </div>
   );
 }
