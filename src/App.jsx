@@ -18,6 +18,7 @@ import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { BillingPage } from '@/pages/admin/BillingPage';
 import { CatalogPage } from '@/pages/admin/CatalogPage';
 import { PromoAdminPage } from '@/pages/admin/PromoAdminPage';
+import { DineInAdminPage } from '@/pages/admin/DineInAdminPage';
 import { RevenuePage } from '@/pages/admin/RevenuePage';
 import { BannersPage } from '@/pages/admin/BannersPage';
 import { OrdersMonitorPage } from '@/pages/admin/OrdersMonitorPage';
@@ -29,6 +30,7 @@ import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
 import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
 import { RestaurantProfilePage } from '@/pages/restaurant/ProfilePage';
 import { StopListPage } from '@/pages/restaurant/StopListPage';
+import { DineInPage } from '@/pages/restaurant/DineInPage';
 import { MenuTransferPage } from '@/pages/restaurant/MenuTransferPage';
 import { PromotionPage } from '@/pages/restaurant/PromotionPage';
 import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
@@ -70,6 +72,7 @@ function AdminRoutes() {
         <Route path="/billing" element={<BillingPage />} />
         <Route path="/catalog" element={<CatalogPage />} />
         <Route path="/promo-admin" element={<PromoAdminPage />} />
+        <Route path="/dine-in-admin" element={<DineInAdminPage />} />
         <Route path="/users" element={<UsersPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -87,6 +90,7 @@ function RestaurantRoutes() {
         <Route path="/banner" element={<RestaurantBannerPage />} />
         <Route path="/profile" element={<RestaurantProfilePage />} />
         <Route path="/stop-list" element={<StopListPage />} />
+        <Route path="/dine-in" element={<DineInPage />} />
         <Route path="/menu-transfer" element={<MenuTransferPage />} />
         <Route path="/promotion" element={<PromotionPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />

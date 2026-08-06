@@ -1,4 +1,4 @@
-import { apiFetch, setToken, clearToken, getToken } from './client.js';
+import { apiFetch, setToken, clearToken, getToken, downloadFile } from './client.js';
 
 // ===== Autentifikatsiya =====
 export const auth = {
@@ -13,9 +13,25 @@ export const auth = {
 // ===== Restoran paneli API (role: restaurant) =====
 export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
+  // Dine-in
+  downloadFile,
+  getDineInConfig: () => apiFetch('/panel/dine-in'),
+  requestDineIn: () => apiFetch('/panel/dine-in/request', { method: 'POST' }),
+  updateQrTheme: (d) => apiFetch('/panel/dine-in/theme', { method: 'PATCH', body: JSON.stringify(d) }),
+  getTables: () => apiFetch('/panel/tables'),
+  createTable: (d) => apiFetch('/panel/tables', { method: 'POST', body: JSON.stringify(d) }),
+  createTablesBulk: (d) => apiFetch('/panel/tables/bulk', { method: 'POST', body: JSON.stringify(d) }),
+  updateTable: (id, d) => apiFetch(`/panel/tables/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  deleteTable: (id) => apiFetch(`/panel/tables/${id}`, { method: 'DELETE' }),
+  regenerateQr: (id) => apiFetch(`/panel/tables/${id}/regenerate`, { method: 'POST' }),
+
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
   // Mijozlarni jalb qilish — Super Admin
+  // Dine-in — Super Admin
+  getDineInRequests: () => apiFetch('/admin/dine-in'),
+  setDineInStatus: (id, status, reason) => apiFetch(`/admin/dine-in/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
+
   getPromoAdminOverview: () => apiFetch('/admin/promo/overview'),
   getPromoRestaurants: (q = '') => apiFetch(`/admin/promo/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   getPromoBilling: (id) => apiFetch(`/admin/promo/billing/${id}`),

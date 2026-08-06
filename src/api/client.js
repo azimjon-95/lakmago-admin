@@ -40,3 +40,28 @@ export async function apiFetch(path, options = {}) {
 }
 
 export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4000';
+
+/**
+ * Faylni token bilan yuklab oladi.
+ *
+ * window.open ishlatib bo'lmaydi — u Authorization sarlavhasini
+ * yubormaydi va 401 qaytadi.
+ */
+export async function downloadFile(path) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: {
+      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+    },
+  });
+
+  if (!res.ok) {
+    let msg = 'Yuklab bo\u2018lmadi';
+    try {
+      const data = await res.json();
+      msg = data.error || msg;
+    } catch { /* JSON emas */ }
+    throw new Error(msg);
+  }
+
+  return res.blob();
+}
