@@ -57,7 +57,7 @@ function Overview() {
   const [data, setData] = useState(null);
 
   useEffect(() => {
-    adminApi.getPromoAdminOverview().then(setData).catch(() => {});
+    adminApi?.getPromoAdminOverview().then(setData).catch(() => {});
   }, []);
 
   if (!data) return <div className="text-muted text-sm">Yuklanmoqda...</div>;

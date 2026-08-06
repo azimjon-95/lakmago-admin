@@ -40,11 +40,38 @@ import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 // Panel karkasi (sidebar + sahifa).
 // Mobilda: yuqori panel + pastki tez-kirish sidebar ichida chiziladi,
 // shuning uchun kontentga pastdan bo'shliq beramiz (pastki nav bosib qolmasin).
+// Panel karkasi (sidebar + sahifa)
 function Shell({ children }) {
   return (
-    <div className="flex flex-col lg:flex-row min-h-screen bg-canvas">
+    <div className="min-h-screen bg-canvas">
+
+      {/* Sidebar */}
       <Sidebar />
-      <main className="flex-1 flex min-w-0 pb-16 lg:pb-0">{children}</main>
+
+
+      {/* Content */}
+      <main
+        className="
+          min-h-screen
+          lg:ml-[280px]
+          pb-16
+          lg:pb-0
+          transition-all
+        "
+      >
+        <div
+          className="
+            w-full
+            min-h-screen
+            p-4
+            sm:p-5
+            lg:p-8
+          "
+        >
+          {children}
+        </div>
+      </main>
+
     </div>
   );
 }
