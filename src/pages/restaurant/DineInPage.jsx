@@ -23,6 +23,7 @@ const TABLE_STATUS = {
 };
 
 export function DineInPage() {
+  const [tab, setTab] = useState('tables');
   const [cfg, setCfg] = useState(null);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -161,8 +162,34 @@ export function DineInPage() {
         )}
       </div>
 
-      {/* Stollar */}
+      {/* Bo'limlar */}
       {cfg?.status === 'active' && (
+        <div className="flex gap-2 mb-4 border-b border-line overflow-x-auto">
+          {[
+            ['tables', 'Stollar'],
+            ['waiters', 'Ofitsiantlar'],
+            ['settings', 'Xizmat haqi'],
+          ].map(([k, label]) => (
+            <button
+              key={k}
+              onClick={() => setTab(k)}
+              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
+                tab === k ? 'border-brand-400 text-ink' : 'border-transparent text-muted hover:text-ink'
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {cfg?.status === 'active' && tab === 'waiters' && <Waiters tables={tables} />}
+      {cfg?.status === 'active' && tab === 'settings' && (
+        <ServiceFee cfg={cfg} onSaved={load} />
+      )}
+
+      {/* Stollar */}
+      {cfg?.status === 'active' && tab === 'tables' && (
         <>
           <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
             <h2 className="text-sm font-semibold text-ink">Stollar</h2>
@@ -509,6 +536,350 @@ function Actions({ onClose, onSubmit, saving }) {
       </button>
       <button onClick={onSubmit} disabled={saving}
         className="flex-[1.5] bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl disabled:opacity-50">
+        {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+      </button>
+    </div>
+  );
+}
+
+/* ═══ OFITSIANTLAR ═══ */
+function Waiters({ tables }) {
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editing, setEditing] = useState(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    panelApi.getWaiters()
+      .then(setItems).catch(() => {}).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const resetDevice = async (w) => {
+    if (!window.confirm(
+      `${w.fullName} qurilmasi bekor qilinsinmi?\n\n` +
+      'Keyingi kirishda yangi qurilma bog\'lanadi.',
+    )) return;
+    try {
+      const r = await panelApi.resetWaiterDevice(w._id);
+      alert(r.message);
+      load();
+    } catch (e) { alert(e.message); }
+  };
+
+  const remove = async (w) => {
+    if (!window.confirm(`${w.fullName} o'chirilsinmi?`)) return;
+    try { await panelApi.deleteWaiter(w._id); load(); }
+    catch (e) { alert(e.message); }
+  };
+
+  if (loading) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
+
+  return (
+    <>
+      <button onClick={() => setEditing('new')}
+        className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl mb-4">
+        <i className="ti ti-user-plus" /> Ofitsiant qo'shish
+      </button>
+
+      {items.length === 0 ? (
+        <div className="text-center py-12">
+          <i className="ti ti-users text-4xl text-muted mb-3 block" />
+          <div className="text-ink font-medium">Ofitsiant yo'q</div>
+          <p className="text-sm text-muted mt-1 max-w-xs mx-auto">
+            Ofitsiantlar waiter.lokma.uz orqali kirib buyurtma qabul qiladi
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2.5">
+          {items.map((w) => (
+            <div key={w._id} className="bg-surface border border-line rounded-xl p-4">
+              <div className="flex items-start justify-between gap-3 mb-2">
+                <div className="min-w-0">
+                  <div className="font-medium text-ink">{w.fullName}</div>
+                  <div className="text-xs text-muted">
+                    @{w.login}{w.phone && ` · ${w.phone}`}
+                  </div>
+                </div>
+                <span className={`text-[11px] font-medium px-2 py-1 rounded-full flex-none ${
+                  w.isActive ? 'bg-green-50 text-green-700' : 'bg-canvas text-muted'
+                }`}>
+                  {w.isActive ? 'Faol' : "O'chiq"}
+                </span>
+              </div>
+
+              {/* Qurilma */}
+              <div className="flex items-center gap-2 text-xs mb-2">
+                <i className={`ti ${w.deviceBound ? 'ti-device-mobile-check' : 'ti-device-mobile-off'}`} />
+                <span className={w.deviceBound ? 'text-green-600' : 'text-muted'}>
+                  {w.deviceBound
+                    ? `Qurilma bog'langan${w.deviceLabel ? ` · ${w.deviceLabel}` : ''}`
+                    : "Qurilma bog'lanmagan"}
+                </span>
+              </div>
+
+              {/* Stollar */}
+              {w.tableIds?.length > 0 && (
+                <div className="text-xs text-muted mb-2">
+                  Stollar: {w.tableIds.map((t) => t.tableNumber).join(', ')}
+                </div>
+              )}
+
+              {/* Daromad */}
+              {w.earnings?.total > 0 && (
+                <div className="text-xs text-muted mb-3">
+                  Daromad: <b className="text-ink">
+                    {w.earnings.total.toLocaleString('ru-RU')} so'm
+                  </b> · {w.earnings.orders} buyurtma
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <button onClick={() => setEditing(w)}
+                  className="flex-1 border border-line text-muted py-2 rounded-lg text-sm">
+                  Tahrirlash
+                </button>
+                {w.deviceBound && (
+                  <button onClick={() => resetDevice(w)}
+                    title="Qurilmani almashtirish"
+                    className="px-3 border border-amber-200 text-amber-700 py-2 rounded-lg text-sm">
+                    <i className="ti ti-device-mobile-x" />
+                  </button>
+                )}
+                <button onClick={() => remove(w)}
+                  className="px-3 border border-line text-red-500 py-2 rounded-lg">
+                  <i className="ti ti-trash text-sm" />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {editing && (
+        <WaiterForm
+          waiter={editing === 'new' ? null : editing}
+          tables={tables}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); load(); }}
+        />
+      )}
+    </>
+  );
+}
+
+function WaiterForm({ waiter, tables, onClose, onSaved }) {
+  useLockScroll();
+  const isEdit = Boolean(waiter);
+
+  const [form, setForm] = useState({
+    firstName: waiter?.firstName || '',
+    lastName: waiter?.lastName || '',
+    phone: waiter?.phone || '',
+    login: waiter?.login || '',
+    password: '',
+    isActive: waiter?.isActive ?? true,
+    tableIds: waiter?.tableIds?.map((t) => t._id || t) || [],
+  });
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const toggleTable = (id) => {
+    setForm((f) => ({
+      ...f,
+      tableIds: f.tableIds.includes(id)
+        ? f.tableIds.filter((x) => x !== id)
+        : [...f.tableIds, id],
+    }));
+  };
+
+  const submit = async () => {
+    if (form.firstName.trim().length < 2) { setErr('Ismni kiriting'); return; }
+    if (!isEdit && form.login.trim().length < 3) { setErr('Login kiriting'); return; }
+    if (!isEdit && form.password.length < 4) { setErr('Parol kamida 4 belgi'); return; }
+
+    setSaving(true); setErr(null);
+    try {
+      const payload = { ...form };
+      if (isEdit) {
+        delete payload.login;
+        if (!payload.password) delete payload.password;
+      }
+      if (isEdit) await panelApi.updateWaiter(waiter._id, payload);
+      else await panelApi.createWaiter(payload);
+      onSaved();
+    } catch (e) {
+      setErr(e.message);
+      setSaving(false);
+    }
+  };
+
+  return (
+    <Modal title={isEdit ? 'Ofitsiantni tahrirlash' : 'Yangi ofitsiant'} onClose={onClose}>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Ism *">
+          <input value={form.firstName} onChange={(e) => set('firstName', e.target.value)}
+            className="inp" />
+        </Field>
+        <Field label="Familiya">
+          <input value={form.lastName} onChange={(e) => set('lastName', e.target.value)}
+            className="inp" />
+        </Field>
+      </div>
+
+      <Field label="Telefon">
+        <input value={form.phone} onChange={(e) => set('phone', e.target.value)}
+          placeholder="+998 90 123 45 67" className="inp" />
+      </Field>
+
+      {!isEdit && (
+        <Field label="Login *" hint="Faqat harf, raqam va _">
+          <input value={form.login}
+            onChange={(e) => set('login', e.target.value.toLowerCase())}
+            placeholder="aziz" className="inp" />
+        </Field>
+      )}
+
+      <Field label={isEdit ? 'Yangi parol' : 'Parol *'}
+        hint={isEdit ? "Bo'sh qoldirsangiz o'zgarmaydi" : 'Kamida 4 belgi'}>
+        <input type="text" value={form.password}
+          onChange={(e) => set('password', e.target.value)}
+          className="inp" />
+      </Field>
+
+      {tables?.length > 0 && (
+        <Field label="Biriktirilgan stollar"
+          hint="Tanlanmasa barcha stollarga kirish beriladi. Bitta stolga eng ko'pi 3 ofitsiant.">
+          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
+            {tables.map((t) => (
+              <button key={t._id} onClick={() => toggleTable(t._id)}
+                className={`text-xs px-2.5 py-1.5 rounded-lg border ${
+                  form.tableIds.includes(t._id)
+                    ? 'border-brand-400 bg-brand-50 text-brand-600'
+                    : 'border-line text-muted'
+                }`}>
+                {t.tableNumber}
+              </button>
+            ))}
+          </div>
+        </Field>
+      )}
+
+      <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
+        <span className="text-sm text-ink">Faol</span>
+        <input type="checkbox" checked={form.isActive}
+          onChange={(e) => set('isActive', e.target.checked)}
+          className="w-5 h-5 accent-brand-400" />
+      </label>
+
+      {err && <ErrBox text={err} />}
+      <Actions onClose={onClose} onSubmit={submit} saving={saving} />
+    </Modal>
+  );
+}
+
+/* ═══ XIZMAT HAQI ═══ */
+function ServiceFee({ cfg, onSaved }) {
+  const [form, setForm] = useState({
+    serviceFeeEnabled: cfg?.serviceFeeEnabled ?? false,
+    serviceFeeType: cfg?.serviceFeeType || 'percentage',
+    serviceFeeValue: cfg?.serviceFeeValue ?? 10,
+    useGlobalStopList: cfg?.useGlobalStopList !== false,
+  });
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState(null);
+
+  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
+
+  const save = async () => {
+    setSaving(true); setMsg(null);
+    try {
+      await panelApi.updateDineInSettings(form);
+      setMsg({ ok: true, text: 'Saqlandi' });
+      onSaved?.();
+      setTimeout(() => setMsg(null), 2500);
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="max-w-lg space-y-4">
+      <section className="bg-surface border border-line rounded-xl p-4">
+        <label className="flex items-start justify-between gap-4 cursor-pointer mb-3">
+          <div>
+            <div className="text-sm text-ink">Xizmat haqi</div>
+            <div className="text-xs text-muted mt-0.5">
+              Faqat ofitsiant qabul qilgan buyurtmalarga qo'llanadi
+            </div>
+          </div>
+          <input type="checkbox" checked={form.serviceFeeEnabled}
+            onChange={(e) => set('serviceFeeEnabled', e.target.checked)}
+            className="w-5 h-5 accent-brand-400 flex-none mt-0.5" />
+        </label>
+
+        {form.serviceFeeEnabled && (
+          <>
+            <div className="flex gap-2 mb-3">
+              {[['percentage', 'Foiz (%)'], ['fixed', "Qat'iy summa"]].map(([k, label]) => (
+                <button key={k} onClick={() => set('serviceFeeType', k)}
+                  className={`flex-1 py-2.5 rounded-xl text-sm border ${
+                    form.serviceFeeType === k
+                      ? 'border-brand-400 bg-brand-50 text-brand-600'
+                      : 'border-line text-muted'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            <Field label="Miqdori">
+              <NumberInput value={form.serviceFeeValue}
+                onChange={(v) => set('serviceFeeValue', v)}
+                suffix={form.serviceFeeType === 'percentage' ? '%' : "so'm"} />
+            </Field>
+
+            <div className="text-xs text-muted bg-canvas rounded-lg p-3 leading-relaxed">
+              <b className="text-ink">Misol:</b> taomlar 150 000 so'm bo'lsa,
+              {form.serviceFeeType === 'percentage'
+                ? ` xizmat haqi ${Math.round(150000 * (Number(form.serviceFeeValue) || 0) / 100).toLocaleString('ru-RU')} so'm`
+                : ` xizmat haqi ${(Number(form.serviceFeeValue) || 0).toLocaleString('ru-RU')} so'm`}.
+              <br />
+              QR orqali berilgan buyurtmada xizmat haqi olinmaydi.
+            </div>
+          </>
+        )}
+      </section>
+
+      <section className="bg-surface border border-line rounded-xl p-4">
+        <label className="flex items-start justify-between gap-4 cursor-pointer">
+          <div>
+            <div className="text-sm text-ink">Stop List ishlatilsin</div>
+            <div className="text-xs text-muted mt-0.5">
+              To'xtatilgan taomlar zal menyusida ham ko'rinmaydi
+            </div>
+          </div>
+          <input type="checkbox" checked={form.useGlobalStopList}
+            onChange={(e) => set('useGlobalStopList', e.target.checked)}
+            className="w-5 h-5 accent-brand-400 flex-none mt-0.5" />
+        </label>
+      </section>
+
+      {msg && (
+        <div className={`text-sm rounded-lg px-3 py-2 ${
+          msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
+        }`}>
+          {msg.text}
+        </div>
+      )}
+
+      <button onClick={save} disabled={saving}
+        className="w-full bg-brand-400 text-brand-text font-medium py-3 rounded-xl disabled:opacity-50">
         {saving ? 'Saqlanmoqda...' : 'Saqlash'}
       </button>
     </div>

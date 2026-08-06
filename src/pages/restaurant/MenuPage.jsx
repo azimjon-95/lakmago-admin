@@ -237,6 +237,8 @@ function DishForm({ dish, onClose, onSaved }) {
     fat: dish?.fat ?? null,
     carbs: dish?.carbs ?? null,
     icon: dish?.icon || 'ti-bowl',
+    priceMode: dish?.priceMode || 'sync',
+    dineInPrice: dish?.dineInPrice ?? null,
   });
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -264,6 +266,10 @@ function DishForm({ dish, onClose, onSaved }) {
         ...(form.carbs ? { carbs: Number(form.carbs) } : {}),
         icon: form.icon,
         ...(form.volume.trim() ? { volume: form.volume.trim() } : {}),
+        priceMode: form.priceMode,
+        ...(form.priceMode === 'custom' && form.dineInPrice
+          ? { dineInPrice: Number(form.dineInPrice) }
+          : {}),
         ...(form.imageUrl ? { imageUrl: form.imageUrl, images: [form.imageUrl] } : {}),
       };
 

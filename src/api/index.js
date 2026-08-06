@@ -17,6 +17,7 @@ export const panelApi = {
   downloadFile,
   getDineInConfig: () => apiFetch('/panel/dine-in'),
   requestDineIn: () => apiFetch('/panel/dine-in/request', { method: 'POST' }),
+  updateDineInSettings: (d) => apiFetch('/panel/dine-in/settings', { method: 'PATCH', body: JSON.stringify(d) }),
   updateQrTheme: (d) => apiFetch('/panel/dine-in/theme', { method: 'PATCH', body: JSON.stringify(d) }),
   getTables: () => apiFetch('/panel/tables'),
   createTable: (d) => apiFetch('/panel/tables', { method: 'POST', body: JSON.stringify(d) }),
@@ -24,6 +25,17 @@ export const panelApi = {
   updateTable: (id, d) => apiFetch(`/panel/tables/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
   deleteTable: (id) => apiFetch(`/panel/tables/${id}`, { method: 'DELETE' }),
   regenerateQr: (id) => apiFetch(`/panel/tables/${id}/regenerate`, { method: 'POST' }),
+
+  // Ofitsiantlar
+  getWaiters: () => apiFetch('/panel/waiters'),
+  createWaiter: (d) => apiFetch('/panel/waiters', { method: 'POST', body: JSON.stringify(d) }),
+  updateWaiter: (id, d) => apiFetch(`/panel/waiters/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  resetWaiterDevice: (id) => apiFetch(`/panel/waiters/${id}/reset-device`, { method: 'POST' }),
+  deleteWaiter: (id) => apiFetch(`/panel/waiters/${id}`, { method: 'DELETE' }),
+
+  // Dine-in buyurtmalar
+  getDineInOrders: (active) => apiFetch(`/panel/dine-in/orders${active ? '?active=1' : ''}`),
+  setDineInOrderStatus: (id, status) => apiFetch(`/panel/dine-in/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
