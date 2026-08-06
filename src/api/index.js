@@ -53,6 +53,11 @@ export const panelApi = {
   getDineInRequests: () => apiFetch('/admin/dine-in'),
   setDineInStatus: (id, status, reason) => apiFetch(`/admin/dine-in/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),
 
+  getDineInTariff: () => apiFetch('/admin/dine-in/tariff'),
+  updateDineInTariff: (d) => apiFetch('/admin/dine-in/tariff', { method: 'PATCH', body: JSON.stringify(d) }),
+  getDineInBilling: (id) => apiFetch(`/admin/dine-in/billing/${id}`),
+  markDineInPaid: (id) => apiFetch(`/admin/dine-in/billing/${id}/pay`, { method: 'POST' }),
+
   getPromoAdminOverview: () => apiFetch('/admin/promo/overview'),
   getPromoRestaurants: (q = '') => apiFetch(`/admin/promo/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   getPromoBilling: (id) => apiFetch(`/admin/promo/billing/${id}`),
