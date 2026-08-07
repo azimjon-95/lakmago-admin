@@ -413,16 +413,27 @@ function BulkForm({ onClose, onSaved }) {
   );
 }
 
+/* ═══ QR dizayni ═══
+ * Dizayn barcha restoranlarda BIR XIL — ranglar va joylashuv
+ * o'zgarmaydi. Restoran faqat fon rasmi, logo va matnlarni
+ * almashtira oladi.
+ */
+const QR_DEFAULTS = {
+  eyebrow: 'DIGITAL',
+  menuWord: 'MENYU',
+  headline: 'QR KODNI SKANERLANG',
+  footnote: 'Telefon kamerangizni QR kodga tuting va buyurtma bering',
+};
+
 function ThemeForm({ theme, onClose, onSaved }) {
   useLockScroll();
 
   const [form, setForm] = useState({
-    backgroundColor: theme?.backgroundColor || '#1C1815',
     backgroundImage: theme?.backgroundImage || '',
-    textColor: theme?.textColor || '#F7F2EA',
-    accentColor: theme?.accentColor || '#F5A524',
     logoUrl: theme?.logoUrl || '',
-    headline: theme?.headline || 'Menyuni oching',
+    eyebrow: theme?.eyebrow || '',
+    menuWord: theme?.menuWord || '',
+    headline: theme?.headline || '',
     footnote: theme?.footnote || '',
   });
   const [saving, setSaving] = useState(false);
@@ -444,33 +455,43 @@ function ThemeForm({ theme, onClose, onSaved }) {
   return (
     <Modal title="QR dizayni" onClose={onClose}>
       <div className="bg-canvas rounded-lg p-3 mb-4 text-xs text-muted leading-relaxed">
-        QR kod doim <b className="text-ink">oq maydonda</b> chiqadi —
-        fon rasmi uni to'sib qo'ymaydi va skaner har doim o'qiy oladi.
+        Dizayn barcha stollarda <b className="text-ink">bir xil</b> chiqadi.
+        Siz faqat <b className="text-ink">fon rasmi</b> va{' '}
+        <b className="text-ink">matnlarni</b> o'zgartirasiz.
+        QR doim oq maydonda turadi — skaner har doim o'qiy oladi.
       </div>
 
-      <ImageUpload label="Logo" value={form.logoUrl}
-        onChange={(url) => set('logoUrl', url)} />
+      <QrPreview form={form} />
 
-      <ImageUpload label="Fon rasmi" value={form.backgroundImage}
+      <ImageUpload label="Fon rasmi (yuqori qism)" value={form.backgroundImage}
         onChange={(url) => set('backgroundImage', url)} />
 
-      <div className="grid grid-cols-3 gap-3 mt-3">
-        <ColorField label="Fon" value={form.backgroundColor}
-          onChange={(v) => set('backgroundColor', v)} />
-        <ColorField label="Matn" value={form.textColor}
-          onChange={(v) => set('textColor', v)} />
-        <ColorField label="Urg'u" value={form.accentColor}
-          onChange={(v) => set('accentColor', v)} />
+      <ImageUpload label="Logo (ixtiyoriy)" value={form.logoUrl}
+        onChange={(url) => set('logoUrl', url)} />
+
+      <div className="grid grid-cols-2 gap-3 mt-3">
+        <Field label="Kichik so'z">
+          <input value={form.eyebrow} maxLength={16}
+            onChange={(e) => set('eyebrow', e.target.value)}
+            placeholder={QR_DEFAULTS.eyebrow} className="inp" />
+        </Field>
+        <Field label="Menyu so'zi">
+          <input value={form.menuWord} maxLength={16}
+            onChange={(e) => set('menuWord', e.target.value)}
+            placeholder={QR_DEFAULTS.menuWord} className="inp" />
+        </Field>
       </div>
 
-      <Field label="Yuqori matn">
-        <input value={form.headline} onChange={(e) => set('headline', e.target.value)}
-          placeholder="Menyuni oching" className="inp" />
+      <Field label="Sarlavha" hint="Katta harflarda chiqadi, 2 qatorgacha">
+        <input value={form.headline} maxLength={44}
+          onChange={(e) => set('headline', e.target.value)}
+          placeholder={QR_DEFAULTS.headline} className="inp" />
       </Field>
 
-      <Field label="Pastki matn">
-        <input value={form.footnote} onChange={(e) => set('footnote', e.target.value)}
-          placeholder="Kamerani QR ga to'g'rilang" className="inp" />
+      <Field label="Izoh" hint="QR ostidagi kichik tushuntirish matni">
+        <input value={form.footnote} maxLength={120}
+          onChange={(e) => set('footnote', e.target.value)}
+          placeholder={QR_DEFAULTS.footnote} className="inp" />
       </Field>
 
       {err && <ErrBox text={err} />}
@@ -479,13 +500,78 @@ function ThemeForm({ theme, onClose, onSaved }) {
   );
 }
 
-/* ═══ Umumiy ═══ */
-function ColorField({ label, value, onChange }) {
+/**
+ * Jonli ko'rinish — serverdagi qrDesign.js bilan bir xil nisbatlarda.
+ * Ranglar qat'iy: o'zgartirib bo'lmaydi.
+ */
+function QrPreview({ form }) {
+  const eyebrow = (form.eyebrow || QR_DEFAULTS.eyebrow).toUpperCase();
+  const menuWord = (form.menuWord || QR_DEFAULTS.menuWord).toUpperCase();
+  const headline = (form.headline || QR_DEFAULTS.headline).toUpperCase();
+  const footnote = form.footnote || QR_DEFAULTS.footnote;
+
   return (
-    <div className="mb-3">
-      <label className="block text-xs font-medium text-ink mb-1.5">{label}</label>
-      <input type="color" value={value} onChange={(e) => onChange(e.target.value)}
-        className="w-full h-10 rounded-lg border border-line cursor-pointer" />
+    <div className="mb-4">
+      <label className="block text-xs font-medium text-ink mb-1.5">
+        Ko'rinish
+      </label>
+      <div className="mx-auto w-[210px] rounded-xl overflow-hidden shadow-md select-none"
+        style={{ aspectRatio: '2 / 3', background: 'linear-gradient(#17635E,#124F4B)' }}>
+        <div className="relative w-full h-full">
+          {/* Yuqori foto */}
+          <div className="absolute inset-x-0 top-0 h-[40%] bg-[#201915] overflow-hidden">
+            {form.backgroundImage && (
+              <img src={form.backgroundImage} alt=""
+                className="w-full h-full object-cover" />
+            )}
+            <div className="absolute inset-0"
+              style={{ background: 'linear-gradient(rgba(0,0,0,.62),rgba(0,0,0,.28) 45%,rgba(0,0,0,.55))' }} />
+            <div className="absolute inset-x-0 top-[9%] flex items-center justify-between px-[9%]">
+              <span className="text-white font-bold text-[17px] leading-none">Stol 1</span>
+              <div className="flex items-center gap-2">
+                <span className="w-px h-6 bg-white/55" />
+                <span className="text-right leading-none">
+                  <span className="block text-[#EE7A2B] font-semibold text-[6px] tracking-[0.18em]">
+                    {eyebrow}
+                  </span>
+                  <span className="block text-white font-bold text-[9px] tracking-wide mt-[2px]">
+                    {menuWord}
+                  </span>
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Sariq ramka + QR */}
+          <div className="absolute left-1/2 -translate-x-1/2 top-[24%] w-[60%] rounded-[10px] bg-[#EE7A2B] p-[5px] shadow-lg">
+            <div className="w-full aspect-square rounded-[7px] bg-white p-[7px]">
+              <div className="w-full h-full"
+                style={{
+                  backgroundImage:
+                    'repeating-conic-gradient(#14100E 0% 25%, #fff 0% 50%)',
+                  backgroundSize: '11% 11%',
+                }} />
+            </div>
+            <div className="text-center text-white font-bold text-[9px] tracking-[0.14em] py-[5px]">
+              {menuWord}
+            </div>
+          </div>
+
+          {/* Sarlavha + izoh */}
+          <div className="absolute inset-x-0 top-[70%] px-[8%] text-center">
+            <p className="text-white font-bold text-[13px] leading-tight break-words">
+              {headline}
+            </p>
+            <p className="text-white/80 text-[6.5px] leading-snug mt-[6px] break-words">
+              {footnote}
+            </p>
+          </div>
+
+          <p className="absolute inset-x-0 bottom-[3%] text-center text-white/55 text-[5.5px] tracking-[0.2em]">
+            lokma.uz
+          </p>
+        </div>
+      </div>
     </div>
   );
 }
