@@ -1,7 +1,9 @@
 import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
+import { FullscreenButton } from '@/components/FullscreenButton';
+import { useFullscreen } from '@/hooks/useFullscreen';
 import { LoginPage } from '@/pages/LoginPage';
 // Admin sahifalari
 import { DashboardPage } from '@/pages/admin/DashboardPage';
@@ -37,32 +39,44 @@ import { MenuTransferPage } from '@/pages/restaurant/MenuTransferPage';
 import { PromotionPage } from '@/pages/restaurant/PromotionPage';
 import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 
+// To'liq ekran tugmasi ko'rinadigan bo'limlar.
+// Bular kun bo'yi ochiq turadigan nazorat ekranlari — sidebar
+// ular uchun keraksiz joy egallaydi.
+const FULLSCREEN_ROUTES = [
+  '/',                // Boshqaruv paneli (admin) / Buyurtmalar (restoran)
+  '/orders',          // Jonli buyurtmalar
+  '/dine-in',         // Dine-in
+  '/dine-in-live',    // Zal buyurtmalari
+  '/dine-in-admin',   // Dine-in (admin)
+];
+
 // Panel karkasi (sidebar + sahifa).
 // Mobilda: yuqori panel + pastki tez-kirish sidebar ichida chiziladi,
 // shuning uchun kontentga pastdan bo'shliq beramiz (pastki nav bosib qolmasin).
-// Panel karkasi (sidebar + sahifa)
 function Shell({ children }) {
+  const { pathname } = useLocation();
+  const { active: fullscreen } = useFullscreen();
+
+  // Rejim yoqilgan bo'lsa tugma har doim ko'rinadi — aks holda
+  // boshqa bo'limga o'tilganda undan chiqib bo'lmay qolardi.
+  const showButton = fullscreen || FULLSCREEN_ROUTES.includes(pathname);
+
   return (
     <div className="min-h-screen bg-canvas">
 
-      {/* Sidebar */}
-      <Sidebar />
+      {/* Sidebar — to'liq ekran rejimida yashiriladi */}
+      {!fullscreen && <Sidebar />}
 
+      {showButton && <FullscreenButton />}
 
       {/* Content */}
       <main
-        className="
-          min-h-screen
-          lg:ml-[280px]
-          lg:pb-0
-          transition-all
-        "
+        className={`min-h-screen transition-all ${
+          fullscreen ? '' : 'lg:ml-[280px] lg:pb-0'
+        }`}
       >
         <div
-          className="
-            w-full
-            min-h-screen
-          "
+          className={`w-full min-h-screen ${showButton ? 'pr-14' : ''}`}
         >
           {children}
         </div>
