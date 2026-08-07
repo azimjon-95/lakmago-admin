@@ -30,6 +30,15 @@ export function RestaurantProfilePage() {
 
         openTime: r.openTime || '09:00',
         closeTime: r.closeTime || '23:00',
+        timezone: r.timezone || 'Asia/Tashkent',
+        workingDays: r.workingDays || [],
+
+        deliveryType: r.delivery?.type || 'free',
+        maxDistanceKm: r.delivery?.maxDistanceKm ?? 10,
+        freeKm: r.delivery?.pricing?.freeKm ?? 0,
+        basePrice: r.delivery?.pricing?.basePrice ?? null,
+        extraKmPrice: r.delivery?.pricing?.extraKmPrice ?? null,
+        maxPrice: r.delivery?.pricing?.maxPrice ?? null,
 
         deliveryMin: r.deliveryMin ?? 25,
         deliveryMax: r.deliveryMax ?? 40,
@@ -54,7 +63,24 @@ export function RestaurantProfilePage() {
     setMsg(null);
     try {
       // Bo'sh raqamlar 0 sifatida yuboriladi
-      const payload = { ...form };
+      const {
+        deliveryType, maxDistanceKm, freeKm, basePrice,
+        extraKmPrice, maxPrice, ...rest
+      } = form;
+
+      const payload = {
+        ...rest,
+        delivery: {
+          type: deliveryType,
+          maxDistanceKm: Number(maxDistanceKm) || 0,
+          pricing: {
+            freeKm: Number(freeKm) || 0,
+            basePrice: Number(basePrice) || 0,
+            extraKmPrice: Number(extraKmPrice) || 0,
+            maxPrice: Number(maxPrice) || 0,
+          },
+        },
+      };
       for (const k of ['deliveryFee', 'freeDeliveryThreshold', 'minOrderAmount',
                        'pickupDiscountPercent']) {
         if (payload[k] == null || payload[k] === '') payload[k] = 0;
@@ -187,6 +213,117 @@ export function RestaurantProfilePage() {
           <p className="text-xs text-muted">
             Mijozlar ilovasida "Ochiq" yoki "Yopiq" deb ko'rsatiladi
           </p>
+
+          <Field label="Ish kunlari" hint="Tanlanmasa har kuni ishlaydi">
+            <div className="flex flex-wrap gap-1.5">
+              {[
+                ['mon', 'Du'], ['tue', 'Se'], ['wed', 'Ch'], ['thu', 'Pa'],
+                ['fri', 'Ju'], ['sat', 'Sh'], ['sun', 'Ya'],
+              ].map(([k, label]) => (
+                <button key={k} type="button"
+                  onClick={() => set('workingDays',
+                    form.workingDays.includes(k)
+                      ? form.workingDays.filter((d) => d !== k)
+                      : [...form.workingDays, k])}
+                  className={`w-11 py-2 rounded-lg text-sm border ${
+                    form.workingDays.includes(k)
+                      ? 'border-brand-400 bg-brand-50 text-brand-600'
+                      : 'border-line text-muted'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          <div className="text-xs text-muted bg-canvas rounded-lg p-3 leading-relaxed">
+            Vaqt <b className="text-ink">O'zbekiston</b> bo'yicha hisoblanadi.
+            Mijoz boshqa davlatdan kirsa ham holat to'g'ri ko'rsatiladi.
+          </div>
+        </Section>
+
+        {/* Yetkazish qoidalari */}
+        <Section title="Yetkazish qoidalari" icon="ti-route">
+          <Field label="Yetkazish turi">
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                ['free', 'Bepul'],
+                ['paid', 'Masofaga qarab'],
+                ['disabled', "Yo'q"],
+              ].map(([k, label]) => (
+                <button key={k} type="button"
+                  onClick={() => set('deliveryType', k)}
+                  className={`py-2.5 rounded-xl text-sm border ${
+                    form.deliveryType === k
+                      ? 'border-brand-400 bg-brand-50 text-brand-600'
+                      : 'border-line text-muted'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Field>
+
+          {form.deliveryType !== 'disabled' && (
+            <Field label="Yetkazish radiusi" hint="Undan uzoqqa buyurtma qabul qilinmaydi">
+              <NumberInput value={form.maxDistanceKm}
+                onChange={(v) => set('maxDistanceKm', v)}
+                suffix="km" placeholder="10" />
+            </Field>
+          )}
+
+          {form.deliveryType === 'paid' && (
+            <>
+              <Field label="Bepul masofa" hint="Shu masofagacha bepul">
+                <NumberInput value={form.freeKm}
+                  onChange={(v) => set('freeKm', v)} suffix="km" placeholder="3" />
+              </Field>
+
+              <Field label="Boshlang'ich narx" hint="Har buyurtmaga qo'shiladi">
+                <MoneyInput value={form.basePrice}
+                  onChange={(v) => set('basePrice', v)} />
+              </Field>
+
+              <Field label="Har km uchun" hint="Bepul masofadan keyin">
+                <MoneyInput value={form.extraKmPrice}
+                  onChange={(v) => set('extraKmPrice', v)} placeholder="3 000" />
+              </Field>
+
+              <Field label="Eng ko'p narx" hint="Bo'sh = cheklovsiz">
+                <MoneyInput value={form.maxPrice}
+                  onChange={(v) => set('maxPrice', v)} />
+              </Field>
+
+              {/* Misol */}
+              <div className="text-xs bg-canvas rounded-lg p-3 leading-relaxed">
+                <div className="font-medium text-ink mb-1">Misol: 5 km masofa</div>
+                <div className="text-muted">
+                  {Number(form.freeKm) > 0 && (
+                    <>Birinchi {form.freeKm} km — bepul<br /></>
+                  )}
+                  {Math.max(0, 5 - (Number(form.freeKm) || 0)) > 0 && (
+                    <>
+                      Qolgan {Math.max(0, 5 - (Number(form.freeKm) || 0))} km ×{' '}
+                      {(Number(form.extraKmPrice) || 0).toLocaleString('ru-RU')}<br />
+                    </>
+                  )}
+                  <b className="text-ink">
+                    Jami:{' '}
+                    {(
+                      (Number(form.basePrice) || 0)
+                      + Math.ceil(Math.max(0, 5 - (Number(form.freeKm) || 0)))
+                        * (Number(form.extraKmPrice) || 0)
+                    ).toLocaleString('ru-RU')} so'm
+                  </b>
+                </div>
+              </div>
+
+              <div className="text-[11px] text-muted leading-relaxed">
+                Masofa Yandex xaritasi orqali haqiqiy yo'l bo'yicha
+                hisoblanadi — to'g'ri chiziq emas.
+              </div>
+            </>
+          )}
         </Section>
 
         {/* Yetkazish */}
