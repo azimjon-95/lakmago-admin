@@ -54,7 +54,6 @@ function Shell({ children }) {
         className="
           min-h-screen
           lg:ml-[280px]
-          pb-16
           lg:pb-0
           transition-all
         "
@@ -63,9 +62,6 @@ function Shell({ children }) {
           className="
             w-full
             min-h-screen
-            p-4
-            sm:p-5
-            lg:p-8
           "
         >
           {children}
