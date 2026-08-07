@@ -76,3 +76,155 @@ body {
     padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* ═══════════════════════════════════════════════════
+   iOS 26 — Liquid Glass
+   Faqat `.ios26` ichida ishlaydi, boshqa sahifalarga
+   ta'sir qilmaydi.
+   ═══════════════════════════════════════════════════ */
+.ios26 {
+  --g-fill: rgba(255, 255, 255, 0.72);
+  --g-fill-soft: rgba(255, 255, 255, 0.52);
+  --g-blur: saturate(180%) blur(28px);
+  --g-fill-3: rgba(120, 120, 128, 0.12);
+  --spring: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* Ambient yorug'lik — shisha nimanidir sindirishi kerak */
+.ios26-glow {
+  position: absolute;
+  border-radius: 999px;
+  filter: blur(90px);
+  pointer-events: none;
+}
+
+/* Shisha sirt */
+.ios26 .g {
+  position: relative;
+  background: var(--g-fill);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+  box-shadow:
+    0 1px 2px rgba(26, 26, 23, 0.05),
+    0 14px 34px -14px rgba(26, 26, 23, 0.16);
+}
+
+/* Yuqori qirradagi yorug'lik aksi — Liquid Glass imzosi.
+   1px halqa: mask xor orqali faqat chekka bo'yaladi. */
+.ios26 .g::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    150deg,
+    rgba(255, 255, 255, 0.95),
+    rgba(255, 255, 255, 0.3) 36%,
+    rgba(255, 255, 255, 0) 62%
+  );
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+}
+
+.ios26 .g-soft {
+  background: var(--g-fill-soft);
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
+}
+
+/* Blur ishlamasa — to'q oq fon */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  .ios26 .g,
+  .ios26 .g-soft { background: #fff; }
+}
+
+/* Segment boshqaruvi */
+.ios26 .seg {
+  position: relative;
+  display: flex;
+  padding: 3px;
+  border-radius: 14px;
+  background: var(--g-fill-3);
+}
+.ios26 .seg-thumb {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  left: 3px;
+  width: calc((100% - 6px) / var(--n));
+  transform: translateX(calc(var(--i) * 100%));
+  border-radius: 11px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12), 0 3px 8px rgba(0, 0, 0, 0.06);
+  transition: transform 0.42s var(--spring);
+}
+.ios26 .seg-item {
+  position: relative;
+  z-index: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 7px 4px;
+  border-radius: 11px;
+  font-weight: 590;
+  color: #6b6b66;
+  transition: color 0.25s ease;
+}
+.ios26 .seg-item[data-on='1'] { color: #1a1a17; }
+
+/* Bosish — iOS springi */
+.ios26 .tap {
+  transition: transform 0.34s var(--spring), background-color 0.2s ease,
+    opacity 0.2s ease;
+}
+.ios26 .tap:active { transform: scale(0.955); }
+
+.ios26 .tap:focus-visible,
+.ios26 .seg-item:focus-visible {
+  outline: 2px solid #ef9f27;
+  outline-offset: 2px;
+}
+
+/* Forma maydonlari — iOS uslubi */
+.ios26 .inp {
+  background: rgba(120, 120, 128, 0.09);
+  border: 1px solid transparent;
+  border-radius: 13px;
+  padding: 11px 14px;
+  font-size: 16px; /* iOS zoom qilmasligi uchun */
+}
+.ios26 .inp:focus {
+  background: #fff;
+  border-color: #ef9f27;
+}
+
+/* Sirpanib chiqadigan oyna */
+@keyframes ios-sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes ios-pop {
+  from { transform: scale(0.94); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.ios26-sheet { animation: ios-sheet-up 0.44s var(--spring); }
+@media (min-width: 640px) {
+  .ios26-sheet { animation: ios-pop 0.3s var(--spring); }
+}
+
+/* Faol sessiya nuqtasi */
+@keyframes ios-breathe {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.45; transform: scale(0.82); }
+}
+.ios26-live { animation: ios-breathe 2.2s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .ios26 .seg-thumb,
+  .ios26 .tap { transition: none; }
+  .ios26-sheet,
+  .ios26-live { animation: none; }
+}

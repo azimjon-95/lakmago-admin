@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -6,21 +6,42 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { getSocket } from '@/lib/socket';
 import { confirm } from '@/components/ui/confirm';
 
+/* ═══════════════════════════════════════════════════
+   Dine-in — iOS 26 (Liquid Glass)
+   Mobilda: katta sarlavha, yopishqoq segment, 2 ustunli
+   stol to'ri. Kattaroq ekranda: chapda doimiy boshqaruv
+   paneli, o'ngda 5 ustungacha kengayadigan to'r.
+   ═══════════════════════════════════════════════════ */
+
 const STATUS = {
-  none: { label: 'Yoqilmagan', cls: 'bg-canvas text-muted' },
-  pending: { label: "Ko'rib chiqilmoqda", cls: 'bg-amber-50 text-amber-700' },
-  approved: { label: 'Tasdiqlandi', cls: 'bg-blue-50 text-blue-700' },
-  payment_required: { label: "To'lov kutilmoqda", cls: 'bg-amber-50 text-amber-700' },
-  active: { label: 'Faol', cls: 'bg-green-50 text-green-700' },
-  suspended: { label: "To'xtatilgan", cls: 'bg-red-50 text-red-600' },
+  none: { label: 'Yoqilmagan', color: '#8E8E93' },
+  pending: { label: "Ko'rib chiqilmoqda", color: '#FF9500' },
+  approved: { label: 'Tasdiqlandi', color: '#007AFF' },
+  payment_required: { label: "To'lov kutilmoqda", color: '#FF9500' },
+  active: { label: 'Faol', color: '#34C759' },
+  suspended: { label: "To'xtatilgan", color: '#FF3B30' },
 };
 
 const TABLE_STATUS = {
-  available: { label: "Bo'sh", cls: 'bg-green-50 text-green-700' },
-  occupied: { label: 'Band', cls: 'bg-amber-50 text-amber-700' },
-  ordering: { label: 'Tanlamoqda', cls: 'bg-blue-50 text-blue-700' },
-  waiting: { label: 'Kutmoqda', cls: 'bg-violet-50 text-violet-700' },
-  closed: { label: 'Yopiq', cls: 'bg-canvas text-muted' },
+  available: { label: "Bo'sh", color: '#34C759' },
+  occupied: { label: 'Band', color: '#FF9500' },
+  ordering: { label: 'Tanlamoqda', color: '#007AFF' },
+  waiting: { label: 'Kutmoqda', color: '#AF52DE' },
+  closed: { label: 'Yopiq', color: '#8E8E93' },
+};
+
+const TABS = [
+  // [kalit, to'liq nom, ikonka, mobil uchun qisqa nom]
+  ['tables', 'Stollar', 'ti-armchair', 'Stollar'],
+  ['waiters', 'Ofitsiantlar', 'ti-users', 'Ofitsiant'],
+  ['earnings', 'Daromad', 'ti-coins', 'Daromad'],
+  ['settings', 'Xizmat haqi', 'ti-adjustments', 'Xizmat'],
+];
+
+/** Rangdan shaffof fon — inline, chunki qiymat dinamik. */
+const tint = (hex, a = 0.14) => {
+  const n = parseInt(hex.slice(1), 16);
+  return `rgba(${n >> 16}, ${(n >> 8) & 255}, ${n & 255}, ${a})`;
 };
 
 export function DineInPage() {
@@ -68,7 +89,7 @@ export function DineInPage() {
   };
 
   const regenerate = async (t) => {
-    if (!await confirm({ title: 
+    if (!await confirm({ title:
       `Stol ${t.tableNumber} QR kodi yangilanadi.\n\n` +
       'Eski QR ISHLAMAY QOLADI — yangisini chop etish kerak.\n\nDavom etilsinmi?',
      })) return;
@@ -99,179 +120,139 @@ export function DineInPage() {
   const downloadPdf = () =>
     download('/panel/tables/qr/pdf', 'qr-kodlar.pdf');
 
-  if (loading) return <div className="p-6 text-muted text-sm">Yuklanmoqda...</div>;
+  const stats = useMemo(() => {
+    const by = (s) => tables.filter((t) => t.status === s).length;
+    return {
+      jami: tables.length,
+      bosh: by('available'),
+      band: by('occupied') + by('ordering') + by('waiting'),
+      sessiya: tables.filter((t) => t.activeSession).length,
+    };
+  }, [tables]);
+
+  if (loading) {
+    return (
+      <div className="p-6 text-muted text-sm flex items-center gap-2">
+        <i className="ti ti-loader-2 animate-spin" /> Yuklanmoqda...
+      </div>
+    );
+  }
 
   // Hali so'rov yubormagan — tanishtiruv ekrani
   if (!cfg || cfg.status === 'none') {
     return <DineInIntro onRequest={request} />;
   }
 
-  const st = STATUS[cfg.status];
+  const active = cfg.status === 'active';
+
+  const actionProps = {
+    onTheme: () => setThemeOpen(true),
+    onPdf: tables.length > 0 ? downloadPdf : null,
+    onBulk: () => setBulkOpen(true),
+    onAdd: () => setEditing('new'),
+  };
 
   return (
-    <div className="p-4 sm:p-6">
-      <h1 className="text-xl font-semibold text-ink mb-1">Dine-in</h1>
-      <p className="text-sm text-muted mb-5">
-        Stollar, QR kodlar va joyida buyurtma
-      </p>
+    <div className="ios26 relative min-h-full">
+      <Ambient />
 
-      {/* Holat */}
-      <div className="bg-surface border border-line rounded-xl p-4 mb-5">
-        <div className="flex items-center justify-between gap-3 mb-2">
-          <div className="text-sm font-medium text-ink">Xizmat holati</div>
-          <span className={`text-[11px] font-medium px-2.5 py-1 rounded-full ${st.cls}`}>
-            {st.label}
-          </span>
-        </div>
-
-        {cfg?.status === 'pending' && (
-          <p className="text-xs text-muted">
-            So'rovingiz ko'rib chiqilmoqda. Tasdiqlangach xabar beramiz.
+      <div className="relative z-10 mx-auto max-w-[1700px] px-3 pt-4 pb-8 sm:px-5 lg:px-7 lg:pt-7">
+        {/* Katta sarlavha */}
+        <header className="mb-4 lg:mb-6">
+          <h1 className="text-[30px] leading-none font-bold tracking-[-0.02em] text-ink lg:text-[34px]">
+            Dine-in
+          </h1>
+          <p className="mt-1.5 text-[13px] text-muted lg:text-sm">
+            Stollar, QR kodlar va joyida buyurtma
           </p>
-        )}
+        </header>
 
-        {['approved', 'payment_required'].includes(cfg?.status) && (
-          <p className="text-xs text-amber-700">
-            Tasdiqlandi. Xizmatni yoqish uchun administrator bilan bog'laning.
-          </p>
-        )}
+        <div className="lg:grid lg:grid-cols-[286px_minmax(0,1fr)] lg:items-start lg:gap-6">
+          {/* ═══ Chap panel — faqat kattaroq ekranda ═══ */}
+          <aside className="hidden lg:sticky lg:top-6 lg:block lg:space-y-4">
+            <StatusCard cfg={cfg} />
+            {active && (
+              <>
+                <nav className="g rounded-[22px] p-1.5">
+                  {TABS.map(([k, label, icon]) => {
+                    const on = tab === k;
+                    return (
+                      <button key={k} onClick={() => setTab(k)}
+                        className={`tap flex w-full items-center gap-3 rounded-[16px] px-3 py-2.5 text-[15px] font-medium ${
+                          on ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink'
+                        }`}>
+                        <i className={`ti ${icon} text-lg`}
+                          style={on ? { color: '#EF9F27' } : undefined} />
+                        <span className="truncate">{label}</span>
+                        {k === 'tables' && stats.jami > 0 && (
+                          <span className="ml-auto text-[12px] tabular-nums text-muted">
+                            {stats.jami}
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </nav>
 
-        {cfg?.status === 'suspended' && (
-          <p className="text-xs text-red-600">
-            {cfg.suspendReason || "Xizmat vaqtincha to'xtatilgan"}
-          </p>
-        )}
-
-        {cfg?.status === 'active' && (
-          <div className="flex items-center gap-4 text-xs text-muted mt-1">
-            <span>{cfg.tables} ta stol</span>
-            {cfg.activeSessions > 0 && (
-              <span className="text-green-600 font-medium">
-                {cfg.activeSessions} ta faol sessiya
-              </span>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Bo'limlar */}
-      {cfg?.status === 'active' && (
-        <div className="flex gap-2 mb-4 border-b border-line overflow-x-auto">
-          {[
-            ['tables', 'Stollar'],
-            ['waiters', 'Ofitsiantlar'],
-            ['earnings', 'Daromad'],
-            ['settings', 'Xizmat haqi'],
-          ].map(([k, label]) => (
-            <button
-              key={k}
-              onClick={() => setTab(k)}
-              className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px whitespace-nowrap ${
-                tab === k ? 'border-brand-400 text-ink' : 'border-transparent text-muted hover:text-ink'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {cfg?.status === 'active' && tab === 'waiters' && <Waiters tables={tables} />}
-      {cfg?.status === 'active' && tab === 'earnings' && <Earnings />}
-      {cfg?.status === 'active' && tab === 'settings' && (
-        <ServiceFee cfg={cfg} onSaved={load} />
-      )}
-
-      {/* Stollar */}
-      {cfg?.status === 'active' && tab === 'tables' && (
-        <>
-          <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
-            <h2 className="text-sm font-semibold text-ink">Stollar</h2>
-            <div className="flex gap-2">
-              <button onClick={() => setThemeOpen(true)}
-                className="border border-line text-muted text-sm px-3 py-2 rounded-lg">
-                <i className="ti ti-palette" /> QR dizayni
-              </button>
-              {tables.length > 0 && (
-                <button onClick={downloadPdf}
-                  className="border border-line text-muted text-sm px-3 py-2 rounded-lg">
-                  <i className="ti ti-file-download" /> PDF
-                </button>
-              )}
-              <button onClick={() => setBulkOpen(true)}
-                className="border border-line text-muted text-sm px-3 py-2 rounded-lg">
-                <i className="ti ti-stack-2" /> Ko'p
-              </button>
-              <button onClick={() => setEditing('new')}
-                className="bg-brand-400 text-brand-text text-sm font-medium px-3 py-2 rounded-lg">
-                <i className="ti ti-plus" /> Stol
-              </button>
-            </div>
-          </div>
-
-          {tables.length === 0 ? (
-            <div className="text-center py-12">
-              <i className="ti ti-armchair text-4xl text-muted mb-3 block" />
-              <div className="text-ink font-medium">Stol qo'shilmagan</div>
-              <p className="text-sm text-muted mt-1">
-                Stol qo'shing — har biriga QR kod yaratiladi
-              </p>
-            </div>
-          ) : (
-            <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-              {tables.map((t) => {
-                const ts = TABLE_STATUS[t.status] || TABLE_STATUS.available;
-                return (
-                  <div key={t._id} className="bg-surface border border-line rounded-xl p-3.5">
-                    <div className="flex items-start justify-between gap-2 mb-2">
-                      <div className="min-w-0">
-                        <div className="font-semibold text-ink">
-                          {t.tableName || `Stol ${t.tableNumber}`}
-                        </div>
-                        <div className="text-xs text-muted">
-                          №{t.tableNumber} · {t.capacity} kishi
-                        </div>
-                      </div>
-                      <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full flex-none ${ts.cls}`}>
-                        {ts.label}
-                      </span>
+                {tab === 'tables' && (
+                  <div className="g rounded-[22px] p-3">
+                    <div className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+                      Amallar
                     </div>
-
-                    {t.activeSession && (
-                      <div className="text-[11px] text-green-600 mb-2">
-                        Sessiya faol
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <button onClick={() => downloadQr(t, 'svg')}
-                        title="QR yuklash"
-                        className="border border-line text-muted py-1.5 rounded-lg text-xs">
-                        <i className="ti ti-qrcode" />
-                      </button>
-                      <button onClick={() => setEditing(t)}
-                        title="Tahrirlash"
-                        className="border border-line text-muted py-1.5 rounded-lg text-xs">
-                        <i className="ti ti-pencil" />
-                      </button>
-                      <button onClick={() => regenerate(t)}
-                        title="QR yangilash"
-                        className="border border-line text-muted py-1.5 rounded-lg text-xs">
-                        <i className="ti ti-refresh" />
-                      </button>
-                      <button onClick={() => removeTable(t)}
-                        title="O'chirish"
-                        className="border border-line text-red-500 py-1.5 rounded-lg text-xs">
-                        <i className="ti ti-trash" />
-                      </button>
-                    </div>
+                    <TableActions {...actionProps} layout="rail" />
                   </div>
-                );
-              })}
+                )}
+              </>
+            )}
+          </aside>
+
+          {/* ═══ Asosiy ustun ═══ */}
+          <main className="min-w-0">
+            {/* Mobil: holat + segment */}
+            <div className="lg:hidden">
+              <StatusCard cfg={cfg} compact />
+              {active && (
+                <div className="sticky top-2 z-20 my-3">
+                  <div className="g rounded-[17px] p-1">
+                    <Segmented value={tab} onChange={setTab}
+                      items={TABS.map(([k, , , short]) => [k, short])} />
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </>
-      )}
+
+            {active && tab === 'tables' && (
+              <>
+                {tables.length > 0 && <Stats stats={stats} />}
+
+                <div className="mb-3 lg:hidden">
+                  <TableActions {...actionProps} layout="row" />
+                </div>
+
+                {tables.length === 0 ? (
+                  <EmptyState icon="ti-armchair" title="Stol qo'shilmagan"
+                    text="Stol qo'shing — har biriga QR kod avtomatik yaratiladi"
+                    action={{ label: 'Birinchi stolni qo\u2018shish', onClick: () => setEditing('new') }} />
+                ) : (
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    {tables.map((t) => (
+                      <TableTile key={t._id} table={t}
+                        onQr={() => downloadQr(t, 'svg')}
+                        onEdit={() => setEditing(t)}
+                        onRegen={() => regenerate(t)}
+                        onRemove={() => removeTable(t)} />
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
+
+            {active && tab === 'waiters' && <Waiters tables={tables} />}
+            {active && tab === 'earnings' && <Earnings />}
+            {active && tab === 'settings' && <ServiceFee cfg={cfg} onSaved={load} />}
+          </main>
+        </div>
+      </div>
 
       {editing && (
         <TableForm
@@ -292,6 +273,239 @@ export function DineInPage() {
     </div>
   );
 }
+
+/* ═══ Fon yorug'ligi — shisha nimanidir sindirishi kerak ═══ */
+function Ambient() {
+  return (
+    <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
+      <span className="ios26-glow -left-24 -top-20 h-72 w-72"
+        style={{ background: 'rgba(239,159,39,0.30)' }} />
+      <span className="ios26-glow right-[-6rem] top-40 h-80 w-80"
+        style={{ background: 'rgba(23,99,94,0.20)' }} />
+      <span className="ios26-glow bottom-10 left-1/3 h-72 w-72"
+        style={{ background: 'rgba(175,82,222,0.14)' }} />
+    </div>
+  );
+}
+
+/* ═══ Xizmat holati ═══ */
+function StatusCard({ cfg, compact }) {
+  const st = STATUS[cfg.status] || STATUS.none;
+
+  const note =
+    cfg.status === 'pending'
+      ? "So'rovingiz ko'rib chiqilmoqda. Tasdiqlangach xabar beramiz."
+      : ['approved', 'payment_required'].includes(cfg.status)
+        ? "Tasdiqlandi. Xizmatni yoqish uchun administrator bilan bog'laning."
+        : cfg.status === 'suspended'
+          ? (cfg.suspendReason || "Xizmat vaqtincha to'xtatilgan")
+          : null;
+
+  return (
+    <section className={`g rounded-[22px] ${compact ? 'p-3.5' : 'p-4'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+            Xizmat holati
+          </div>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="h-2 w-2 flex-none rounded-full"
+              style={{ background: st.color }} />
+            <span className="text-[17px] font-semibold leading-none text-ink">
+              {st.label}
+            </span>
+          </div>
+        </div>
+
+        {cfg.status === 'active' && (
+          <div className="text-right">
+            <div className="text-[22px] font-bold leading-none tabular-nums text-ink">
+              {cfg.tables ?? 0}
+            </div>
+            <div className="text-[11px] text-muted">stol</div>
+          </div>
+        )}
+      </div>
+
+      {note && (
+        <p className="mt-2.5 rounded-[13px] px-3 py-2 text-[12px] leading-relaxed"
+          style={{ background: tint(st.color, 0.12), color: st.color }}>
+          {note}
+        </p>
+      )}
+
+      {cfg.status === 'active' && cfg.activeSessions > 0 && (
+        <div className="mt-2.5 flex items-center gap-2 rounded-[13px] px-3 py-2 text-[12px] font-medium"
+          style={{ background: tint('#34C759', 0.12), color: '#248A3D' }}>
+          <span className="ios26-live h-1.5 w-1.5 rounded-full"
+            style={{ background: '#34C759' }} />
+          {cfg.activeSessions} ta faol sessiya
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ═══ Tezkor raqamlar ═══ */
+function Stats({ stats }) {
+  const items = [
+    ['Jami', stats.jami, '#1A1A17'],
+    ["Bo'sh", stats.bosh, '#34C759'],
+    ['Band', stats.band, '#FF9500'],
+    ['Sessiya', stats.sessiya, '#007AFF'],
+  ];
+  return (
+    <div className="g mb-3 grid grid-cols-4 divide-x divide-black/[0.06] rounded-[18px] py-2.5">
+      {items.map(([label, value, color]) => (
+        <div key={label} className="px-2 text-center">
+          <div className="text-[19px] font-bold leading-none tabular-nums"
+            style={{ color }}>{value}</div>
+          <div className="mt-1 truncate text-[10.5px] text-muted">{label}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ Segment boshqaruvi ═══ */
+function Segmented({ items, value, onChange }) {
+  const idx = Math.max(0, items.findIndex(([k]) => k === value));
+  return (
+    <div className="seg" style={{ '--n': items.length, '--i': idx }}>
+      <span className="seg-thumb" aria-hidden />
+      {items.map(([k, label]) => (
+        <button key={k} onClick={() => onChange(k)}
+          data-on={value === k ? '1' : '0'}
+          className="seg-item truncate text-[12px] sm:text-[14px]">
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ Stol amallari — mobilda qator, kattaroqda ustun ═══ */
+function TableActions({ onTheme, onPdf, onBulk, onAdd, layout }) {
+  const rail = layout === 'rail';
+  const items = [
+    ['ti-palette', 'QR dizayni', onTheme, false],
+    ['ti-file-download', 'PDF yuklash', onPdf, false],
+    ['ti-stack-2', "Ko'p stol", onBulk, false],
+    ['ti-plus', 'Stol qo\u2018shish', onAdd, true],
+  ].filter(([, , fn]) => fn);
+
+  if (rail) {
+    return (
+      <div className="space-y-1.5">
+        {items.map(([icon, label, fn, primary]) => (
+          <button key={label} onClick={fn}
+            className={`tap flex w-full items-center gap-2.5 rounded-[15px] px-3 py-2.5 text-[14px] font-medium ${
+              primary
+                ? 'bg-brand-400 text-brand-text'
+                : 'bg-white/70 text-ink hover:bg-white'
+            }`}>
+            <i className={`ti ${icon} text-lg`} />
+            {label}
+          </button>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-4 gap-2">
+      {items.map(([icon, label, fn, primary]) => (
+        <button key={label} onClick={fn} title={label}
+          className={`tap flex flex-col items-center justify-center gap-1 rounded-[17px] px-1 py-2.5 ${
+            primary ? 'bg-brand-400 text-brand-text' : 'g text-ink'
+          }`}>
+          <i className={`ti ${icon} text-[19px]`} />
+          <span className="w-full truncate text-center text-[10.5px] font-medium leading-none">
+            {label}
+          </span>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/* ═══ Stol katakchasi ═══ */
+function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
+  const ts = TABLE_STATUS[t.status] || TABLE_STATUS.available;
+
+  const buttons = [
+    ['ti-qrcode', 'QR yuklash', onQr, false],
+    ['ti-pencil', 'Tahrirlash', onEdit, false],
+    ['ti-refresh', 'QR yangilash', onRegen, false],
+    ['ti-trash', "O'chirish", onRemove, true],
+  ];
+
+  return (
+    <article className="g relative overflow-hidden rounded-[20px] p-3 pl-3.5">
+      {/* Holat chizig'i — 40 ta stol orasidan bir qarashda ko'rinadi */}
+      <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]"
+        style={{ background: ts.color }} />
+
+      <h3 className="truncate text-[15px] font-semibold leading-tight text-ink">
+        {t.tableName || `Stol ${t.tableNumber}`}
+      </h3>
+
+      <div className="mb-2.5 mt-1 flex items-center justify-between gap-1.5">
+        <p className="truncate text-[11px] text-muted">
+          {t.tableName ? `№${t.tableNumber} · ` : ''}{t.capacity} kishi
+        </p>
+
+        <div className="flex flex-none items-center gap-1.5">
+          {t.activeSession && (
+            <span className="ios26-live h-2 w-2 rounded-full"
+              style={{ background: '#34C759' }} title="Sessiya faol" />
+          )}
+          <span className="rounded-full px-2 py-[3px] text-[10.5px] font-semibold"
+            style={{ background: tint(ts.color), color: ts.color }}>
+            {ts.label}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-4 gap-1">
+        {buttons.map(([icon, label, fn, danger]) => (
+          <button key={label} onClick={fn} title={label} aria-label={label}
+            className="tap flex h-8 items-center justify-center rounded-[11px] text-[15px]"
+            style={{
+              background: danger ? tint('#FF3B30', 0.1) : 'rgba(120,120,128,0.1)',
+              color: danger ? '#FF3B30' : '#3A3A38',
+            }}>
+            <i className={`ti ${icon}`} />
+          </button>
+        ))}
+      </div>
+    </article>
+  );
+}
+
+/* ═══ Bo'sh holat ═══ */
+function EmptyState({ icon, title, text, action }) {
+  return (
+    <div className="g rounded-[22px] px-6 py-12 text-center">
+      <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-[18px]"
+        style={{ background: tint('#EF9F27', 0.16) }}>
+        <i className={`ti ${icon} text-2xl`} style={{ color: '#BA7517' }} />
+      </div>
+      <div className="text-[17px] font-semibold text-ink">{title}</div>
+      <p className="mx-auto mt-1.5 max-w-xs text-[13px] leading-relaxed text-muted">
+        {text}
+      </p>
+      {action && (
+        <button onClick={action.onClick}
+          className="tap mt-5 rounded-[15px] bg-brand-400 px-5 py-2.5 text-[15px] font-semibold text-brand-text">
+          {action.label}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* ═══════════ STOL FORMALARI ═══════════ */
 
 function TableForm({ table, onClose, onSaved }) {
   useLockScroll();
@@ -328,11 +542,17 @@ function TableForm({ table, onClose, onSaved }) {
 
   return (
     <Modal title={isEdit ? 'Stolni tahrirlash' : 'Yangi stol'} onClose={onClose}>
-      <Field label="Stol raqami *">
-        <input value={form.tableNumber}
-          onChange={(e) => set('tableNumber', e.target.value)}
-          placeholder="12" className="inp" />
-      </Field>
+      <div className="grid grid-cols-2 gap-3">
+        <Field label="Stol raqami *">
+          <input value={form.tableNumber}
+            onChange={(e) => set('tableNumber', e.target.value)}
+            placeholder="12" className="inp" />
+        </Field>
+        <Field label="Sig'imi">
+          <NumberInput value={form.capacity}
+            onChange={(v) => set('capacity', v)} suffix="kishi" placeholder="4" />
+        </Field>
+      </div>
 
       <Field label="Nomi" hint="Ixtiyoriy — masalan 'Deraza yonida'">
         <input value={form.tableName}
@@ -340,19 +560,25 @@ function TableForm({ table, onClose, onSaved }) {
           placeholder="Deraza yonida" className="inp" />
       </Field>
 
-      <Field label="Sig'imi">
-        <NumberInput value={form.capacity}
-          onChange={(v) => set('capacity', v)} suffix="kishi" placeholder="4" />
-      </Field>
-
       {isEdit && (
         <Field label="Holati">
-          <select value={form.status} onChange={(e) => set('status', e.target.value)}
-            className="inp">
-            {Object.entries(TABLE_STATUS).map(([k, v]) => (
-              <option key={k} value={k}>{v.label}</option>
-            ))}
-          </select>
+          <div className="grid grid-cols-2 gap-2">
+            {Object.entries(TABLE_STATUS).map(([k, v]) => {
+              const on = form.status === k;
+              return (
+                <button key={k} onClick={() => set('status', k)}
+                  className="tap flex items-center gap-2 rounded-[13px] px-3 py-2.5 text-[14px] font-medium"
+                  style={{
+                    background: on ? tint(v.color, 0.16) : 'rgba(120,120,128,0.08)',
+                    color: on ? v.color : '#6B6B66',
+                  }}>
+                  <span className="h-2 w-2 flex-none rounded-full"
+                    style={{ background: v.color }} />
+                  {v.label}
+                </button>
+              );
+            })}
+          </div>
         </Field>
       )}
 
@@ -386,9 +612,12 @@ function BulkForm({ onClose, onSaved }) {
     }
   };
 
+  const from = Number(form.startFrom) || 1;
+  const count = Number(form.count) || 0;
+
   return (
     <Modal title="Bir nechta stol" onClose={onClose}>
-      <p className="text-xs text-muted mb-3 leading-relaxed">
+      <p className="mb-3 text-[13px] leading-relaxed text-muted">
         Ketma-ket raqamlangan stollar yaratiladi. Mavjud raqamlar
         o'tkazib yuboriladi.
       </p>
@@ -406,6 +635,13 @@ function BulkForm({ onClose, onSaved }) {
         <NumberInput value={form.capacity} onChange={(v) => set('capacity', v)}
           suffix="kishi" placeholder="4" />
       </Field>
+
+      {count > 0 && (
+        <div className="mb-3 rounded-[13px] px-3 py-2.5 text-[13px]"
+          style={{ background: tint('#007AFF', 0.1), color: '#0A66C2' }}>
+          №{from} dan №{from + count - 1} gacha — {count} ta stol
+        </div>
+      )}
 
       {err && <ErrBox text={err} />}
       <Actions onClose={onClose} onSubmit={submit} saving={saving} />
@@ -453,46 +689,55 @@ function ThemeForm({ theme, onClose, onSaved }) {
   };
 
   return (
-    <Modal title="QR dizayni" onClose={onClose}>
-      <div className="bg-canvas rounded-lg p-3 mb-4 text-xs text-muted leading-relaxed">
-        Dizayn barcha stollarda <b className="text-ink">bir xil</b> chiqadi.
-        Siz faqat <b className="text-ink">fon rasmi</b> va{' '}
-        <b className="text-ink">matnlarni</b> o'zgartirasiz.
-        QR doim oq maydonda turadi — skaner har doim o'qiy oladi.
+    <Modal title="QR dizayni" onClose={onClose} wide>
+      <div className="sm:grid sm:grid-cols-[190px_minmax(0,1fr)] sm:gap-5">
+        <div className="mb-4 sm:mb-0">
+          <QrPreview form={form} />
+        </div>
+
+        <div className="min-w-0">
+          <p className="mb-3 rounded-[13px] px-3 py-2.5 text-[12px] leading-relaxed"
+            style={{ background: 'rgba(120,120,128,0.09)', color: '#6B6B66' }}>
+            Dizayn barcha stollarda <b className="text-ink">bir xil</b> chiqadi.
+            Siz faqat fon rasmi va matnlarni o'zgartirasiz. QR doim oq maydonda
+            turadi — skaner har doim o'qiy oladi.
+          </p>
+
+          <div className="grid grid-cols-[minmax(0,1fr)_118px] gap-3">
+            <ImageUpload label="Fon rasmi" aspect="16/9" folder="banners"
+              value={form.backgroundImage}
+              onChange={(url) => set('backgroundImage', url)} />
+            <ImageUpload label="Logo" aspect="1/1" folder="banners"
+              value={form.logoUrl}
+              onChange={(url) => set('logoUrl', url)} />
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-3">
+            <Field label="Kichik so'z">
+              <input value={form.eyebrow} maxLength={16}
+                onChange={(e) => set('eyebrow', e.target.value)}
+                placeholder={QR_DEFAULTS.eyebrow} className="inp" />
+            </Field>
+            <Field label="Menyu so'zi">
+              <input value={form.menuWord} maxLength={16}
+                onChange={(e) => set('menuWord', e.target.value)}
+                placeholder={QR_DEFAULTS.menuWord} className="inp" />
+            </Field>
+          </div>
+
+          <Field label="Sarlavha" hint="Katta harflarda chiqadi, 2 qatorgacha">
+            <input value={form.headline} maxLength={44}
+              onChange={(e) => set('headline', e.target.value)}
+              placeholder={QR_DEFAULTS.headline} className="inp" />
+          </Field>
+
+          <Field label="Izoh" hint="QR ostidagi kichik tushuntirish matni">
+            <input value={form.footnote} maxLength={120}
+              onChange={(e) => set('footnote', e.target.value)}
+              placeholder={QR_DEFAULTS.footnote} className="inp" />
+          </Field>
+        </div>
       </div>
-
-      <QrPreview form={form} />
-
-      <ImageUpload label="Fon rasmi (yuqori qism)" value={form.backgroundImage}
-        onChange={(url) => set('backgroundImage', url)} />
-
-      <ImageUpload label="Logo (ixtiyoriy)" value={form.logoUrl}
-        onChange={(url) => set('logoUrl', url)} />
-
-      <div className="grid grid-cols-2 gap-3 mt-3">
-        <Field label="Kichik so'z">
-          <input value={form.eyebrow} maxLength={16}
-            onChange={(e) => set('eyebrow', e.target.value)}
-            placeholder={QR_DEFAULTS.eyebrow} className="inp" />
-        </Field>
-        <Field label="Menyu so'zi">
-          <input value={form.menuWord} maxLength={16}
-            onChange={(e) => set('menuWord', e.target.value)}
-            placeholder={QR_DEFAULTS.menuWord} className="inp" />
-        </Field>
-      </div>
-
-      <Field label="Sarlavha" hint="Katta harflarda chiqadi, 2 qatorgacha">
-        <input value={form.headline} maxLength={44}
-          onChange={(e) => set('headline', e.target.value)}
-          placeholder={QR_DEFAULTS.headline} className="inp" />
-      </Field>
-
-      <Field label="Izoh" hint="QR ostidagi kichik tushuntirish matni">
-        <input value={form.footnote} maxLength={120}
-          onChange={(e) => set('footnote', e.target.value)}
-          placeholder={QR_DEFAULTS.footnote} className="inp" />
-      </Field>
 
       {err && <ErrBox text={err} />}
       <Actions onClose={onClose} onSubmit={submit} saving={saving} />
@@ -511,30 +756,30 @@ function QrPreview({ form }) {
   const footnote = form.footnote || QR_DEFAULTS.footnote;
 
   return (
-    <div className="mb-4">
-      <label className="block text-xs font-medium text-ink mb-1.5">
+    <div>
+      <label className="mb-1.5 block text-[13px] font-semibold text-ink">
         Ko'rinish
       </label>
-      <div className="mx-auto w-[210px] rounded-xl overflow-hidden shadow-md select-none"
+      <div className="mx-auto w-[180px] select-none overflow-hidden rounded-[18px] shadow-lg sm:w-full"
         style={{ aspectRatio: '2 / 3', background: 'linear-gradient(#17635E,#124F4B)' }}>
-        <div className="relative w-full h-full">
+        <div className="relative h-full w-full">
           {/* Yuqori foto */}
-          <div className="absolute inset-x-0 top-0 h-[40%] bg-[#201915] overflow-hidden">
+          <div className="absolute inset-x-0 top-0 h-[40%] overflow-hidden bg-[#201915]">
             {form.backgroundImage && (
               <img src={form.backgroundImage} alt=""
-                className="w-full h-full object-cover" />
+                className="h-full w-full object-cover" />
             )}
             <div className="absolute inset-0"
               style={{ background: 'linear-gradient(rgba(0,0,0,.62),rgba(0,0,0,.28) 45%,rgba(0,0,0,.55))' }} />
             <div className="absolute inset-x-0 top-[9%] flex items-center justify-between px-[9%]">
-              <span className="text-white font-bold text-[17px] leading-none">Stol 1</span>
+              <span className="text-[16px] font-bold leading-none text-white">Stol 1</span>
               <div className="flex items-center gap-2">
-                <span className="w-px h-6 bg-white/55" />
+                <span className="h-6 w-px bg-white/55" />
                 <span className="text-right leading-none">
-                  <span className="block text-[#EE7A2B] font-semibold text-[6px] tracking-[0.18em]">
+                  <span className="block text-[6px] font-semibold tracking-[0.18em] text-[#EE7A2B]">
                     {eyebrow}
                   </span>
-                  <span className="block text-white font-bold text-[9px] tracking-wide mt-[2px]">
+                  <span className="mt-[2px] block text-[9px] font-bold tracking-wide text-white">
                     {menuWord}
                   </span>
                 </span>
@@ -543,31 +788,30 @@ function QrPreview({ form }) {
           </div>
 
           {/* Sariq ramka + QR */}
-          <div className="absolute left-1/2 -translate-x-1/2 top-[24%] w-[60%] rounded-[10px] bg-[#EE7A2B] p-[5px] shadow-lg">
-            <div className="w-full aspect-square rounded-[7px] bg-white p-[7px]">
-              <div className="w-full h-full"
+          <div className="absolute left-1/2 top-[24%] w-[60%] -translate-x-1/2 rounded-[10px] bg-[#EE7A2B] p-[5px] shadow-lg">
+            <div className="aspect-square w-full rounded-[7px] bg-white p-[7px]">
+              <div className="h-full w-full"
                 style={{
-                  backgroundImage:
-                    'repeating-conic-gradient(#14100E 0% 25%, #fff 0% 50%)',
+                  backgroundImage: 'repeating-conic-gradient(#14100E 0% 25%, #fff 0% 50%)',
                   backgroundSize: '11% 11%',
                 }} />
             </div>
-            <div className="text-center text-white font-bold text-[9px] tracking-[0.14em] py-[5px]">
+            <div className="py-[5px] text-center text-[9px] font-bold tracking-[0.14em] text-white">
               {menuWord}
             </div>
           </div>
 
           {/* Sarlavha + izoh */}
-          <div className="absolute inset-x-0 top-[70%] px-[8%] text-center">
-            <p className="text-white font-bold text-[13px] leading-tight break-words">
+          <div className="absolute inset-x-0 top-[73%] px-[8%] text-center">
+            <p className="break-words text-[11px] font-bold leading-tight text-white">
               {headline}
             </p>
-            <p className="text-white/80 text-[6.5px] leading-snug mt-[6px] break-words">
+            <p className="mt-[6px] break-words text-[6.5px] leading-snug text-white/80">
               {footnote}
             </p>
           </div>
 
-          <p className="absolute inset-x-0 bottom-[3%] text-center text-white/55 text-[5.5px] tracking-[0.2em]">
+          <p className="absolute inset-x-0 bottom-[3%] text-center text-[5.5px] tracking-[0.2em] text-white/55">
             lokma.uz
           </p>
         </div>
@@ -576,16 +820,25 @@ function QrPreview({ form }) {
   );
 }
 
-function Modal({ title, children, onClose }) {
+/* ═══════════ UMUMIY ELEMENTLAR ═══════════ */
+
+function Modal({ title, children, onClose, wide }) {
   return (
     <div onClick={onClose}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4">
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 backdrop-blur-md sm:items-center sm:p-4">
       <div onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 overflow-y-auto max-h-[88dvh] pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold text-ink">{title}</h3>
-          <button onClick={onClose} className="text-muted hover:text-ink">
-            <i className="ti ti-x text-xl" />
+        className={`ios26-sheet g w-full overflow-y-auto rounded-t-[26px] px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-[26px] sm:pt-5 sm:pb-5 ${
+          wide ? 'sm:max-w-2xl' : 'sm:max-w-md'
+        } max-h-[92dvh] sm:max-h-[88dvh]`}>
+        {/* iOS tortish chizig'i */}
+        <div aria-hidden className="mx-auto mb-3 h-1 w-9 rounded-full bg-black/15 sm:hidden" />
+
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h3 className="text-[20px] font-bold tracking-[-0.01em] text-ink">{title}</h3>
+          <button onClick={onClose} aria-label="Yopish"
+            className="tap flex h-8 w-8 flex-none items-center justify-center rounded-full text-muted"
+            style={{ background: 'rgba(120,120,128,0.12)' }}>
+            <i className="ti ti-x text-lg" />
           </button>
         </div>
         {children}
@@ -597,32 +850,68 @@ function Modal({ title, children, onClose }) {
 function Field({ label, hint, children }) {
   return (
     <div className="mb-3">
-      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
+      <label className="mb-1.5 block text-[13px] font-semibold text-ink">{label}</label>
       {children}
-      {hint && <p className="text-[11px] text-muted mt-1">{hint}</p>}
+      {hint && <p className="mt-1 text-[11.5px] leading-snug text-muted">{hint}</p>}
     </div>
   );
 }
 
 function ErrBox({ text }) {
-  return <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">{text}</div>;
+  return (
+    <div className="mb-3 flex items-start gap-2 rounded-[13px] px-3 py-2.5 text-[13px]"
+      style={{ background: tint('#FF3B30', 0.1), color: '#D70015' }}>
+      <i className="ti ti-alert-circle mt-[1px] flex-none" />
+      <span>{text}</span>
+    </div>
+  );
 }
 
 function Actions({ onClose, onSubmit, saving }) {
   return (
-    <div className="flex gap-2 mt-4">
-      <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl">
+    <div className="mt-4 flex gap-2">
+      <button onClick={onClose}
+        className="tap flex-1 rounded-[15px] py-3 text-[15px] font-medium text-ink"
+        style={{ background: 'rgba(120,120,128,0.12)' }}>
         Bekor
       </button>
       <button onClick={onSubmit} disabled={saving}
-        className="flex-[1.5] bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl disabled:opacity-50">
+        className="tap flex-[1.6] rounded-[15px] bg-brand-400 py-3 text-[15px] font-semibold text-brand-text disabled:opacity-50">
         {saving ? 'Saqlanmoqda...' : 'Saqlash'}
       </button>
     </div>
   );
 }
 
-/* ═══ OFITSIANTLAR ═══ */
+/** iOS uslubidagi almashtirgich. */
+function Toggle({ checked, onChange }) {
+  return (
+    <button type="button" role="switch" aria-checked={checked}
+      onClick={() => onChange(!checked)}
+      className="relative h-[31px] w-[51px] flex-none rounded-full transition-colors duration-300"
+      style={{ background: checked ? '#34C759' : 'rgba(120,120,128,0.24)' }}>
+      <span className="absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow-md transition-transform duration-300"
+        style={{ left: 2, transform: `translateX(${checked ? 20 : 0}px)` }} />
+    </button>
+  );
+}
+
+/** Sarlavhali guruh — iOS "grouped list" uslubi. */
+function Group({ title, children, className = '' }) {
+  return (
+    <section className={className}>
+      {title && (
+        <h2 className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+          {title}
+        </h2>
+      )}
+      <div className="g rounded-[20px] p-4">{children}</div>
+    </section>
+  );
+}
+
+/* ═══════════ OFITSIANTLAR ═══════════ */
+
 function Waiters({ tables }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -637,7 +926,7 @@ function Waiters({ tables }) {
   useEffect(() => { load(); }, [load]);
 
   const resetDevice = async (w) => {
-    if (!await confirm({ title: 
+    if (!await confirm({ title:
       `${w.fullName} qurilmasi bekor qilinsinmi?\n\n` +
       'Keyingi kirishda yangi qurilma bog\'lanadi.',
      })) return;
@@ -654,85 +943,79 @@ function Waiters({ tables }) {
     catch (e) { alert(e.message); }
   };
 
-  if (loading) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
+  if (loading) return <Loading />;
 
   return (
     <>
       <button onClick={() => setEditing('new')}
-        className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl mb-4">
-        <i className="ti ti-user-plus" /> Ofitsiant qo'shish
+        className="tap mb-3 flex w-full items-center justify-center gap-2 rounded-[16px] bg-brand-400 py-3 text-[15px] font-semibold text-brand-text sm:w-auto sm:px-5">
+        <i className="ti ti-user-plus text-lg" /> Ofitsiant qo'shish
       </button>
 
       {items.length === 0 ? (
-        <div className="text-center py-12">
-          <i className="ti ti-users text-4xl text-muted mb-3 block" />
-          <div className="text-ink font-medium">Ofitsiant yo'q</div>
-          <p className="text-sm text-muted mt-1 max-w-xs mx-auto">
-            Ofitsiantlar waiter.lokma.uz orqali kirib buyurtma qabul qiladi
-          </p>
-        </div>
+        <EmptyState icon="ti-users" title="Ofitsiant yo'q"
+          text="Ofitsiantlar waiter.lokma.uz orqali kirib buyurtma qabul qiladi" />
       ) : (
-        <div className="space-y-2.5">
+        <div className="grid gap-2.5 md:grid-cols-2 2xl:grid-cols-3">
           {items.map((w) => (
-            <div key={w._id} className="bg-surface border border-line rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3 mb-2">
+            <article key={w._id} className="g rounded-[20px] p-4">
+              <div className="mb-3 flex items-start justify-between gap-3">
                 <div className="min-w-0">
-                  <div className="font-medium text-ink">{w.fullName}</div>
-                  <div className="text-xs text-muted">
+                  <div className="truncate text-[16px] font-semibold text-ink">
+                    {w.fullName}
+                  </div>
+                  <div className="mt-0.5 truncate text-[12px] text-muted">
                     @{w.login}{w.phone && ` · ${w.phone}`}
                   </div>
                 </div>
-                <span className={`text-[11px] font-medium px-2 py-1 rounded-full flex-none ${
-                  w.isActive ? 'bg-green-50 text-green-700' : 'bg-canvas text-muted'
-                }`}>
+                <span className="flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                  style={{
+                    background: tint(w.isActive ? '#34C759' : '#8E8E93'),
+                    color: w.isActive ? '#248A3D' : '#6B6B66',
+                  }}>
                   {w.isActive ? 'Faol' : "O'chiq"}
                 </span>
               </div>
 
-              {/* Qurilma */}
-              <div className="flex items-center gap-2 text-xs mb-2">
-                <i className={`ti ${w.deviceBound ? 'ti-device-mobile-check' : 'ti-device-mobile-off'}`} />
-                <span className={w.deviceBound ? 'text-green-600' : 'text-muted'}>
-                  {w.deviceBound
+              <div className="mb-3 space-y-1.5 rounded-[14px] px-3 py-2.5"
+                style={{ background: 'rgba(120,120,128,0.08)' }}>
+                <Row icon={w.deviceBound ? 'ti-device-mobile-check' : 'ti-device-mobile-off'}
+                  tone={w.deviceBound ? '#248A3D' : '#6B6B66'}
+                  text={w.deviceBound
                     ? `Qurilma bog'langan${w.deviceLabel ? ` · ${w.deviceLabel}` : ''}`
-                    : "Qurilma bog'lanmagan"}
-                </span>
+                    : "Qurilma bog'lanmagan"} />
+
+                {w.tableIds?.length > 0 && (
+                  <Row icon="ti-armchair"
+                    text={`Stollar: ${w.tableIds.map((t) => t.tableNumber).join(', ')}`} />
+                )}
+
+                {w.earnings?.total > 0 && (
+                  <Row icon="ti-coins"
+                    text={`${w.earnings.total.toLocaleString('ru-RU')} so'm · ${w.earnings.orders} buyurtma`} />
+                )}
               </div>
-
-              {/* Stollar */}
-              {w.tableIds?.length > 0 && (
-                <div className="text-xs text-muted mb-2">
-                  Stollar: {w.tableIds.map((t) => t.tableNumber).join(', ')}
-                </div>
-              )}
-
-              {/* Daromad */}
-              {w.earnings?.total > 0 && (
-                <div className="text-xs text-muted mb-3">
-                  Daromad: <b className="text-ink">
-                    {w.earnings.total.toLocaleString('ru-RU')} so'm
-                  </b> · {w.earnings.orders} buyurtma
-                </div>
-              )}
 
               <div className="flex gap-2">
                 <button onClick={() => setEditing(w)}
-                  className="flex-1 border border-line text-muted py-2 rounded-lg text-sm">
+                  className="tap flex-1 rounded-[13px] py-2.5 text-[14px] font-medium text-ink"
+                  style={{ background: 'rgba(120,120,128,0.12)' }}>
                   Tahrirlash
                 </button>
                 {w.deviceBound && (
-                  <button onClick={() => resetDevice(w)}
-                    title="Qurilmani almashtirish"
-                    className="px-3 border border-amber-200 text-amber-700 py-2 rounded-lg text-sm">
-                    <i className="ti ti-device-mobile-x" />
+                  <button onClick={() => resetDevice(w)} title="Qurilmani almashtirish"
+                    className="tap flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[13px]"
+                    style={{ background: tint('#FF9500', 0.12), color: '#C86A00' }}>
+                    <i className="ti ti-device-mobile-x text-[17px]" />
                   </button>
                 )}
-                <button onClick={() => remove(w)}
-                  className="px-3 border border-line text-red-500 py-2 rounded-lg">
-                  <i className="ti ti-trash text-sm" />
+                <button onClick={() => remove(w)} title="O'chirish"
+                  className="tap flex h-[42px] w-[42px] flex-none items-center justify-center rounded-[13px]"
+                  style={{ background: tint('#FF3B30', 0.1), color: '#FF3B30' }}>
+                  <i className="ti ti-trash text-[17px]" />
                 </button>
               </div>
-            </div>
+            </article>
           ))}
         </div>
       )}
@@ -746,6 +1029,23 @@ function Waiters({ tables }) {
         />
       )}
     </>
+  );
+}
+
+function Row({ icon, text, tone }) {
+  return (
+    <div className="flex items-center gap-2 text-[12px]" style={{ color: tone || '#6B6B66' }}>
+      <i className={`ti ${icon} flex-none text-[15px]`} />
+      <span className="truncate">{text}</span>
+    </div>
+  );
+}
+
+function Loading() {
+  return (
+    <div className="flex items-center gap-2 px-1 py-6 text-[14px] text-muted">
+      <i className="ti ti-loader-2 animate-spin" /> Yuklanmoqda...
+    </div>
   );
 }
 
@@ -833,27 +1133,29 @@ function WaiterForm({ waiter, tables, onClose, onSaved }) {
       {tables?.length > 0 && (
         <Field label="Biriktirilgan stollar"
           hint="Tanlanmasa barcha stollarga kirish beriladi. Bitta stolga eng ko'pi 3 ofitsiant.">
-          <div className="flex flex-wrap gap-1.5 max-h-36 overflow-y-auto">
-            {tables.map((t) => (
-              <button key={t._id} onClick={() => toggleTable(t._id)}
-                className={`text-xs px-2.5 py-1.5 rounded-lg border ${
-                  form.tableIds.includes(t._id)
-                    ? 'border-brand-400 bg-brand-50 text-brand-600'
-                    : 'border-line text-muted'
-                }`}>
-                {t.tableNumber}
-              </button>
-            ))}
+          <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">
+            {tables.map((t) => {
+              const on = form.tableIds.includes(t._id);
+              return (
+                <button key={t._id} onClick={() => toggleTable(t._id)}
+                  className="tap min-w-[38px] rounded-[11px] px-2.5 py-2 text-[13px] font-medium"
+                  style={{
+                    background: on ? '#EF9F27' : 'rgba(120,120,128,0.1)',
+                    color: on ? '#2C1400' : '#6B6B66',
+                  }}>
+                  {t.tableNumber}
+                </button>
+              );
+            })}
           </div>
         </Field>
       )}
 
-      <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
-        <span className="text-sm text-ink">Faol</span>
-        <input type="checkbox" checked={form.isActive}
-          onChange={(e) => set('isActive', e.target.checked)}
-          className="w-5 h-5 accent-brand-400" />
-      </label>
+      <div className="mt-1 flex items-center justify-between gap-3 rounded-[14px] px-3.5 py-3"
+        style={{ background: 'rgba(120,120,128,0.08)' }}>
+        <span className="text-[15px] text-ink">Faol</span>
+        <Toggle checked={form.isActive} onChange={(v) => set('isActive', v)} />
+      </div>
 
       {err && <ErrBox text={err} />}
       <Actions onClose={onClose} onSubmit={submit} saving={saving} />
@@ -861,7 +1163,8 @@ function WaiterForm({ waiter, tables, onClose, onSaved }) {
   );
 }
 
-/* ═══ XIZMAT HAQI ═══ */
+/* ═══════════ XIZMAT HAQI ═══════════ */
+
 function ServiceFee({ cfg, onSaved }) {
   const [form, setForm] = useState({
     serviceFeeEnabled: cfg?.serviceFeeEnabled ?? false,
@@ -888,34 +1191,30 @@ function ServiceFee({ cfg, onSaved }) {
     }
   };
 
+  const example = form.serviceFeeType === 'percentage'
+    ? Math.round(150000 * (Number(form.serviceFeeValue) || 0) / 100)
+    : (Number(form.serviceFeeValue) || 0);
+
   return (
-    <div className="max-w-3xl space-y-4">
-      <section className="bg-surface border border-line rounded-xl p-4">
-        <label className="flex items-start justify-between gap-4 cursor-pointer mb-3">
-          <div>
-            <div className="text-sm text-ink">Xizmat haqi</div>
-            <div className="text-xs text-muted mt-0.5">
+    <div className="max-w-2xl space-y-4">
+      <Group title="Xizmat haqi">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[15px] text-ink">Xizmat haqi olinsin</div>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-muted">
               Faqat ofitsiant qabul qilgan buyurtmalarga qo'llanadi
-            </div>
+            </p>
           </div>
-          <input type="checkbox" checked={form.serviceFeeEnabled}
-            onChange={(e) => set('serviceFeeEnabled', e.target.checked)}
-            className="w-5 h-5 accent-brand-400 flex-none mt-0.5" />
-        </label>
+          <Toggle checked={form.serviceFeeEnabled}
+            onChange={(v) => set('serviceFeeEnabled', v)} />
+        </div>
 
         {form.serviceFeeEnabled && (
-          <>
-            <div className="flex gap-2 mb-3">
-              {[['percentage', 'Foiz (%)'], ['fixed', "Qat'iy summa"]].map(([k, label]) => (
-                <button key={k} onClick={() => set('serviceFeeType', k)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm border ${
-                    form.serviceFeeType === k
-                      ? 'border-brand-400 bg-brand-50 text-brand-600'
-                      : 'border-line text-muted'
-                  }`}>
-                  {label}
-                </button>
-              ))}
+          <div className="mt-4 border-t border-black/5 pt-4">
+            <div className="mb-3">
+              <Segmented value={form.serviceFeeType}
+                onChange={(v) => set('serviceFeeType', v)}
+                items={[['percentage', 'Foiz (%)'], ['fixed', "Qat'iy summa"]]} />
             </div>
 
             <Field label="Miqdori">
@@ -924,49 +1223,50 @@ function ServiceFee({ cfg, onSaved }) {
                 suffix={form.serviceFeeType === 'percentage' ? '%' : "so'm"} />
             </Field>
 
-            <div className="text-xs text-muted bg-canvas rounded-lg p-3 leading-relaxed">
-              <b className="text-ink">Misol:</b> taomlar 150 000 so'm bo'lsa,
-              {form.serviceFeeType === 'percentage'
-                ? ` xizmat haqi ${Math.round(150000 * (Number(form.serviceFeeValue) || 0) / 100).toLocaleString('ru-RU')} so'm`
-                : ` xizmat haqi ${(Number(form.serviceFeeValue) || 0).toLocaleString('ru-RU')} so'm`}.
+            <div className="rounded-[14px] px-3.5 py-3 text-[12.5px] leading-relaxed"
+              style={{ background: tint('#007AFF', 0.09), color: '#0A66C2' }}>
+              Taomlar 150 000 so'm bo'lsa, xizmat haqi{' '}
+              <b>{example.toLocaleString('ru-RU')} so'm</b>.
               <br />
               QR orqali berilgan buyurtmada xizmat haqi olinmaydi.
             </div>
-          </>
-        )}
-      </section>
-
-      <section className="bg-surface border border-line rounded-xl p-4">
-        <label className="flex items-start justify-between gap-4 cursor-pointer">
-          <div>
-            <div className="text-sm text-ink">Stop List ishlatilsin</div>
-            <div className="text-xs text-muted mt-0.5">
-              To'xtatilgan taomlar zal menyusida ham ko'rinmaydi
-            </div>
           </div>
-          <input type="checkbox" checked={form.useGlobalStopList}
-            onChange={(e) => set('useGlobalStopList', e.target.checked)}
-            className="w-5 h-5 accent-brand-400 flex-none mt-0.5" />
-        </label>
-      </section>
+        )}
+      </Group>
+
+      <Group title="Menyu">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[15px] text-ink">Stop List ishlatilsin</div>
+            <p className="mt-0.5 text-[12.5px] leading-snug text-muted">
+              To'xtatilgan taomlar zal menyusida ham ko'rinmaydi
+            </p>
+          </div>
+          <Toggle checked={form.useGlobalStopList}
+            onChange={(v) => set('useGlobalStopList', v)} />
+        </div>
+      </Group>
 
       {msg && (
-        <div className={`text-sm rounded-lg px-3 py-2 ${
-          msg.ok ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'
-        }`}>
+        <div className="rounded-[14px] px-3.5 py-3 text-[13.5px] font-medium"
+          style={{
+            background: tint(msg.ok ? '#34C759' : '#FF3B30', 0.12),
+            color: msg.ok ? '#248A3D' : '#D70015',
+          }}>
           {msg.text}
         </div>
       )}
 
       <button onClick={save} disabled={saving}
-        className="w-full bg-brand-400 text-brand-text font-medium py-3 rounded-xl disabled:opacity-50">
+        className="tap w-full rounded-[16px] bg-brand-400 py-3.5 text-[15px] font-semibold text-brand-text disabled:opacity-50">
         {saving ? 'Saqlanmoqda...' : 'Saqlash'}
       </button>
     </div>
   );
 }
 
-/* ═══ OFITSIANT DAROMADI ═══ */
+/* ═══════════ OFITSIANT DAROMADI ═══════════ */
+
 function Earnings() {
   const [period, setPeriod] = useState('month');
   const [range, setRange] = useState({
@@ -990,29 +1290,18 @@ function Earnings() {
 
   const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
-  if (loading) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
-
   const waiters = data?.waiters || [];
   const totalRemaining = waiters.reduce((s, w) => s + w.qoldiq, 0);
 
   return (
     <>
-      {/* Davr */}
-      <div className="flex gap-2 mb-4">
-        {[['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy'], ['custom', 'Davr']].map(([k, label]) => (
-          <button key={k} onClick={() => setPeriod(k)}
-            className={`px-4 py-2 rounded-xl text-sm font-medium border ${
-              period === k
-                ? 'border-brand-400 bg-brand-50 text-brand-600'
-                : 'border-line text-muted'
-            }`}>
-            {label}
-          </button>
-        ))}
+      <div className="mb-3">
+        <Segmented value={period} onChange={setPeriod}
+          items={[['today', 'Bugun'], ['week', 'Hafta'], ['month', 'Oy'], ['custom', 'Davr']]} />
       </div>
 
       {period === 'custom' && (
-        <div className="grid grid-cols-2 gap-2 mb-4">
+        <div className="mb-3 grid grid-cols-2 gap-2">
           <input type="date" value={range.from}
             onChange={(e) => setRange((r) => ({ ...r, from: e.target.value }))}
             className="inp" />
@@ -1022,74 +1311,86 @@ function Earnings() {
         </div>
       )}
 
-      {totalRemaining > 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
-          <div className="text-xs text-amber-700">To&apos;lanmagan xizmat haqi</div>
-          <div className="text-xl font-bold text-amber-800">{som(totalRemaining)} so&apos;m</div>
-        </div>
-      )}
-
-      {waiters.length === 0 ? (
-        <div className="text-center py-12">
-          <i className="ti ti-users text-4xl text-muted mb-3 block" />
-          <div className="text-ink font-medium">Ofitsiant yo&apos;q</div>
-        </div>
-      ) : (
-        <div className="space-y-2.5">
-          {waiters.map((w) => (
-            <div key={w._id} className="bg-surface border border-line rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="font-medium text-ink">{w.fullName}</div>
-                {!w.isActive && (
-                  <span className="text-[11px] px-2 py-1 rounded-full bg-canvas text-muted flex-none">
-                    O&apos;chiq
-                  </span>
-                )}
+      {loading ? <Loading /> : (
+        <>
+          {totalRemaining > 0 && (
+            <div className="g mb-3 rounded-[20px] p-4">
+              <div className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted">
+                To&apos;lanmagan xizmat haqi
               </div>
-
-              {/* Davr bo'yicha */}
-              <div className="grid grid-cols-3 gap-2 text-center mb-3">
-                <div className="bg-canvas rounded-lg py-2">
-                  <div className="text-[10px] text-muted">Savdo</div>
-                  <div className="text-sm font-semibold text-ink">{som(w.savdo)}</div>
-                </div>
-                <div className="bg-canvas rounded-lg py-2">
-                  <div className="text-[10px] text-muted">Xizmat haqi</div>
-                  <div className="text-sm font-semibold text-brand-600">{som(w.xizmatHaqi)}</div>
-                </div>
-                <div className="bg-canvas rounded-lg py-2">
-                  <div className="text-[10px] text-muted">Buyurtma</div>
-                  <div className="text-sm font-semibold text-ink">{w.buyurtmalar}</div>
-                </div>
+              <div className="mt-1 text-[28px] font-bold leading-none tabular-nums"
+                style={{ color: '#C86A00' }}>
+                {som(totalRemaining)} <span className="text-[15px] font-semibold">so&apos;m</span>
               </div>
-
-              {/* Umumiy hisob */}
-              <div className="text-xs text-muted space-y-1 mb-3 pt-2 border-t border-line">
-                <div className="flex justify-between">
-                  <span>Jami daromad</span>
-                  <span className="text-ink">{som(w.jamiDaromad)} so&apos;m</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>To&apos;langan</span>
-                  <span className="text-green-600">{som(w.tolangan)} so&apos;m</span>
-                </div>
-                <div className="flex justify-between font-medium">
-                  <span className="text-ink">Qoldiq</span>
-                  <span className={w.qoldiq > 0 ? 'text-amber-700' : 'text-muted'}>
-                    {som(w.qoldiq)} so&apos;m
-                  </span>
-                </div>
-              </div>
-
-              {w.qoldiq > 0 && (
-                <button onClick={() => setPaying(w)}
-                  className="w-full bg-green-500 text-white font-medium py-2 rounded-lg text-sm">
-                  To&apos;lash
-                </button>
-              )}
             </div>
-          ))}
-        </div>
+          )}
+
+          {waiters.length === 0 ? (
+            <EmptyState icon="ti-coins" title="Ma'lumot yo'q"
+              text="Bu davrda ofitsiantlar bo'yicha daromad qayd etilmagan" />
+          ) : (
+            <div className="grid gap-2.5 xl:grid-cols-2">
+              {waiters.map((w) => (
+                <article key={w._id} className="g rounded-[20px] p-4">
+                  <div className="mb-3 flex items-start justify-between gap-3">
+                    <div className="truncate text-[16px] font-semibold text-ink">
+                      {w.fullName}
+                    </div>
+                    {!w.isActive && (
+                      <span className="flex-none rounded-full px-2.5 py-1 text-[11px] font-semibold"
+                        style={{ background: tint('#8E8E93'), color: '#6B6B66' }}>
+                        O&apos;chiq
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mb-3 grid grid-cols-3 gap-2">
+                    {[
+                      ['Savdo', som(w.savdo), '#1A1A17'],
+                      ['Xizmat haqi', som(w.xizmatHaqi), '#BA7517'],
+                      ['Buyurtma', w.buyurtmalar, '#1A1A17'],
+                    ].map(([label, value, color]) => (
+                      <div key={label} className="rounded-[14px] px-2 py-2.5 text-center"
+                        style={{ background: 'rgba(120,120,128,0.08)' }}>
+                        <div className="text-[10px] text-muted">{label}</div>
+                        <div className="mt-0.5 text-[15px] font-semibold tabular-nums"
+                          style={{ color }}>{value}</div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <dl className="mb-3 space-y-1.5 border-t border-black/5 pt-3 text-[13px]">
+                    <div className="flex justify-between">
+                      <dt className="text-muted">Jami daromad</dt>
+                      <dd className="tabular-nums text-ink">{som(w.jamiDaromad)} so&apos;m</dd>
+                    </div>
+                    <div className="flex justify-between">
+                      <dt className="text-muted">To&apos;langan</dt>
+                      <dd className="tabular-nums" style={{ color: '#248A3D' }}>
+                        {som(w.tolangan)} so&apos;m
+                      </dd>
+                    </div>
+                    <div className="flex justify-between font-semibold">
+                      <dt className="text-ink">Qoldiq</dt>
+                      <dd className="tabular-nums"
+                        style={{ color: w.qoldiq > 0 ? '#C86A00' : '#6B6B66' }}>
+                        {som(w.qoldiq)} so&apos;m
+                      </dd>
+                    </div>
+                  </dl>
+
+                  {w.qoldiq > 0 && (
+                    <button onClick={() => setPaying(w)}
+                      className="tap w-full rounded-[14px] py-2.5 text-[14px] font-semibold text-white"
+                      style={{ background: '#34C759' }}>
+                      To&apos;lash
+                    </button>
+                  )}
+                </article>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       {paying && (
@@ -1130,14 +1431,15 @@ function PayoutModal({ waiter, period, onClose, onPaid }) {
 
   return (
     <Modal title="Xizmat haqini to'lash" onClose={onClose}>
-      <div className="bg-canvas rounded-xl p-3.5 mb-4 text-sm">
+      <div className="mb-4 rounded-[16px] px-3.5 py-3 text-[14px]"
+        style={{ background: 'rgba(120,120,128,0.08)' }}>
         <div className="flex justify-between py-1">
           <span className="text-muted">Ofitsiant</span>
           <span className="text-ink">{waiter.fullName}</span>
         </div>
         <div className="flex justify-between py-1">
           <span className="text-muted">Qoldiq</span>
-          <b className="text-ink">{som(waiter.qoldiq)} so&apos;m</b>
+          <b className="tabular-nums text-ink">{som(waiter.qoldiq)} so&apos;m</b>
         </div>
       </div>
 
@@ -1151,10 +1453,11 @@ function PayoutModal({ waiter, period, onClose, onPaid }) {
           className="inp" />
       </Field>
 
-      <div className="text-xs text-muted bg-canvas rounded-lg p-3 mb-3 leading-relaxed">
+      <p className="mb-3 rounded-[14px] px-3.5 py-3 text-[12.5px] leading-relaxed"
+        style={{ background: 'rgba(120,120,128,0.08)', color: '#6B6B66' }}>
         To&apos;lov moliyaviy jurnalga yoziladi. Bir summa ikki marta
         to&apos;lanmaydi — qoldiq avtomatik hisoblanadi.
-      </div>
+      </p>
 
       {err && <ErrBox text={err} />}
       <Actions onClose={onClose} onSubmit={submit} saving={saving} />
@@ -1162,7 +1465,8 @@ function PayoutModal({ waiter, period, onClose, onPaid }) {
   );
 }
 
-/* ═══ TANISHTIRUV ═══ */
+/* ═══════════ TANISHTIRUV ═══════════ */
+
 function DineInIntro({ onRequest }) {
   const [sending, setSending] = useState(false);
 
@@ -1173,126 +1477,121 @@ function DineInIntro({ onRequest }) {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl">
-      {/* Sarlavha */}
-      <div className="text-center mb-7">
-        <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mx-auto mb-4">
-          <i className="ti ti-qrcode text-3xl text-brand-600" />
-        </div>
-        <h1 className="text-2xl font-bold text-ink mb-2">
-          Zal ichida QR orqali buyurtma
-        </h1>
-        <p className="text-sm text-muted leading-relaxed max-w-md mx-auto">
-          Mijoz stoldagi QR kodni skanerlab menyuni ochadi va
-          ofitsiantni kutmasdan buyurtma beradi
-        </p>
-      </div>
+    <div className="ios26 relative min-h-full">
+      <Ambient />
 
-      {/* Qanday ishlaydi */}
-      <div className="bg-surface border border-line rounded-2xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">Qanday ishlaydi</h2>
+      <div className="relative z-10 mx-auto max-w-5xl px-4 pb-10 pt-6 sm:px-6">
+        <header className="mb-6 text-center">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-[22px]"
+            style={{ background: tint('#EF9F27', 0.18) }}>
+            <i className="ti ti-qrcode text-3xl" style={{ color: '#BA7517' }} />
+          </div>
+          <h1 className="text-[28px] font-bold leading-tight tracking-[-0.02em] text-ink sm:text-[34px]">
+            Zal ichida QR orqali buyurtma
+          </h1>
+          <p className="mx-auto mt-2 max-w-md text-[14px] leading-relaxed text-muted">
+            Mijoz stoldagi QR kodni skanerlab menyuni ochadi va
+            ofitsiantni kutmasdan buyurtma beradi
+          </p>
+        </header>
 
-        <div className="space-y-4">
-          <Step n={1} title="Stollarni yaratasiz"
-            text="Har stolga raqam va nom berasiz. Tizim avtomatik QR kod yaratadi." />
-          <Step n={2} title="QR kodlarni chop etasiz"
-            text="Bitta stol yoki barchasi uchun PDF yuklab olasiz. Dizaynni o'zingiz sozlaysiz — logo, rang, fon rasmi." />
-          <Step n={3} title="Mijoz skanerlaydi"
-            text="Ilova o'rnatish shart emas. QR bosilishi bilan menyu ochiladi va stol avtomatik aniqlanadi." />
-          <Step n={4} title="Buyurtma sizga keladi"
-            text="Panelda ovoz bilan bildirishnoma chiqadi. Holatni o'zgartirasiz — mijoz kuzatib turadi." />
-        </div>
-      </div>
-
-      {/* Namuna */}
-      <div className="bg-surface border border-line rounded-2xl p-5 mb-4">
-        <h2 className="text-sm font-semibold text-ink mb-4">
-          Mijoz shuni ko&apos;radi
-        </h2>
-
-        <div className="flex gap-4 items-start">
-          {/* Telefon namunasi */}
-          <div className="w-[132px] flex-none rounded-xl overflow-hidden border border-line bg-[#14110F]">
-            <div className="px-3 py-2.5 border-b border-white/10">
-              <div className="text-[11px] font-bold text-white">Sizning kafe</div>
-              <div className="text-[9px] text-amber-400 mt-0.5">Stol 12</div>
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Group title="Qanday ishlaydi">
+            <div className="space-y-4">
+              <Step n={1} title="Stollarni yaratasiz"
+                text="Har stolga raqam va nom berasiz. Tizim avtomatik QR kod yaratadi." />
+              <Step n={2} title="QR kodlarni chop etasiz"
+                text="Bitta stol yoki barchasi uchun PDF yuklab olasiz. Fon rasmi va matnlarni o'zingiz sozlaysiz." />
+              <Step n={3} title="Mijoz skanerlaydi"
+                text="Ilova o'rnatish shart emas. QR bosilishi bilan menyu ochiladi va stol avtomatik aniqlanadi." />
+              <Step n={4} title="Buyurtma sizga keladi"
+                text="Panelda ovoz bilan bildirishnoma chiqadi. Holatni o'zgartirasiz — mijoz kuzatib turadi." />
             </div>
+          </Group>
 
-            <div className="flex gap-1 px-2 py-1.5">
-              <span className="text-[8px] bg-amber-400 text-black px-2 py-0.5 rounded-full font-semibold">
-                Hammasi
-              </span>
-              <span className="text-[8px] bg-white/10 text-white/60 px-2 py-0.5 rounded-full">
-                Issiq
-              </span>
-            </div>
+          <Group title="Mijoz shuni ko'radi">
+            <div className="flex items-start gap-4">
+              <div className="w-[132px] flex-none overflow-hidden rounded-[16px] bg-[#14110F]">
+                <div className="border-b border-white/10 px-3 py-2.5">
+                  <div className="text-[11px] font-bold text-white">Sizning kafe</div>
+                  <div className="mt-0.5 text-[9px] text-amber-400">Stol 12</div>
+                </div>
 
-            {[['Osh', '32 000'], ['Lag\u2018mon', '28 000']].map(([name, price]) => (
-              <div key={name} className="flex items-center gap-2 px-2 py-1.5">
-                <div className="w-8 h-8 rounded-lg bg-white/10 flex-none" />
-                <div className="min-w-0">
-                  <div className="text-[9px] text-white truncate">{name}</div>
-                  <div className="text-[9px] text-amber-400 font-semibold">{price}</div>
+                <div className="flex gap-1 px-2 py-1.5">
+                  <span className="rounded-full bg-amber-400 px-2 py-0.5 text-[8px] font-semibold text-black">
+                    Hammasi
+                  </span>
+                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[8px] text-white/60">
+                    Issiq
+                  </span>
+                </div>
+
+                {[['Osh', '32 000'], ['Lag\u2018mon', '28 000']].map(([name, price]) => (
+                  <div key={name} className="flex items-center gap-2 px-2 py-1.5">
+                    <div className="h-8 w-8 flex-none rounded-lg bg-white/10" />
+                    <div className="min-w-0">
+                      <div className="truncate text-[9px] text-white">{name}</div>
+                      <div className="text-[9px] font-semibold text-amber-400">{price}</div>
+                    </div>
+                  </div>
+                ))}
+
+                <div className="m-2 rounded-lg bg-amber-400 py-1.5 text-center text-[9px] font-bold text-black">
+                  Savat · 60 000
                 </div>
               </div>
-            ))}
 
-            <div className="m-2 py-1.5 rounded-lg bg-amber-400 text-black text-[9px] font-bold text-center">
-              Savat · 60 000
+              <ul className="flex-1 space-y-2.5 text-[14px]">
+                {[
+                  'Menyu zal narxlari bilan',
+                  'Bir sessiyada bir necha buyurtma',
+                  'Ofitsiant chaqirish tugmasi',
+                  'Hisobni so\u2018rash',
+                  'Buyurtma holatini kuzatish',
+                ].map((t) => (
+                  <li key={t} className="flex items-start gap-2.5">
+                    <i className="ti ti-circle-check mt-0.5 flex-none text-base"
+                      style={{ color: '#34C759' }} />
+                    <span className="text-ink">{t}</span>
+                  </li>
+                ))}
+              </ul>
             </div>
-          </div>
-
-          {/* Imkoniyatlar */}
-          <ul className="flex-1 space-y-2.5 text-sm">
-            {[
-              'Menyu zal narxlari bilan',
-              "Bir sessiyada bir necha buyurtma",
-              'Ofitsiant chaqirish tugmasi',
-              'Hisobni so\u2018rash',
-              'Buyurtma holatini kuzatish',
-            ].map((t) => (
-              <li key={t} className="flex items-start gap-2.5">
-                <i className="ti ti-circle-check text-green-600 text-base flex-none mt-0.5" />
-                <span className="text-ink">{t}</span>
-              </li>
-            ))}
-          </ul>
+          </Group>
         </div>
-      </div>
 
-      {/* Foyda */}
-      <div className="grid grid-cols-3 gap-3 mb-5">
-        {[
-          ['ti-clock-hour-3', 'Tezroq', "Ofitsiant kutilmaydi"],
-          ['ti-users', 'Kamroq xodim', 'Bir ofitsiant ko\u2018p stolga'],
-          ['ti-receipt-off', 'Xatosiz', 'Buyurtma to\u2018g\u2018ridan tizimga'],
-        ].map(([icon, title, text]) => (
-          <div key={title} className="bg-surface border border-line rounded-xl p-3.5 text-center">
-            <i className={`ti ${icon} text-xl text-brand-600 mb-1.5 block`} />
-            <div className="text-sm font-medium text-ink">{title}</div>
-            <div className="text-[11px] text-muted mt-0.5 leading-snug">{text}</div>
-          </div>
-        ))}
-      </div>
+        <div className="my-4 grid grid-cols-3 gap-2.5">
+          {[
+            ['ti-clock-hour-3', 'Tezroq', 'Ofitsiant kutilmaydi'],
+            ['ti-users', 'Kamroq xodim', 'Bir ofitsiant ko\u2018p stolga'],
+            ['ti-receipt-off', 'Xatosiz', 'Buyurtma to\u2018g\u2018ridan tizimga'],
+          ].map(([icon, title, text]) => (
+            <div key={title} className="g rounded-[18px] p-3.5 text-center">
+              <i className={`ti ${icon} mb-1.5 block text-xl`} style={{ color: '#BA7517' }} />
+              <div className="text-[14px] font-semibold text-ink">{title}</div>
+              <div className="mt-0.5 text-[11px] leading-snug text-muted">{text}</div>
+            </div>
+          ))}
+        </div>
 
-      {/* Ariza */}
-      <div className="bg-brand-50 border border-brand-400/40 rounded-2xl p-5">
-        <h2 className="text-base font-semibold text-ink mb-1">
-          Ulanish uchun ariza qoldiring
-        </h2>
-        <p className="text-sm text-muted mb-4 leading-relaxed">
-          So&apos;rovingiz LokmaGo administratoriga boradi. Tasdiqlangach
-          Dine-in bo&apos;limlari ochiladi va stollarni yarata boshlaysiz.
-        </p>
+        <div className="g rounded-[22px] p-5">
+          <h2 className="text-[18px] font-bold text-ink">
+            Ulanish uchun ariza qoldiring
+          </h2>
+          <p className="mb-4 mt-1 text-[13.5px] leading-relaxed text-muted">
+            So&apos;rovingiz LokmaGo administratoriga boradi. Tasdiqlangach
+            Dine-in bo&apos;limlari ochiladi va stollarni yarata boshlaysiz.
+          </p>
 
-        <button onClick={send} disabled={sending}
-          className="w-full bg-brand-400 text-brand-text font-semibold py-3 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
-          {sending ? 'Yuborilmoqda...' : 'Ariza qoldirish'}
-        </button>
+          <button onClick={send} disabled={sending}
+            className="tap w-full rounded-[16px] bg-brand-400 py-3.5 text-[15px] font-semibold text-brand-text disabled:opacity-50">
+            {sending ? 'Yuborilmoqda...' : 'Ariza qoldirish'}
+          </button>
 
-        <p className="text-[11px] text-muted mt-3 text-center">
-          Ariza bepul. Tarif va shartlar tasdiqlangandan keyin ko&apos;rsatiladi.
-        </p>
+          <p className="mt-3 text-center text-[11.5px] text-muted">
+            Ariza bepul. Tarif va shartlar tasdiqlangandan keyin ko&apos;rsatiladi.
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1301,12 +1600,13 @@ function DineInIntro({ onRequest }) {
 function Step({ n, title, text }) {
   return (
     <div className="flex gap-3.5">
-      <div className="w-7 h-7 rounded-full bg-brand-400 text-brand-text font-bold text-sm flex items-center justify-center flex-none">
+      <div className="flex h-7 w-7 flex-none items-center justify-center rounded-full text-[13px] font-bold"
+        style={{ background: '#EF9F27', color: '#2C1400' }}>
         {n}
       </div>
       <div className="min-w-0 pt-0.5">
-        <div className="text-sm font-medium text-ink">{title}</div>
-        <div className="text-xs text-muted mt-0.5 leading-relaxed">{text}</div>
+        <div className="text-[14.5px] font-semibold text-ink">{title}</div>
+        <div className="mt-0.5 text-[12.5px] leading-relaxed text-muted">{text}</div>
       </div>
     </div>
   );
