@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { panelApi } from '@/api';
 import { getSocket } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { confirm, confirmWithReason } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -364,8 +365,8 @@ function DetailModal({ id, box, onClose, onDone }) {
     if (busy) return;
     let reason = '';
     if (action === 'reject') {
-      reason = prompt('Rad etish sababi (ixtiyoriy):') ?? '';
-    } else if (!window.confirm(`${data.dishes.length} ta taom menyuga qo'shiladimi?`)) {
+      reason = await confirmWithReason('Rad etish sababi (ixtiyoriy):');
+    } else if (!await confirm(`${data.dishes.length} ta taom menyuga qo'shiladimi?`)) {
       return;
     }
 

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
+import { confirm } from '@/components/ui/confirm';
 
 export function RestaurantBannerPage() {
   const [imageUrl, setImageUrl] = useState('');
@@ -38,7 +39,7 @@ export function RestaurantBannerPage() {
   };
 
   const remove = async () => {
-    if (!confirm("Banneringiz o'chirilsinmi?")) return;
+    if (!await confirm({ title: "Banneringiz o'chirilsinmi?" })) return;
     try {
       await panelApi.deleteBanner();
       setImageUrl('');
@@ -53,7 +54,7 @@ export function RestaurantBannerPage() {
   }
 
   return (
-    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-lg">
+    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-3xl">
       <h1 className="text-lg sm:text-xl font-semibold text-ink">Muassasa rasmi</h1>
       <p className="text-xs sm:text-sm text-muted mt-0.5 mb-5">
         Mijoz ilovasida kartangizda va sahifangizda ko'rinadi. Istalgan vaqt almashtiring.

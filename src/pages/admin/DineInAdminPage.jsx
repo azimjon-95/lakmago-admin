@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { getSocket } from '@/lib/socket';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
+import { confirm, confirmWithReason } from '@/components/ui/confirm';
 
 const fmtDT = (d) => d ? new Date(d).toLocaleString('ru-RU', {
   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -49,8 +50,8 @@ export function DineInAdminPage() {
     let reason = '';
 
     if (status === 'suspended') {
-      reason = prompt(`${name} — sabab (ixtiyoriy):`) ?? '';
-    } else if (!window.confirm(`${name}: ${label}?`)) {
+      reason = await confirmWithReason(`${name} — sabab (ixtiyoriy):`);
+    } else if (!await confirm({ title: `${name}: ${label}?` })) {
       return;
     }
 
@@ -218,7 +219,7 @@ function Tariff() {
   if (!form) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-3xl space-y-4">
       <section className="bg-surface border border-line rounded-xl p-4">
         <h2 className="text-sm font-semibold text-ink mb-1">Obuna narxi</h2>
         <p className="text-xs text-muted mb-3">
@@ -323,7 +324,7 @@ function BillingModal({ restaurantId, name, onClose, onPaid }) {
   }, [restaurantId]);
 
   const pay = async () => {
-    if (!window.confirm(`${som(data.debt)} so'm to'langan deb belgilansinmi?`)) return;
+    if (!await confirm(`${som(data.debt)} so'm to'langan deb belgilansinmi?`)) return;
     setBusy(true);
     try {
       const r = await adminApi.markDineInPaid(restaurantId);

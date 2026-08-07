@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
+import { confirm } from '@/components/ui/confirm';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
@@ -55,7 +56,7 @@ export function RestaurantMenuPage() {
     load();
   };
   const remove = async (d) => {
-    if (!confirm(`"${d.name}" o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `"${d.name}" o'chirilsinmi?` })) return;
     await panelApi.deleteDish(d._id);
     load();
   };

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
+import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -40,10 +41,15 @@ export function BillingPage() {
   }, [tab]);
 
   const doPayout = async (r) => {
-    const amount = prompt(
-      `${r.name} ga to'lov\n\nBalans: ${som(r.balans)} so'm\n\nQancha to'lanadi?`,
-      String(r.balans),
-    );
+    const amount = await confirm({
+      title: `${r.name} ga to'lov`,
+      content: `Balans: ${som(r.balans)} so'm`,
+      input: true,
+      defaultValue: String(r.balans),
+      inputPlaceholder: "Qancha to'lanadi?",
+      okText: "To'lash",
+      tone: 'success',
+    });
     if (!amount) return;
     try {
       await adminApi.payout({ restaurantId: r._id, amount: Number(amount) });
@@ -52,21 +58,34 @@ export function BillingPage() {
   };
 
   const setCommission = async (r) => {
-    const percent = prompt(
-      `${r.name} — komissiya foizi\n\n` +
-      `Hozir: ${r.commissionPercent ?? 'umumiy sozlama'}\n` +
-      `Bo'sh qoldirilsa umumiy foiz ishlatiladi.`,
-      String(r.commissionPercent ?? ''),
-    );
-    if (percent === null) return;
+    const percent = await confirm({
+      title: `${r.name} — komissiya foizi`,
+      content: `Hozir: ${r.commissionPercent ?? 'umumiy sozlama'}\n`
+        + "Bo'sh qoldirilsa umumiy foiz ishlatiladi.",
+      input: true,
+      defaultValue: String(r.commissionPercent ?? ''),
+      inputPlaceholder: 'Masalan: 15',
+    });
+    if (percent === false) return;
 
-    const mode = prompt(
-      'Komissiya qanday olinadi?\n\n' +
-      'deduct — restoran ulushidan yechiladi (mijoz oddiy narx to\'laydi)\n' +
-      'markup — taom narxiga qo\'shiladi (mijoz ko\'proq to\'laydi)',
-      r.commissionMode || 'deduct',
-    );
-    if (mode === null) return;
+    const mode = await confirm({
+      title: 'Komissiya qanday olinadi?',
+      options: [
+        {
+          value: 'deduct',
+          label: 'Restoran ulushidan',
+          hint: "Mijoz oddiy narx to'laydi",
+        },
+        {
+          value: 'markup',
+          label: 'Taom narxiga qo\'shiladi',
+          hint: "Mijoz ko'proq to'laydi",
+        },
+      ],
+      defaultValue: r.commissionMode || 'deduct',
+      okText: 'Saqlash',
+    });
+    if (mode === false) return;
 
     try {
       await adminApi.setCommission(r._id, {

@@ -100,7 +100,7 @@ export function RestaurantProfilePage() {
   }
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-4xl">
       <h1 className="text-xl font-semibold text-ink mb-1">Muassasa ma'lumotlari</h1>
       <p className="text-sm text-muted mb-5">
         Mijozlar ilovasida shu ma'lumotlar ko'rinadi

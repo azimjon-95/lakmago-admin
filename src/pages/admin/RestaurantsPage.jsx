@@ -2,7 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
-import { CATEGORIES, KINDS, KIND_LABEL } from './restaurantMeta';
+import { KIND_LABEL } from './restaurantMeta';
+import { confirm, confirmWithReason } from '@/components/ui/confirm';
 
 
 export function RestaurantsPage() {
@@ -41,19 +42,19 @@ export function RestaurantsPage() {
   const toggleBlock = async (r) => {
     const action = r.isBlocked ? 'blokdan chiqarish' : 'BLOKLASH';
     const warn = r.isBlocked ? '' : ' Bloklansa mijozlarga taomlari bilan ko\u2018rinmaydi.';
-    if (!confirm(`"${r.name}" ${action}?${warn}`)) return;
+    if (!await confirm({ title: `"${r.name}" ${action}?${warn}` })) return;
     await adminApi.toggleBlock(r._id, !r.isBlocked);
     load();
   };
 
   const remove = async (r) => {
-    if (!confirm(`"${r.name}" o'chirilsinmi? Akkaunt ham o'chadi.`)) return;
+    if (!await confirm({ title: `"${r.name}" o'chirilsinmi? Akkaunt ham o'chadi.` })) return;
     await adminApi.deleteRestaurant(r._id);
     load();
   };
 
   const resetPass = async (r) => {
-    const p = prompt(`"${r.name}" uchun yangi parol:`);
+    const p = await confirmWithReason(`"${r.name}" uchun yangi parol:`);
     if (!p) return;
     await adminApi.resetPassword(r._id, p);
     alert('Parol yangilandi');

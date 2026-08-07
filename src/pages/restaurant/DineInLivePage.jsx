@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { useDineInStatus } from '@/hooks/useDineInStatus';
 import { getSocket } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtTime = (d) => new Date(d).toLocaleTimeString('ru-RU', {
@@ -108,13 +109,13 @@ export function DineInLivePage() {
   };
 
   const closeTable = async (tableId, tableName) => {
-    if (!window.confirm(`${tableName} yopilsinmi?\n\nBarcha buyurtmalar yakunlanadi.`)) return;
+    if (!await confirm({ title: `${tableName} yopilsinmi?\n\nBarcha buyurtmalar yakunlanadi.` })) return;
     try {
       await panelApi.closeTable(tableId, false);
       load();
     } catch (e) {
       if (e.message?.includes('yakunlanmagan')) {
-        if (window.confirm(`${e.message}\n\nBaribir yopilsinmi?`)) {
+        if (await confirm(`${e.message}\n\nBaribir yopilsinmi?`)) {
           await panelApi.closeTable(tableId, true);
           load();
         }

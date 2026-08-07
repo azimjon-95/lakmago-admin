@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
@@ -120,7 +121,7 @@ function Promotions() {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (p) => {
-    if (!window.confirm(`"${p.name}" o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `"${p.name}" o'chirilsinmi?` })) return;
     try { await panelApi.deletePromotion(p._id); load(); }
     catch (e) { alert(e.message); }
   };
@@ -358,7 +359,7 @@ function Ads({ overview }) {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (a) => {
-    if (!window.confirm(`"${a.name}" o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `"${a.name}" o'chirilsinmi?` })) return;
     try { await panelApi.deleteAd(a._id); load(); } catch (e) { alert(e.message); }
   };
 
@@ -588,7 +589,7 @@ function Bonuses() {
   useEffect(() => { load(); }, [load]);
 
   const remove = async (b) => {
-    if (!window.confirm('Qoida o\'chirilsinmi?')) return;
+    if (!await confirm({ title: 'Qoida o\'chirilsinmi?' })) return;
     try { await panelApi.deleteBonus(b._id); load(); } catch (e) { alert(e.message); }
   };
 

@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
+import { confirmWithReason } from '@/components/ui/confirm';
 
 // Mijoz javoblari va holatlar
 const STATUS = {
@@ -49,7 +50,7 @@ export function ReservationsPage() {
   const decide = async (id, status) => {
     let reason = '';
     if (status === 'rejected') {
-      reason = prompt('Rad etish sababi (mijozga yuboriladi):') || '';
+      reason = await confirmWithReason('Rad etish sababi (mijozga yuboriladi):') || '';
     }
     setBusyId(id);
     try {

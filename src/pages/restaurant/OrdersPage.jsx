@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { playNewOrderSound, playAcceptSound } from '@/lib/sound';
+import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -101,7 +102,7 @@ export function RestaurantOrdersPage() {
   };
 
   const cancel = async (o) => {
-    if (!confirm('Buyurtma bekor qilinsinmi?')) return;
+    if (!await confirm({ title: 'Buyurtma bekor qilinsinmi?' })) return;
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: 'cancelled' } : x)));
     try { await panelApi.updateOrderStatus(o._id, 'cancelled'); } catch { load(); }
   };

@@ -3,6 +3,7 @@ import { adminApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { confirm } from '@/components/ui/confirm';
 
 const CATEGORIES = [
   { value: 'salqin', label: 'Ichimliklar' },
@@ -56,7 +57,7 @@ export function CatalogPage() {
   }, [load, q]);
 
   const remove = async (p) => {
-    if (!window.confirm(`"${p.name}" o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `"${p.name}" o'chirilsinmi?` })) return;
     try {
       const r = await adminApi.deleteCatalogProduct(p._id);
       if (r.deactivated) alert(r.message);

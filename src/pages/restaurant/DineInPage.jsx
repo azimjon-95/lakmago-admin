@@ -4,6 +4,7 @@ import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { getSocket } from '@/lib/socket';
+import { confirm } from '@/components/ui/confirm';
 
 const STATUS = {
   none: { label: 'Yoqilmagan', cls: 'bg-canvas text-muted' },
@@ -55,22 +56,22 @@ export function DineInPage() {
   }, [load]);
 
   const request = async () => {
-    if (!window.confirm('Dine-in xizmatini yoqish uchun so\'rov yuborilsinmi?')) return;
+    if (!await confirm({ title: 'Dine-in xizmatini yoqish uchun so\'rov yuborilsinmi?' })) return;
     try { await panelApi.requestDineIn(); load(); }
     catch (e) { alert(e.message); }
   };
 
   const removeTable = async (t) => {
-    if (!window.confirm(`Stol ${t.tableNumber} o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `Stol ${t.tableNumber} o'chirilsinmi?` })) return;
     try { await panelApi.deleteTable(t._id); load(); }
     catch (e) { alert(e.message); }
   };
 
   const regenerate = async (t) => {
-    if (!window.confirm(
+    if (!await confirm({ title: 
       `Stol ${t.tableNumber} QR kodi yangilanadi.\n\n` +
       'Eski QR ISHLAMAY QOLADI — yangisini chop etish kerak.\n\nDavom etilsinmi?',
-    )) return;
+     })) return;
     try { await panelApi.regenerateQr(t._id); load(); }
     catch (e) { alert(e.message); }
   };
@@ -550,10 +551,10 @@ function Waiters({ tables }) {
   useEffect(() => { load(); }, [load]);
 
   const resetDevice = async (w) => {
-    if (!window.confirm(
+    if (!await confirm({ title: 
       `${w.fullName} qurilmasi bekor qilinsinmi?\n\n` +
       'Keyingi kirishda yangi qurilma bog\'lanadi.',
-    )) return;
+     })) return;
     try {
       const r = await panelApi.resetWaiterDevice(w._id);
       alert(r.message);
@@ -562,7 +563,7 @@ function Waiters({ tables }) {
   };
 
   const remove = async (w) => {
-    if (!window.confirm(`${w.fullName} o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `${w.fullName} o'chirilsinmi?` })) return;
     try { await panelApi.deleteWaiter(w._id); load(); }
     catch (e) { alert(e.message); }
   };
@@ -802,7 +803,7 @@ function ServiceFee({ cfg, onSaved }) {
   };
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-3xl space-y-4">
       <section className="bg-surface border border-line rounded-xl p-4">
         <label className="flex items-start justify-between gap-4 cursor-pointer mb-3">
           <div>
@@ -1086,7 +1087,7 @@ function DineInIntro({ onRequest }) {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-2xl">
+    <div className="p-4 sm:p-6 max-w-4xl">
       {/* Sarlavha */}
       <div className="text-center mb-7">
         <div className="w-16 h-16 rounded-2xl bg-brand-50 flex items-center justify-center mx-auto mb-4">

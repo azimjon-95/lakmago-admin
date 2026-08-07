@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { ImageUpload } from '@/components/ImageUpload';
+import { confirm } from '@/components/ui/confirm';
 
 const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '' };
 const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1E2E'];
@@ -55,7 +56,7 @@ export function BannersPage() {
 
   const remove = async (b) => {
     const label = b.kind === 'restaurant' ? `"${b.restaurantName}" restoran banneri` : 'banner';
-    if (!confirm(`${label} o'chirilsinmi?`)) return;
+    if (!await confirm({ title: `${label} o'chirilsinmi?` })) return;
     await adminApi.deleteBanner(b._id);
     load();
   };

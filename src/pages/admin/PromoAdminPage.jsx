@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '@/api';
 import { MoneyInput } from '@/components/form/NumberInput';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDT = (d) => new Date(d).toLocaleString('ru-RU', {
@@ -124,7 +125,7 @@ function Restaurants() {
 
   const setStatus = async (r, status) => {
     const label = status === 'suspended' ? "to'xtatilsinmi" : 'yoqilsinmi';
-    if (!window.confirm(`${r.name} xizmati ${label}?`)) return;
+    if (!await confirm({ title: `${r.name} xizmati ${label}?` })) return;
     try {
       await adminApi.setPromoStatus(r._id, status);
       load(q.trim());
@@ -248,9 +249,9 @@ function BillingModal({ restaurant, onClose, onPaid }) {
   useEffect(() => { load(); }, [load]);
 
   const pay = async () => {
-    if (!window.confirm(
+    if (!await confirm({ title: 
       `${som(data.debt)} so'mlik qarz to'langan deb belgilanadi.\n\nDavom etilsinmi?`,
-    )) return;
+     })) return;
 
     setBusy(true);
     try {
@@ -374,7 +375,7 @@ function Tariff() {
   if (!data) return <div className="text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
-    <div className="max-w-lg space-y-4">
+    <div className="max-w-3xl space-y-4">
       <section className="bg-surface border border-line rounded-xl p-4">
         <h2 className="text-sm font-semibold text-ink mb-1">Kunlik narx</h2>
         <p className="text-xs text-muted mb-3">
