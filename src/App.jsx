@@ -3,7 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { FullscreenButton } from '@/components/FullscreenButton';
-import { useFullscreen } from '@/hooks/useFullscreen';
+import { useFullscreen, useIsMobile, useAutoFullscreenOnMobile } from '@/hooks/useFullscreen';
 import { LoginPage } from '@/pages/LoginPage';
 // Admin sahifalari
 import { DashboardPage } from '@/pages/admin/DashboardPage';
@@ -51,32 +51,51 @@ const FULLSCREEN_ROUTES = [
 ];
 
 // Panel karkasi (sidebar + sahifa).
-// Mobilda: yuqori panel + pastki tez-kirish sidebar ichida chiziladi,
-// shuning uchun kontentga pastdan bo'shliq beramiz (pastki nav bosib qolmasin).
+//
+// Mobil va desktop farqi:
+//   • Desktop — tugma bosilsa sidebar yashirinadi va sahifa butun
+//     ekranni oladi. Sichqoncha bilan chiqish oson.
+//   • Mobil — to'liq ekran avtomatik yoqiladi (brauzer paneli
+//     aylantirganda paydo bo'lib-yo'qolib panelni sakratardi),
+//     lekin ilovaning O'Z menyulari yashirilmaydi: ular yagona
+//     navigatsiya vositasi.
+//
+// Mobilda sahifa emas, ichki maydon suriladi — yuqori panel va
+// pastki menyu joyida qotib turadi.
 function Shell({ children }) {
   const { pathname } = useLocation();
   const { active: fullscreen } = useFullscreen();
+  const isMobile = useIsMobile();
 
-  // Rejim yoqilgan bo'lsa tugma har doim ko'rinadi — aks holda
-  // boshqa bo'limga o'tilganda undan chiqib bo'lmay qolardi.
-  const showButton = fullscreen || FULLSCREEN_ROUTES.includes(pathname);
+  useAutoFullscreenOnMobile();
+
+  // Sidebar faqat desktopda yashiriladi
+  const hideChrome = fullscreen && !isMobile;
+
+  // Tugma mobilda kerak emas — u yerda rejim o'zi yoqiladi va
+  // tugma yuqori panel ustiga tushib qolardi.
+  const showButton = !isMobile && (fullscreen || FULLSCREEN_ROUTES.includes(pathname));
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-canvas lg:block lg:h-auto lg:min-h-screen lg:overflow-visible">
 
-      {/* Sidebar — to'liq ekran rejimida yashiriladi */}
-      {!fullscreen && <Sidebar />}
+      {/* Sidebar — desktopda to'liq ekranda yashiriladi */}
+      {!hideChrome && <Sidebar />}
 
       {showButton && <FullscreenButton />}
 
-      {/* Content */}
+      {/* Kontent. Mobilda aynan shu maydon suriladi. */}
       <main
-        className={`min-h-screen transition-all ${
-          fullscreen ? '' : 'lg:ml-[280px] lg:pb-0'
+        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain lg:min-h-screen lg:flex-none lg:overflow-visible ${
+          hideChrome ? '' : 'lg:ml-[280px] lg:pb-0'
         }`}
       >
+        {/* Pastki menyu fixed — oxirgi element uning ostida
+            qolib ketmasligi uchun bo'shliq qoldiramiz */}
         <div
-          className={`w-full min-h-screen ${showButton ? 'pr-14' : ''}`}
+          className={`w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0 ${
+            showButton ? 'pr-14' : ''
+          }`}
         >
           {children}
         </div>

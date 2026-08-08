@@ -83,13 +83,16 @@ function bindOnce() {
 
   const onChange = () => {
     const native = isNativeOn();
-    if (!native) {
+    if (!native && state.active) {
       // ESC yoki brauzer tugmasi orqali chiqildi
       save(false);
       setState({ native: false, active: false });
-    } else {
-      setState({ native: true, active: true });
+      return;
     }
+    // MUHIM: `active` (sidebar yashirish) faqat tugma orqali
+    // yoqiladi. Mobilda fullscreen avtomatik yoqiladi, lekin
+    // menyular ko'rinib turishi kerak.
+    setState({ native });
   };
 
   document.addEventListener('fullscreenchange', onChange);
@@ -144,4 +147,63 @@ export function useFullscreen() {
   }, []);
 
   return { active: snap.active, native: snap.native, toggle };
+}
+
+
+/* ═══════════════════════════════════════════
+   Ekran o'lchami
+   ═══════════════════════════════════════════ */
+
+const MOBILE_Q = '(max-width: 1023px)';
+
+function subscribeMobile(cb) {
+  const mq = window.matchMedia(MOBILE_Q);
+  mq.addEventListener('change', cb);
+  return () => mq.removeEventListener('change', cb);
+}
+
+const getMobile = () => window.matchMedia(MOBILE_Q).matches;
+
+/** lg dan kichik ekran — sidebar o'rniga pastki menyu chiziladi. */
+export function useIsMobile() {
+  return useSyncExternalStore(subscribeMobile, getMobile, () => false);
+}
+
+/* ═══════════════════════════════════════════
+   Mobilda avtomatik to'liq ekran
+   ═══════════════════════════════════════════ */
+
+const OPT_OUT = 'lokmago-fs-off';
+
+/**
+ * Telefonda brauzer paneli joy egallaydi va aylantirganda
+ * paydo bo'lib-yo'qoladi — panel "sakraydi". Shuning uchun
+ * fullscreen avtomatik yoqiladi.
+ *
+ * Brauzer buni faqat foydalanuvchi harakatidan keyin beradi,
+ * shuning uchun sahifa ochilishida emas, birinchi tegishda.
+ * Sidebar yashirilmaydi — menyular joyida qoladi.
+ *
+ * iOS Safari'da Fullscreen API yo'q; u yerda hech narsa
+ * o'zgarmaydi va ilova oddiy holicha ishlaydi.
+ */
+export function useAutoFullscreenOnMobile() {
+  const isMobile = useIsMobile();
+
+  useEffect(() => {
+    if (!isMobile) return;
+    const el = document.documentElement;
+    if (!(el.requestFullscreen || el.webkitRequestFullscreen)) return;
+
+    const onTap = async () => {
+      if (sessionStorage.getItem(OPT_OUT)) return;
+      if (isNativeOn()) return;
+      await enterNative();
+    };
+
+    // Har tegishda tekshiriladi: ESC yoki sahifa almashuvida
+    // rejim tushib qolsa, keyingi tegishda qaytadi
+    document.addEventListener('pointerdown', onTap);
+    return () => document.removeEventListener('pointerdown', onTap);
+  }, [isMobile]);
 }
