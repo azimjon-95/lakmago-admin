@@ -126,7 +126,7 @@ export function RestaurantOrdersPage() {
           </h1>
           <p className="text-xs sm:text-sm text-muted mt-0.5 truncate">{restaurant?.name}</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-none items-center gap-3">
           <button
             onClick={() => setSoundOn((s) => !s)}
             title={soundOn ? 'Ovozni o\u2018chirish' : 'Ovozni yoqish'}
@@ -195,12 +195,12 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
       }`}
     >
       {/* Sarlavha */}
-      <div className="p-4 flex items-start justify-between gap-3 border-b border-line">
-        <div className="flex items-center gap-3">
-          <span className="text-xs font-semibold px-2.5 py-1 rounded-full" style={{ background: `${meta.color}20`, color: meta.color }}>
+      <div className="p-4 flex items-start justify-between gap-2 border-b border-line">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2.5 gap-y-1">
+          <span className="text-xs font-semibold px-2.5 py-1 rounded-full whitespace-nowrap" style={{ background: `${meta.color}20`, color: meta.color }}>
             {meta.label}
           </span>
-          <span className="text-xs text-muted">
+          <span className="text-xs text-muted whitespace-nowrap">
             {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
             {elapsedMin > 0 && ` · ${elapsed} oldin`}
           </span>
@@ -331,16 +331,26 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
               <div className="text-sm font-medium text-ink truncate">
                 {o.customer?.name || 'Mijoz'}
               </div>
-              {o.customer?.username && (
-                <a
-                  href={`https://t.me/${o.customer.username}`}
-                  target="_blank" rel="noreferrer"
-                  className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
-                >
-                  <i className="ti ti-brand-telegram text-[11px]" />
-                  @{o.customer.username}
-                </a>
-              )}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                {(o.phone || o.customer?.phone) && (
+                  <a
+                    href={`tel:${o.phone || o.customer.phone}`}
+                    className="text-xs font-medium text-brand-600 hover:underline whitespace-nowrap"
+                  >
+                    {o.phone || o.customer.phone}
+                  </a>
+                )}
+                {o.customer?.username && (
+                  <a
+                    href={`https://t.me/${o.customer.username}`}
+                    target="_blank" rel="noreferrer"
+                    className="text-xs text-blue-600 hover:underline inline-flex min-w-0 items-center gap-1"
+                  >
+                    <i className="ti ti-brand-telegram text-[11px] flex-none" />
+                    <span className="truncate">@{o.customer.username}</span>
+                  </a>
+                )}
+              </div>
             </div>
 
             {/* Qo'ng'iroq */}
@@ -355,25 +365,13 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
             )}
           </div>
 
-          {/* Telefon raqami matn sifatida */}
-          {(o.phone || o.customer?.phone) && (
-            <a
-              href={`tel:${o.phone || o.customer.phone}`}
-              className="text-xs text-brand-600 hover:underline block mb-2"
-            >
-              {o.phone || o.customer.phone}
-            </a>
-          )}
-
-          {/* Manzil */}
+          {/* Manzil — faqat yetkazishda. Olib ketish tepada
+              katta harflar bilan allaqachon yozilgan. */}
+          {o.fulfillment !== 'pickup' && (
           <div className="flex items-start gap-2 text-xs text-muted">
-            <i className={`ti ${o.fulfillment === 'pickup' ? 'ti-shopping-bag' : 'ti-map-pin'} mt-0.5 flex-none`} />
+            <i className="ti ti-map-pin mt-0.5 flex-none" />
             <div className="flex-1 min-w-0">
-              {o.fulfillment === 'pickup' ? (
-                <div className="text-violet-700 font-medium">
-                  Mijoz o'zi olib ketadi
-                </div>
-              ) : (
+              {(
                 <>
                   <div className="break-words text-ink">
                     {o.address || 'Manzil ko\'rsatilmagan'}
@@ -396,6 +394,7 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
               )}
             </div>
           </div>
+          )}
         </div>
       </div>
 
@@ -405,13 +404,13 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
           <button
             onClick={() => onAdvance(o)}
             disabled={busy}
-            className="flex-1 text-white text-sm font-semibold py-2.5 rounded-lg transition-transform active:scale-[0.98] disabled:opacity-60"
+            className="min-w-0 flex-1 truncate rounded-xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
             style={{ background: meta.color }}
           >
             {busy ? '...' : meta.nextLabel}
           </button>
           {canCancel && (
-            <button onClick={() => onCancel(o)} className="px-4 border border-line text-muted text-sm rounded-lg hover:bg-red-50 hover:text-red-600">
+            <button onClick={() => onCancel(o)} className="flex-none rounded-xl border border-line px-4 py-3 text-sm text-muted hover:bg-red-50 hover:text-red-600">
               Bekor
             </button>
           )}

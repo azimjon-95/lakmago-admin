@@ -86,7 +86,7 @@ function Shell({ children }) {
 
       {/* Kontent. Mobilda aynan shu maydon suriladi. */}
       <main
-        className={`min-h-0 flex-1 overflow-y-auto overscroll-contain lg:min-h-screen lg:flex-none lg:overflow-visible ${
+        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-screen lg:flex-none lg:overflow-visible ${
           hideChrome ? '' : 'lg:ml-[280px] lg:pb-0'
         }`}
       >
