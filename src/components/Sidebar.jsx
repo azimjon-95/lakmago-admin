@@ -364,27 +364,46 @@ const MobileTab=({item,badge})=>(
 );
 
 
-/* "Ko'proq" varag'idagi karta */
-const MobileCard=({item,onClick,badge})=>(
+/* "Ko'proq" varag'idagi qator.
+   Avval katta plitkalar edi: bitta ekranga 6 ta band sig'ardi,
+   qolganini surib topish kerak edi. Guruhlangan ro'yxatda
+   hammasi bir ko'rinishda va nishonga tegish osonroq. */
+const MobileRow=({item,onClick,badge})=>(
   <NavLink
     to={item.to}
     end={item.end}
     onClick={onClick}
     className={({isActive})=>
-      `relative flex flex-col gap-2 p-3.5 rounded-2xl border transition-colors active:scale-[.97] ${
-        isActive
-          ? "bg-brand-400/20 border-brand-400/40 text-brand-100"
-          : "bg-white/5 border-white/8 text-[#D9B98C]"
+      `flex items-center gap-3 px-3.5 py-2.5 transition-colors active:bg-white/10 ${
+        isActive ? "bg-brand-400/15" : ""
       }`
     }
   >
-    <i className={`ti ${item.icon} text-xl`}/>
-    <span className="text-[13px] font-medium leading-tight">{item.label}</span>
+    {({isActive})=>(
+      <>
+        {/* Ikonka — rangli kvadratda, iOS Sozlamalar uslubi */}
+        <span
+          className={`flex h-8 w-8 flex-none items-center justify-center rounded-[9px] ${
+            isActive ? "bg-brand-400 text-brand-text" : "bg-white/10 text-[#E7C99B]"
+          }`}
+        >
+          <i className={`ti ${item.icon} text-[17px]`}/>
+        </span>
 
-    {badge>0 && (
-      <span className="absolute top-2.5 right-2.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-        {badge}
-      </span>
+        <span className={`min-w-0 flex-1 truncate text-[15px] ${
+          isActive ? "font-semibold text-brand-100" : "text-white/90"
+        }`}>
+          {item.label}
+        </span>
+
+        {badge>0 && (
+          <span className="flex h-[19px] min-w-[19px] flex-none items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold text-white">
+            {badge}
+          </span>
+        )}
+
+        <i className="ti ti-chevron-right flex-none text-[15px] text-white/25"/>
+      </>
     )}
   </NavLink>
 );
@@ -657,33 +676,35 @@ border-white/10
     {/* Orqa fon */}
     <div
       onClick={()=>setOpen(false)}
-      className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-[fadeIn_.2s_ease]"
+      className="absolute inset-0 bg-black/50 backdrop-blur-md animate-[fadeIn_.2s_ease]"
     />
 
     {/* Pastdan chiqadigan varaq */}
-    <div className="relative bg-sidebar rounded-t-3xl max-h-[85dvh] flex flex-col animate-[slideUp_.28s_cubic-bezier(.32,.72,0,1)]">
+    <div className="relative flex max-h-[88dvh] flex-col overflow-hidden rounded-t-[26px] bg-sidebar animate-[slideUp_.34s_cubic-bezier(.32,.72,0,1)]">
 
       {/* Tutqich */}
       <div className="flex-none pt-2.5 pb-1">
-        <div className="w-10 h-1 rounded-full bg-white/25 mx-auto"/>
+        <div className="mx-auto h-1 w-9 rounded-full bg-white/25"/>
       </div>
 
       {/* Sarlavha */}
-      <div className="flex-none flex items-center justify-between px-5 py-3">
+      <div className="flex flex-none items-center justify-between gap-3 px-5 pb-3 pt-1.5">
         <Brand/>
         <button
           onClick={()=>setOpen(false)}
-          className="w-8 h-8 rounded-full bg-white/8 text-white/70 flex items-center justify-center"
+          aria-label="Yopish"
+          className="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-white/10 text-white/70 active:bg-white/20"
         >
           <i className="ti ti-x text-base"/>
         </button>
       </div>
 
-      {/* Bandlar — ikki ustunda */}
-      <div className="flex-1 overflow-y-auto px-4 pb-2">
-        <div className="grid grid-cols-2 gap-2">
+      {/* Bandlar — bitta guruhlangan ro'yxat, orasida ingichka
+          ajratgich. Ikonka ustunidan keyin boshlanadi. */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3">
+        <div className="overflow-hidden rounded-[16px] bg-white/[0.06] divide-y divide-white/[0.07]">
           {nav.map((item)=>(
-            <MobileCard
+            <MobileRow
               key={item.to}
               item={item}
               onClick={()=>setOpen(false)}
@@ -698,7 +719,7 @@ border-white/10
       </div>
 
       {/* Akkaunt */}
-      <div className="flex-none px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))] border-t border-white/10">
+      <div className="flex-none border-t border-white/10 px-4 pt-3 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <Account/>
       </div>
     </div>
