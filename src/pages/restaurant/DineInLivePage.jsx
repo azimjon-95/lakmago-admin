@@ -399,23 +399,10 @@ function Stat({ label, value, raw, accent }) {
   );
 }
 
-/* ═══ Bildirishnoma ═══ */
-let audioCtx = null;
-
-function playBeep() {
-  try {
-    audioCtx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    osc.connect(gain);
-    gain.connect(audioCtx.destination);
-    osc.frequency.value = 880;
-    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.4);
-    osc.start();
-    osc.stop(audioCtx.currentTime + 0.4);
-  } catch { /* ovoz muhim emas */ }
-}
+/* ═══ Bildirishnoma ═══
+   Ovoz markaziy tizimda (lib/soundQueue) — bu yerda o'z
+   signalimiz bo'lsa bir hodisaga ikki marta chalinardi. */
+function playBeep() { /* markaziy tizim chaladi */ }
 
 function requestNotifyPermission() {
   if (typeof Notification === 'undefined') return;

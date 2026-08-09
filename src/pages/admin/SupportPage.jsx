@@ -62,7 +62,7 @@ export function SupportPage() {
     const socket = getSocket();
     joinAdmin();
 
-    socket.on('support:message', (msg) => {
+    const onMessage = (msg) => {
       playSound();
       loadList();
       // Ochiq suhbatga tegishli bo'lsa — darhol qo'shamiz
@@ -70,11 +70,16 @@ export function SupportPage() {
         if (!cur || String(cur._id) !== msg.chatId) return cur;
         return { ...cur, messages: [...cur.messages, { from: 'user', text: msg.text, createdAt: msg.at }] };
       });
-    });
+    };
+    socket.on('support:message', onMessage);
     socket.on('support:read', loadList);
     socket.on('support:resolved', loadList);
 
-    return () => socket.removeAllListeners();
+    return () => {
+      socket.off('support:message', onMessage);
+      socket.off('support:read', loadList);
+      socket.off('support:resolved', loadList);
+    };
   }, [loadList, playSound]);
 
   // Xabarlar oxiriga scroll

@@ -13,6 +13,19 @@ export function getSocket() {
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,
     });
+    /*
+     * Server tomonidan uzilganda socket.io ATAYLAB qayta
+     * ulanmaydi ("io server disconnect" — bu qoida). Server
+     * qayta ishga tushsa yoki proksi ulanishni uzsa panel jim
+     * qolib qolardi: buyurtma keladi, lekin hech kim ko'rmaydi.
+     * Shuning uchun o'zimiz qaytaramiz.
+     */
+    socket.on('disconnect', (reason) => {
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        setTimeout(() => { if (!socket.connected) socket.connect(); }, 1000);
+      }
+    });
+
     // Uzilib qayta ulansa — barcha xonalarga qayta qo'shilamiz
     socket.on('connect', () => {
       rooms.forEach((r) => {

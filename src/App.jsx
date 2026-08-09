@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-route
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { FullscreenButton } from '@/components/FullscreenButton';
+import { NotificationCenter } from '@/components/NotificationCenter';
 import { useFullscreen, useIsMobile, useAutoFullscreenOnMobile } from '@/hooks/useFullscreen';
 import { LoginPage } from '@/pages/LoginPage';
 // Admin sahifalari
@@ -83,6 +84,10 @@ function Shell({ children }) {
       {!hideChrome && <Sidebar />}
 
       {showButton && <FullscreenButton />}
+
+      {/* Bildirishnoma markazi — sahifa almashsa ham yashamaydi,
+          shuning uchun karkas darajasida turadi */}
+      <NotificationCenter />
 
       {/* Kontent. Mobilda aynan shu maydon suriladi. */}
       <main

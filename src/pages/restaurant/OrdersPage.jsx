@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
-import { playNewOrderSound, playAcceptSound } from '@/lib/sound';
 import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -43,26 +42,31 @@ export function RestaurantOrdersPage() {
     const socket = getSocket();
     joinRestaurant(restaurant?._id);
 
-    socket.on('order:new', (order) => {
+    const onNew = (order) => {
       setOrders((prev) => {
         if (prev.find((o) => o._id === order._id)) return prev;
         return [order, ...prev];
       });
-      // Yangi buyurtma — signal chaladi
+      // Ovoz endi markaziy bildirishnoma tizimida (lib/notificationCenter).
+      // Bu yerda faqat kartani yoritamiz.
       if (!knownIds.current.has(order._id)) {
         knownIds.current.add(order._id);
-        if (soundOnRef.current) playNewOrderSound();
         setFlashId(order._id);
         setTimeout(() => setFlashId(null), 5000);
       }
-    });
-
-    socket.on('order:update', (order) => {
+    };
+    const onUpdate = (order) => {
       setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
-    });
+    };
+    socket.on('order:new', onNew);
+    socket.on('order:update', onUpdate);
 
     const poll = setInterval(load, 25000);
-    return () => { clearInterval(poll); socket.removeAllListeners(); };
+    return () => {
+      clearInterval(poll);
+      socket.off('order:new', onNew);
+      socket.off('order:update', onUpdate);
+    };
   }, [load, restaurant]);
 
   // Ayni paytda so'rov ketayotgan buyurtmalar — takror bosishni bloklaydi
@@ -75,7 +79,6 @@ export function RestaurantOrdersPage() {
     if (busyIds.has(o._id)) return;
     setBusyIds((prev) => new Set(prev).add(o._id));
 
-    if (next === 'accepted') playAcceptSound();
     // Optimistik yangilash
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: next } : x)));
     try {

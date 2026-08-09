@@ -83,14 +83,21 @@ export function DashboardPage() {
 
     const socket = getSocket();
     joinAdmin();
-    socket.on('order:new', (order) => {
+    const onNewOrder = (order) => {
       setOrders((prev) => [order, ...prev.filter((o) => o._id !== order._id)]);
       setFlash(order._id);
       setTimeout(() => setFlash(null), 3000);
       loadStats();
-    });
+    };
+    socket.on('order:new', onNewOrder);
 
-    return () => { clearInterval(timerRef.current); socket.removeAllListeners(); };
+    return () => {
+      clearInterval(timerRef.current);
+      // Faqat shu sahifa qo'ygan tinglovchi olib tashlanadi.
+      // removeAllListeners() markaziy bildirishnoma tizimининг
+      // tinglovchisini ham o'chirib yuborardi.
+      socket.off('order:new', onNewOrder);
+    };
   }, [loadStats, loadOrders]);
 
   const today = stats?.today;

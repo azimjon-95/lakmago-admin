@@ -34,10 +34,15 @@ export function OrdersMonitorPage() {
   useEffect(() => {
     const socket = getSocket();
     joinAdmin();
-    socket.on('order:new', () => load());
-    socket.on('order:update', () => load());
+    const onOrderNew = () => load();
+    const onOrderUpdate = () => load();
+    socket.on('order:new', onOrderNew);
+    socket.on('order:update', onOrderUpdate);
     socketRef.current = socket;
-    return () => socket.removeAllListeners();
+    return () => {
+      socket.off('order:new', onOrderNew);
+      socket.off('order:update', onOrderUpdate);
+    };
   }, [load]);
 
   // groupId bo'yicha guruhlash (bitta mijoz buyurtmasi = bir necha restoran)

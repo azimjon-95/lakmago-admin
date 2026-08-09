@@ -41,10 +41,14 @@ export function ReservationsPage() {
     const socket = getSocket();
     // Server restaurantId kutadi (token emas) — aks holda xonaga qo'shilmaydi
     joinRestaurant(restaurant._id);
-    socket.on('reservation:new', () => load());
-    socket.on('reservation:update', () => load());
+    const onChange = () => load();
+    socket.on('reservation:new', onChange);
+    socket.on('reservation:update', onChange);
     socketRef.current = socket;
-    return () => socket.removeAllListeners();
+    return () => {
+      socket.off('reservation:new', onChange);
+      socket.off('reservation:update', onChange);
+    };
   }, [load, restaurant?._id]);
 
   const decide = async (id, status) => {
