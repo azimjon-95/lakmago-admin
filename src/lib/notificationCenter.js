@@ -3,6 +3,8 @@ import { getSocket, joinAdmin, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/api/client';
 import { playSound, stopSound, unlockSound, setMuted, isMuted } from '@/lib/soundQueue';
+import { soundAllowed, useNotifSettings } from '@/lib/notifSettings';
+import { subscribePush } from '@/lib/push';
 
 /**
  * Markaziy bildirishnoma tizimi.
@@ -22,6 +24,23 @@ import { playSound, stopSound, unlockSound, setMuted, isMuted } from '@/lib/soun
  */
 
 const SEQ_KEY = 'lokmago_notif_seq';
+
+/**
+ * Ilova ochiq, lekin boshqa oynada bo'lganda brauzer
+ * bildirishnomasi. Bu Web Push emas — ilova ishlab turibdi,
+ * shunchaki ko'rinmayapti.
+ */
+function showDesktopNotification(n) {
+  try {
+    if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+    const notif = new Notification(n.title, {
+      body: n.body || '',
+      icon: '/icon-192.png',
+      tag: n.notificationId,
+    });
+    notif.onclick = () => { window.focus(); notif.close(); };
+  } catch { /* ruxsat yo'q — muhim emas */ }
+}
 
 const readSeq = () => Number(localStorage.getItem(SEQ_KEY)) || 0;
 const writeSeq = (v) => { try { localStorage.setItem(SEQ_KEY, String(v)); } catch { /* ignore */ } };
@@ -61,8 +80,17 @@ export const useNotifications = create((set, get) => ({
     // Javob berilmaganlari uchun ovoz. Sinxronlashda ham chalinadi —
     // panel yopiq turganda kelgan buyurtma e'tibordan qolmasin.
     if (!silent) {
-      const needSound = fresh.filter((n) => ['NEW', 'DELIVERED'].includes(n.status));
-      needSound.forEach((n) => playSound(n.sound));
+      // Sozlamada o'chirilgan turlar jim qoladi
+      fresh
+        .filter((n) => ['NEW', 'DELIVERED'].includes(n.status))
+        .filter((n) => soundAllowed(n.type))
+        .forEach((n) => playSound(n.sound, n.priority));
+
+      // Ilova ochiq, lekin boshqa oynada — brauzer bildirishnomasi
+      if (document.visibilityState === 'hidden'
+          && useNotifSettings.getState().desktopNotifications) {
+        fresh.forEach(showDesktopNotification);
+      }
     }
 
     // Serverga "yetkazildi" deb belgilaymiz
@@ -206,8 +234,49 @@ export function startNotificationCenter() {
 
   // Brauzer ovozga ruxsatni faqat foydalanuvchi harakatidan
   // keyin beradi
-  const unlock = () => { unlockSound(); window.removeEventListener('pointerdown', unlock); };
+  const unlock = () => {
+    unlockSound();
+    // Push obunasi ham foydalanuvchi harakatidan keyin so'raladi:
+    // sahifa ochilishi bilan ruxsat so'rash bezovta qiladi va
+    // ko'pchilik rad etadi
+    if (useNotifSettings.getState().pushNotifications) {
+      subscribePush().catch(() => {});
+    }
+    window.removeEventListener('pointerdown', unlock);
+  };
   window.addEventListener('pointerdown', unlock);
+
+  // Service Worker'dan kelgan xabarlar (push bosilganda)
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.addEventListener('message', (e) => {
+      const { source, payload, url } = e.data || {};
+      if (source === 'push' && payload) {
+        // Ilova ochiq edi — markaziy tizim o'zi ko'rsatadi.
+        // Socket allaqachon yetkazgan bo'lsa dedupe to'sadi.
+        useNotifications.getState().sync();
+      }
+      if (source === 'push-click' && url) window.location.assign(url);
+    });
+  }
+
+  /*
+   * Javob berilmagan CRITICAL bildirishnoma qayta eslatiladi.
+   * Ofitsiant chaqiruvi e'tibordan chetda qolmasligi kerak.
+   */
+  setInterval(() => {
+    const { repeatInterval } = useNotifSettings.getState();
+    if (!repeatInterval) return;
+
+    const cutoff = Date.now() - repeatInterval * 1000;
+    const stale = useNotifications.getState().items.filter((n) =>
+      n.priority === 'CRITICAL'
+      && ['NEW', 'DELIVERED', 'SEEN'].includes(n.status)
+      && new Date(n.createdAt).getTime() < cutoff);
+
+    if (stale.length && soundAllowed(stale[0].type)) {
+      playSound(stale[0].sound, 'CRITICAL');
+    }
+  }, 15000);
 
   // Ilova fonga o'tib qaytganda ham tekshiramiz
   document.addEventListener('visibilitychange', () => {

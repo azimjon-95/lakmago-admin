@@ -22,8 +22,11 @@ const FILES = {
   'hall-orders': '/sounds/hall-orders.mp3',
 };
 
+import { currentVolume } from '@/lib/notifSettings';
+
 const players = new Map();   // sound → HTMLAudioElement
-let queue = [];              // chalinishi kutilayotgan ovozlar
+// Navbat elementlari: { sound, priority }
+let queue = [];
 let playing = false;
 let unlocked = false;
 let muted = false;
@@ -59,10 +62,12 @@ export function unlockSound() {
 /** Navbatdagi keyingi ovozni chalish. */
 function next() {
   if (playing) return;
-  const sound = queue.shift();
-  if (!sound) return;
+  const item = queue.shift();
+  if (!item) return;
+  const { sound } = item;
 
   const el = player(sound);
+  el.volume = currentVolume();
   playing = true;
 
   const done = () => {
@@ -77,15 +82,25 @@ function next() {
   el.play().catch(() => { done(); });
 }
 
-/** Ovozni navbatga qo'shish. Yangi bildirishnoma kelganda chaqiriladi. */
-export function playSound(sound) {
+const RANK = { CRITICAL: 0, HIGH: 1, NORMAL: 2 };
+
+/**
+ * Ovozni navbatga qo'shish.
+ *
+ * Muhimlik hisobga olinadi: ofitsiant chaqiruvi (CRITICAL)
+ * oddiy buyurtmalar navbati ortida kutib qolmaydi — u oldinga
+ * o'tadi. Mijoz stolda kutib turibdi.
+ */
+export function playSound(sound, priority = 'NORMAL') {
   if (muted || sound === 'none' || !FILES[sound]) return;
 
   // Bir xil ovoz navbatda ikki marta turmasin — ketma-ket
   // 5 ta buyurtma kelsa 5 marta emas, bir marta chalinadi
-  if (queue[queue.length - 1] === sound) return;
+  const last = queue[queue.length - 1];
+  if (last && last.sound === sound && last.priority === priority) return;
 
-  queue.push(sound);
+  queue.push({ sound, priority });
+  queue.sort((a, b) => RANK[a.priority] - RANK[b.priority]);
   next();
 }
 
@@ -96,6 +111,12 @@ export function stopSound() {
   players.forEach((el) => {
     try { el.pause(); el.currentTime = 0; } catch { /* ignore */ }
   });
+}
+
+/** Joriy tovush balandligini qo'llash (sozlama o'zgarganda). */
+export function applyVolume() {
+  const v = currentVolume();
+  players.forEach((el) => { el.volume = v; });
 }
 
 /** Butun ovozni o'chirish/yoqish (panel sozlamasi). */

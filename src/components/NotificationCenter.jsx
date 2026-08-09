@@ -1,7 +1,11 @@
 import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
 import { useNotifications, startNotificationCenter } from '@/lib/notificationCenter';
 import { useAuth } from '@/store/auth';
+import { useNotifSettings } from '@/lib/notifSettings';
+import { applyVolume } from '@/lib/soundQueue';
+import { subscribePush, unsubscribePush, pushSupported } from '@/lib/push';
 
 /**
  * Bildirishnoma markazi.
@@ -38,6 +42,7 @@ export function NotificationCenter() {
   const navigate = useNavigate();
   const { items, open, connected, muted, setOpen, patch, toggleMute, hush } =
     useNotifications();
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   // Autentifikatsiya tugagach ishga tushadi
   const authStatus = useAuth((s) => s.status);
@@ -96,6 +101,16 @@ export function NotificationCenter() {
               </div>
 
               <button
+                onClick={() => setSettingsOpen((v) => !v)}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg ${
+                  settingsOpen ? 'bg-brand-400/20 text-brand-600' : 'bg-black/5 text-muted'
+                }`}
+                title="Sozlamalar"
+              >
+                <i className="ti ti-settings text-base" />
+              </button>
+
+              <button
                 onClick={toggleMute}
                 className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                   muted ? 'bg-red-500/15 text-red-500' : 'bg-black/5 text-muted'
@@ -113,6 +128,8 @@ export function NotificationCenter() {
                 <i className="ti ti-x text-base" />
               </button>
             </header>
+
+            {settingsOpen && <SettingsPanel />}
 
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-3">
               {items.length === 0 ? (
@@ -209,5 +226,128 @@ function NotificationRow({ n, onOpen, onAccept, onCancel, onMute }) {
         </div>
       )}
     </article>
+  );
+}
+
+/**
+ * Bildirishnoma sozlamalari.
+ *
+ * Qurilmaga bog'liq: bitta admin telefonda ovozni o'chirib,
+ * kompyuterda yoqib qo'yishi mumkin.
+ */
+function SettingsPanel() {
+  const s = useNotifSettings();
+  const [pushState, setPushState] = useState('');
+
+  const toggle = (key) => () => s.set({ [key]: !s[key] });
+
+  const onVolume = (e) => {
+    s.set({ volume: Number(e.target.value) });
+    applyVolume();
+  };
+
+  const onPushToggle = async () => {
+    const next = !s.pushNotifications;
+    s.set({ pushNotifications: next });
+    if (next) {
+      const r = await subscribePush();
+      setPushState(
+        r === 'ok' ? 'Yoqildi'
+          : r === 'denied' ? 'Brauzer ruxsat bermadi'
+            : r === 'unsupported' ? 'Bu brauzer qo\u2018llamaydi'
+              : 'Xatolik',
+      );
+    } else {
+      await unsubscribePush();
+      setPushState('');
+    }
+  };
+
+  const rows = [
+    ['soundOrders', 'Buyurtma ovozi'],
+    ['soundHallOrders', 'Zal buyurtmasi ovozi'],
+    ['soundReservations', 'Bron ovozi'],
+    ['soundWaiterCall', 'Ofitsiant chaqiruvi ovozi'],
+    ['soundShot', 'Yordam so\u2018rovi ovozi'],
+  ];
+
+  return (
+    <div className="flex-none border-b border-line bg-surface px-4 py-3">
+      <Toggle label="Ovoz (asosiy)" on={s.masterSound} onClick={toggle('masterSound')} />
+
+      <div className="my-2.5 flex items-center gap-3">
+        <span className="text-[12.5px] text-muted">Balandlik</span>
+        <input
+          type="range" min="0" max="1" step="0.05"
+          value={s.volume} onChange={onVolume}
+          className="flex-1 accent-brand-400"
+          disabled={!s.masterSound}
+        />
+        <span className="w-8 text-right text-[12px] tabular-nums text-muted">
+          {Math.round(s.volume * 100)}%
+        </span>
+      </div>
+
+      <div className={s.masterSound ? '' : 'pointer-events-none opacity-40'}>
+        {rows.map(([key, label]) => (
+          <Toggle key={key} label={label} on={s[key]} onClick={toggle(key)} small />
+        ))}
+      </div>
+
+      <div className="my-2 h-px bg-line" />
+
+      <Toggle
+        label="Brauzer bildirishnomasi"
+        on={s.desktopNotifications}
+        onClick={toggle('desktopNotifications')}
+        small
+      />
+      <Toggle
+        label={`Push (ilova yopiq bo\u2018lganda)${pushState ? ` — ${pushState}` : ''}`}
+        on={s.pushNotifications}
+        onClick={onPushToggle}
+        small
+        disabled={!pushSupported()}
+      />
+
+      <div className="mt-2 flex items-center gap-3">
+        <span className="text-[12.5px] text-muted">Muhimlarini takrorlash</span>
+        <select
+          value={s.repeatInterval}
+          onChange={(e) => s.set({ repeatInterval: Number(e.target.value) })}
+          className="ml-auto rounded-lg border border-line bg-canvas px-2 py-1 text-[12.5px]"
+        >
+          <option value={0}>O&apos;chiq</option>
+          <option value={15}>15 soniya</option>
+          <option value={30}>30 soniya</option>
+          <option value={60}>1 daqiqa</option>
+        </select>
+      </div>
+    </div>
+  );
+}
+
+function Toggle({ label, on, onClick, small, disabled }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className={`flex w-full items-center justify-between gap-3 py-1.5 text-left ${
+        disabled ? 'opacity-40' : ''
+      }`}
+    >
+      <span className={`${small ? 'text-[12.5px]' : 'text-[13.5px] font-medium'} text-ink`}>
+        {label}
+      </span>
+      <span
+        className="relative h-[22px] w-[38px] flex-none rounded-full transition-colors"
+        style={{ background: on ? '#34C759' : 'rgba(120,120,128,0.28)' }}
+      >
+        <span
+          className="absolute top-[2px] h-[18px] w-[18px] rounded-full bg-white shadow transition-transform"
+          style={{ left: 2, transform: `translateX(${on ? 16 : 0}px)` }}
+        />
+      </span>
+    </button>
   );
 }
