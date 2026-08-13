@@ -44,11 +44,21 @@ export function NotificationCenter() {
     useNotifications();
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  // Autentifikatsiya tugagach ishga tushadi
+  /*
+   * Bildirishnoma markazi FAQAT restoran panelida ishlaydi.
+   *
+   * Super admin uchun umuman ishga tushmaydi: unga zал
+   * chaqiruvlari va buyurtma signallari kerak emas, ovoz esa
+   * xalaqit beradi. Admin barcha ma'lumotni Boshqaruv
+   * sahifasidan ko'radi.
+   */
   const authStatus = useAuth((s) => s.status);
+  const role = useAuth((s) => s.user?.role);
+  const enabled = authStatus === 'authed' && role === 'restaurant';
+
   useEffect(() => {
-    if (authStatus === 'authed') startNotificationCenter();
-  }, [authStatus]);
+    if (enabled) startNotificationCenter();
+  }, [enabled]);
 
   // Javob berilmaganlar soni
   const pending = items.filter((n) => ['NEW', 'DELIVERED', 'SEEN'].includes(n.status));
@@ -59,6 +69,9 @@ export function NotificationCenter() {
     setOpen(false);
     navigate(routeFor(n));
   };
+
+  // Adminda hech narsa chizilmaydi va ovoz chalinmaydi
+  if (!enabled) return null;
 
   return (
     <>

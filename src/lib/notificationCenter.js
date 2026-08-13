@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getSocket, joinAdmin, joinRestaurant } from '@/lib/socket';
+import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/api/client';
 import { playSound, stopSound, unlockSound, setMuted, isMuted } from '@/lib/soundQueue';
@@ -176,6 +176,12 @@ export function startNotificationCenter() {
   const { user, status } = useAuth.getState();
   if (status !== 'authed' || !user) return;
 
+  /*
+   * Faqat restoran paneli. Admin uchun ishga tushirilmaydi —
+   * socket ham ulanmaydi, ovoz ham chalinmaydi.
+   */
+  if (user.role !== 'restaurant') return;
+
   started = true;
 
   const store = useNotifications.getState();
@@ -191,15 +197,10 @@ export function startNotificationCenter() {
    * bo'lmasa esa hech qanday bildirishnoma kelmaydi.
    */
   const joinRoom = () => {
-    if (user.role === 'admin') {
-      joinAdmin();
-      socket.emit('join:admin');
-    } else {
-      const rid = user.restaurantId || useAuth.getState().restaurant?._id;
-      if (!rid) return;
-      joinRestaurant(rid);              // qayta ulanish ro'yxatiga ham
-      socket.emit('join:restaurant', String(rid));
-    }
+    const rid = user.restaurantId || useAuth.getState().restaurant?._id;
+    if (!rid) return;
+    joinRestaurant(rid);              // qayta ulanish ro'yxatiga ham
+    socket.emit('join:restaurant', String(rid));
   };
   joinRoom();
 

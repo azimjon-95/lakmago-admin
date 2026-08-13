@@ -24,6 +24,43 @@ const FILES = {
 
 import { currentVolume } from '@/lib/notifSettings';
 
+/**
+ * Jimjit halqa — fon rejimida ovozni saqlab qolish uchun.
+ *
+ * Telefon brauzeri ilova fonga o'tganda audio sessiyani
+ * to'xtatadi va keyingi play() jim o'tib ketadi. Agar bitta
+ * ovoz UZLUKSIZ chalinib tursa, tizim sessiyani ochiq deb
+ * biladi va yangi ovozlar ham eshitiladi.
+ *
+ * Shuning uchun eshitilmaydigan (butunlay jim) qisqa fayl
+ * halqa bilan chalinadi. Batareyaga ta'siri sezilarsiz:
+ * dekodlash yuki deyarli nol.
+ */
+let keepAlive = null;
+
+function makeSilentLoop() {
+  // 1 soniyalik jim WAV — tashqi faylsiz, base64 orqali
+  const el = new Audio(
+    'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAgD4AAAB9AAACABAAZGF0YQAAAAA=',
+  );
+  el.loop = true;
+  el.volume = 0.0001;   // 0 bo'lsa ba'zi brauzerlar to'xtatadi
+  return el;
+}
+
+/** Fon rejimida ovoz o'chib qolmasligi uchun sessiyani ushlab turadi. */
+export function startKeepAlive() {
+  if (keepAlive) return;
+  keepAlive = makeSilentLoop();
+  keepAlive.play().catch(() => { keepAlive = null; });
+}
+
+export function stopKeepAlive() {
+  if (!keepAlive) return;
+  try { keepAlive.pause(); } catch { /* ignore */ }
+  keepAlive = null;
+}
+
 const players = new Map();   // sound → HTMLAudioElement
 // Navbat elementlari: { sound, priority }
 let queue = [];
@@ -57,6 +94,19 @@ export function unlockSound() {
       .then(() => { el.pause(); el.currentTime = 0; el.volume = prev; })
       .catch(() => { el.volume = prev; });
   });
+
+  // Shu paytdan boshlab fon rejimi ham qo'llab-quvvatlanadi
+  startKeepAlive();
+
+  /*
+   * Telefonda ilova fonga o'tib qaytganda audio sessiya uzilgan
+   * bo'lishi mumkin — qaytarib yoqamiz.
+   */
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      if (keepAlive?.paused) keepAlive.play().catch(() => {});
+    }
+  });
 }
 
 /** Navbatdagi keyingi ovozni chalish. */
@@ -68,6 +118,20 @@ function next() {
 
   const el = player(sound);
   el.volume = currentVolume();
+
+  /*
+   * Tizimga bu "media" ekanini bildiramiz. Shusiz ba'zi
+   * telefonlarda fon rejimidagi ovoz bloklanadi.
+   */
+  if ('mediaSession' in navigator) {
+    try {
+      navigator.mediaSession.metadata = new window.MediaMetadata({
+        title: 'LokmaGo — yangi buyurtma',
+        artist: 'Restoran paneli',
+      });
+      navigator.mediaSession.playbackState = 'playing';
+    } catch { /* qo'llab-quvvatlanmasa muhim emas */ }
+  }
   playing = true;
 
   const done = () => {
