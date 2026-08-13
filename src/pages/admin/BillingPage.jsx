@@ -40,6 +40,21 @@ export function BillingPage() {
     adminApi.getLedger('?limit=150').then(setLedger).catch(() => {});
   }, [tab]);
 
+  // Restoran bo'yicha alohida kelishuvlar
+  const [agreements, setAgreements] = useState({});
+  const loadAgreements = useCallback(() => {
+    adminApi.getAgreements()
+      .then((list) => {
+        const map = {};
+        list.forEach((r) => { map[r._id] = r; });
+        setAgreements(map);
+      })
+      .catch(() => {});
+  }, []);
+  useEffect(() => { loadAgreements(); }, [loadAgreements]);
+
+  const [editing, setEditing] = useState(null);
+
   const doPayout = async (r) => {
     const amount = await confirm({
       title: `${r.name} ga to'lov`,
@@ -142,19 +157,13 @@ export function BillingPage() {
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
                   <div className="font-semibold text-ink">{r.name}</div>
-                  <div className="text-xs text-muted mt-0.5">
-                    Komissiya:{' '}
-                    <b className="text-ink">
-                      {r.commissionPercent != null ? `${r.commissionPercent}%` : 'umumiy'}
-                    </b>
-                    {r.commissionMode && ` · ${r.commissionMode === 'markup' ? 'narx ustiga' : 'ulushdan'}`}
-                  </div>
+                  <AgreementLine info={agreements[r._id]} />
                 </div>
                 <button
-                  onClick={() => setCommission(r)}
+                  onClick={() => setEditing({ id: r._id, name: r.name, info: agreements[r._id] })}
                   className="text-xs border border-line px-3 py-1.5 rounded-lg text-muted hover:bg-canvas flex-none"
                 >
-                  Shartnoma
+                  Kelishuv
                 </button>
               </div>
 
@@ -196,6 +205,14 @@ export function BillingPage() {
             <div className="text-muted text-sm">Hozircha ma'lumot yo'q</div>
           )}
         </div>
+      )}
+
+      {editing && (
+        <AgreementModal
+          restaurant={editing}
+          onClose={() => setEditing(null)}
+          onSaved={() => { setEditing(null); loadAgreements(); load(); }}
+        />
       )}
 
       {tab === 'ledger' && (
@@ -260,6 +277,205 @@ function Mini({ label, value, accent }) {
       <div className={`text-sm font-semibold ${accent ? 'text-brand-600' : 'text-ink'}`}>
         {som(value)}
       </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════
+   Restoran bilan kelishuv
+   ═══════════════════════════════════════════ */
+
+/** Kartadagi qisqa satr: 5% + 5% = 10%. */
+function AgreementLine({ info }) {
+  const a = info?.agreement;
+  const markup = info?.deliveryMarkupPercent || 0;
+
+  if (!a) {
+    return (
+      <div className="text-xs text-muted mt-0.5">
+        Kelishuv <b className="text-amber-600">belgilanmagan</b>
+        {markup > 0 && ` · yetkazish ustamasi ${markup}%`}
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-xs text-muted mt-0.5">
+      Restoran <b className="text-ink">{a.restaurantCommissionPercent}%</b>
+      {' + '}mijoz <b className="text-ink">{a.customerFeePercent}%</b>
+      {' = '}<b className="text-brand-600">{a.totalSplitPercent}%</b>
+      {markup > 0 && <span> · yetkazish ustamasi {markup}%</span>}
+    </div>
+  );
+}
+
+/**
+ * Kelishuv oynasi.
+ *
+ * Ikki foiz alohida kiritiladi. Yig'indi — to'lov tizimiga
+ * yuboriladigan YAGONA foiz: shlyuz ikkita alohida komissiya
+ * emas, bitta 10% oladi.
+ */
+function AgreementModal({ restaurant, onClose, onSaved }) {
+  const a = restaurant.info?.agreement;
+  const [restPct, setRestPct] = useState(String(a?.restaurantCommissionPercent ?? 5));
+  const [custPct, setCustPct] = useState(String(a?.customerFeePercent ?? 5));
+  const [base, setBase] = useState(a?.billingBase || 'CUSTOMER_FINAL_PRICE');
+  const [note, setNote] = useState(a?.note || '');
+  const [saving, setSaving] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const r = Number(restPct) || 0;
+  const c = Number(custPct) || 0;
+  const total = r + c;
+  const valid = r >= 0 && r <= 100 && c >= 0 && c <= 100 && total <= 100;
+
+  // 10 000 so'mlik taomda nima bo'lishini ko'rsatamiz
+  const demoBase = 10000;
+  const demoMarkup = restaurant.info?.deliveryMarkupPercent || 0;
+  const demoDelivery = Math.round(demoBase * (1 + demoMarkup / 100));
+  const demoFinal = Math.round(demoDelivery * (1 + c / 100));
+  const demoLokma = Math.round(demoFinal * total / 100);
+  const som = (n) => n.toLocaleString('ru-RU');
+
+  const save = async () => {
+    if (!valid) { setErr('Foizlar noto\'g\'ri'); return; }
+    setSaving(true); setErr(null);
+    try {
+      await adminApi.setAgreement(restaurant.id, {
+        restaurantCommissionPercent: r,
+        customerFeePercent: c,
+        billingBase: base,
+        note: note.trim(),
+      });
+      onSaved();
+    } catch (e) { setErr(e.message); setSaving(false); }
+  };
+
+  return (
+    <div onClick={onClose}
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm sm:items-center sm:p-4">
+      <div onClick={(e) => e.stopPropagation()}
+        className="w-full max-h-[92dvh] overflow-y-auto rounded-t-2xl bg-surface p-5 sm:max-w-md sm:rounded-2xl">
+        <div className="mb-1 text-lg font-semibold text-ink">{restaurant.name}</div>
+        <p className="mb-4 text-xs text-muted">
+          Har restoran bilan alohida kelishuv. To&apos;lov tizimiga
+          ikki foizning <b>yig&apos;indisi</b> yuboriladi.
+        </p>
+
+        <div className="grid grid-cols-2 gap-3">
+          <Field label="Restoran komissiyasi" hint="Restoran ulushidan yechiladi">
+            <PercentInput value={restPct} onChange={setRestPct} />
+          </Field>
+          <Field label="Mijoz xizmat haqi" hint="Taom narxi ustiga qo'shiladi">
+            <PercentInput value={custPct} onChange={setCustPct} />
+          </Field>
+        </div>
+
+        {/* Yig'indi — shlyuzga ketadigan foiz */}
+        <div className={`mb-4 rounded-xl px-4 py-3 ${
+          valid ? 'bg-brand-400/10' : 'bg-red-500/10'
+        }`}>
+          <div className="flex items-baseline justify-between">
+            <span className="text-sm text-muted">To&apos;lov tizimidan ushlanadi</span>
+            <span className={`text-2xl font-bold ${valid ? 'text-brand-600' : 'text-red-600'}`}>
+              {total}%
+            </span>
+          </div>
+          <div className="mt-0.5 text-[11px] text-muted">
+            {r}% (restoran) + {c}% (mijoz) — shlyuzga bitta {total}% yuboriladi
+          </div>
+        </div>
+
+        {/* Misol */}
+        <div className="mb-4 rounded-xl bg-canvas p-3 text-xs">
+          <div className="mb-1.5 font-medium text-ink">10 000 so&apos;mlik taom:</div>
+          <Row label="Restoran narxi" value={`${som(demoBase)} so'm`} />
+          {demoMarkup > 0 && (
+            <Row label={`Yetkazish ustamasi +${demoMarkup}%`} value={`${som(demoDelivery)} so'm`} />
+          )}
+          {c > 0 && (
+            <Row label={`Mijoz haqi +${c}%`} value={`${som(demoFinal)} so'm`} strong />
+          )}
+          <Row label="Mijoz to'laydi" value={`${som(demoFinal)} so'm`} strong />
+          <div className="my-1.5 h-px bg-line" />
+          <Row label="LokmaGo oladi" value={`${som(demoLokma)} so'm`} accent />
+          <Row label="Restoran oladi" value={`${som(demoFinal - demoLokma)} so'm`} />
+          <div className="mt-2 text-[11px] text-muted">
+            Zal va bronda narx o&apos;zgarmaydi: {som(demoBase)} so&apos;m
+          </div>
+        </div>
+
+        <Field label="Hisoblash bazasi" hint="Restoran ulushi nimadan hisoblanadi">
+          <select value={base} onChange={(e) => setBase(e.target.value)}
+            className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm">
+            <option value="CUSTOMER_FINAL_PRICE">Mijoz to&apos;lagan yakuniy summadan</option>
+            <option value="DELIVERY_PRICE">Xizmat haqisiz narxdan</option>
+          </select>
+        </Field>
+
+        <Field label="Izoh">
+          <input value={note} onChange={(e) => setNote(e.target.value)}
+            placeholder="Masalan: 2026-yil shartnomasi"
+            className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm" />
+        </Field>
+
+        {err && (
+          <div className="mb-3 rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-600">{err}</div>
+        )}
+
+        <div className="flex gap-2">
+          <button onClick={onClose}
+            className="flex-1 rounded-xl border border-line py-2.5 text-sm text-muted">
+            Bekor
+          </button>
+          <button onClick={save} disabled={saving || !valid}
+            className="flex-[1.5] rounded-xl bg-brand-400 py-2.5 text-sm font-semibold text-brand-text disabled:opacity-50">
+            {saving ? 'Saqlanmoqda...' : 'Saqlash'}
+          </button>
+        </div>
+
+        {a && (
+          <p className="mt-3 text-center text-[11px] text-muted">
+            Eski kelishuv arxivlanadi, eski buyurtmalar o&apos;zgarmaydi
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PercentInput({ value, onChange }) {
+  return (
+    <div className="relative">
+      <input
+        type="number" inputMode="decimal" min="0" max="100" step="0.5"
+        value={value} onChange={(e) => onChange(e.target.value)}
+        className="w-full rounded-lg border border-line bg-canvas px-3 py-2 pr-7 text-lg font-semibold text-ink"
+      />
+      <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted">%</span>
+    </div>
+  );
+}
+
+function Field({ label, hint, children }) {
+  return (
+    <div className="mb-3">
+      <label className="mb-1 block text-xs font-medium text-ink">{label}</label>
+      {children}
+      {hint && <p className="mt-1 text-[11px] text-muted">{hint}</p>}
+    </div>
+  );
+}
+
+function Row({ label, value, strong, accent }) {
+  return (
+    <div className="flex justify-between py-0.5">
+      <span className="text-muted">{label}</span>
+      <span className={
+        accent ? 'font-semibold text-brand-600'
+          : strong ? 'font-semibold text-ink' : 'text-ink'
+      }>{value}</span>
     </div>
   );
 }

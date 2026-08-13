@@ -43,6 +43,7 @@ export function RestaurantProfilePage() {
         deliveryMin: r.deliveryMin ?? 25,
         deliveryMax: r.deliveryMax ?? 40,
         deliveryFee: r.deliveryFee ?? null,
+        deliveryMarkupPercent: r.deliveryMarkupPercent ?? 0,
         freeDeliveryThreshold: r.freeDeliveryThreshold ?? null,
         minOrderAmount: r.minOrderAmount ?? null,
 
@@ -82,7 +83,7 @@ export function RestaurantProfilePage() {
         },
       };
       for (const k of ['deliveryFee', 'freeDeliveryThreshold', 'minOrderAmount',
-                       'pickupDiscountPercent']) {
+                       'pickupDiscountPercent', 'deliveryMarkupPercent']) {
         if (payload[k] == null || payload[k] === '') payload[k] = 0;
       }
       await panelApi.updateProfile(payload);
@@ -244,6 +245,51 @@ export function RestaurantProfilePage() {
 
         {/* Yetkazish qoidalari */}
         <Section title="Yetkazish qoidalari" icon="ti-route">
+          {/*
+            Yetkazish ustamasi: yetkazishda taom narxi shu foizga
+            oshadi. Zal va bronda narx o'zgarmaydi.
+          */}
+          <Field
+            label="Yetkazish uchun narx ustamasi"
+            hint="Yetkazishda taom narxi shu foizga oshadi. Zal va bronda narx o'zgarmaydi."
+          >
+            <div className="flex flex-wrap gap-2">
+              {[0, 1, 2, 3, 5, 7, 10].map((p) => (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => set('deliveryMarkupPercent', p)}
+                  className={`min-w-[52px] rounded-lg border px-3 py-2 text-sm font-medium ${
+                    Number(form.deliveryMarkupPercent) === p
+                      ? 'border-brand-400 bg-brand-400/15 text-brand-600'
+                      : 'border-line text-muted hover:bg-canvas'
+                  }`}
+                >
+                  {p}%
+                </button>
+              ))}
+              <input
+                type="number" min="0" max="100" step="0.5"
+                value={form.deliveryMarkupPercent ?? 0}
+                onChange={(e) => set('deliveryMarkupPercent', e.target.value)}
+                className="w-20 rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+                placeholder="Boshqa"
+              />
+            </div>
+
+            {Number(form.deliveryMarkupPercent) > 0 && (
+              <div className="mt-2 rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
+                Zalda <b className="text-ink">10 000</b> so&apos;m bo&apos;lgan taom
+                yetkazishda{' '}
+                <b className="text-brand-600">
+                  {Math.round(10000 * (1 + Number(form.deliveryMarkupPercent) / 100))
+                    .toLocaleString('ru-RU')}
+                </b>{' '}
+                so&apos;m ko&apos;rinadi
+              </div>
+            )}
+          </Field>
+
           <Field label="Yetkazish turi">
             <div className="grid grid-cols-3 gap-2">
               {[

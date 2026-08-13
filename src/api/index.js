@@ -12,6 +12,12 @@ export const auth = {
 
 // ===== Restoran paneli API (role: restaurant) =====
 export const panelApi = {
+  // Yetkazish ustamasi — restoran o'zi belgilaydi
+  getAgreement: () => apiFetch('/panel/agreement'),
+  setDeliveryMarkup: (percent) => apiFetch('/panel/delivery-markup', {
+    method: 'PATCH', body: JSON.stringify({ deliveryMarkupPercent: percent }),
+  }),
+
   getProfile: () => apiFetch('/panel/me'),
   // Dine-in
   downloadFile,
@@ -155,6 +161,13 @@ export const adminApi = {
   getLedger: (q = '') => apiFetch(`/admin/billing/ledger${q}`),
   payout: (data) => apiFetch('/admin/billing/payout', { method: 'POST', body: JSON.stringify(data) }),
   setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
+
+  // Komissiya shartnomalari (restoran bo'yicha alohida kelishuv)
+  getAgreements: () => apiFetch('/admin/agreements'),
+  setAgreement: (restaurantId, data) => apiFetch(`/admin/agreements/${restaurantId}`, {
+    method: 'PUT', body: JSON.stringify(data),
+  }),
+  agreementHistory: (restaurantId) => apiFetch(`/admin/agreements/${restaurantId}/history`),
   updateSettings: (data) => apiFetch('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Daromad hisobi
