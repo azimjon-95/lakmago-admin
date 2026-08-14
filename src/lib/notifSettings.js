@@ -25,9 +25,12 @@ export const DEFAULTS = {
   desktopNotifications: true,   // ilova ochiq — brauzer bildirishnomasi
   pushNotifications: true,      // ilova yopiq — Web Push
 
-  // Javob berilmagan CRITICAL bildirishnoma qayta eslatiladi.
-  // 0 — takrorlamaslik.
-  repeatInterval: 30,
+  /*
+   * Javob berilmagan (ko'rilmagan) bildirishnoma shu oraliqda
+   * QAYTA-QAYTA eslatiladi — telefon jiringlagani kabi, admin
+   * ko'rib ulgurmasa ovoz o'zi to'xtamaydi. 0 — takrorlamaslik.
+   */
+  repeatInterval: 8,
 };
 
 /** Bildirishnoma turi → qaysi sozlama uni boshqaradi. */

@@ -25,6 +25,38 @@ import { subscribePush } from '@/lib/push';
 
 const SEQ_KEY = 'lokmago_notif_seq';
 
+/*
+ * Har bir bildirishnoma oxirgi marta qachon chalinganini
+ * eslab turadi (faqat xotirada — saqlanmaydi). Shu yordamida
+ * "repeatInterval o'tdimi" deb har birini alohida tekshiramiz.
+ */
+const lastPlayedAt = new Map();
+
+function runRepeatLoop() {
+  setInterval(() => {
+    const { repeatInterval } = useNotifSettings.getState();
+    if (!repeatInterval) return;
+
+    const now = Date.now();
+    const items = useNotifications.getState().items;
+
+    // Endi yo'q bo'lgan yozuvlarni tozalaymiz — xotira o'smasin
+    const liveIds = new Set(items.map((n) => n.notificationId));
+    lastPlayedAt.forEach((_, id) => { if (!liveIds.has(id)) lastPlayedAt.delete(id); });
+
+    items
+      .filter((n) => ['NEW', 'DELIVERED'].includes(n.status) && soundAllowed(n.type))
+      .forEach((n) => {
+        const last = lastPlayedAt.get(n.notificationId)
+          ?? new Date(n.createdAt).getTime();
+        if (now - last >= repeatInterval * 1000) {
+          playSound(n.sound, n.priority);
+          lastPlayedAt.set(n.notificationId, now);
+        }
+      });
+  }, 2000);
+}
+
 /**
  * Ilova ochiq, lekin boshqa oynada bo'lganda brauzer
  * bildirishnomasi. Bu Web Push emas — ilova ishlab turibdi,
@@ -167,6 +199,29 @@ export const useNotifications = create((set, get) => ({
    ═══════════════════════════════════════════ */
 let started = false;
 
+/**
+ * Real sahifalar (Buyurtmalar, Dine-in, Bronlar) uchun.
+ *
+ * Admin buyurtmani/chaqiruvni/bronni HAQIQIY sahifada hal
+ * qilganda — bildirishnoma panelida alohida bosish shart
+ * emas, u avtomatik yopiladi va ovoz to'xtaydi. Aks holda
+ * admin buyurtmani qabul qilib ishlayveradi-yu, bildirishnoma
+ * jiringlashda davom etadi — chalkash va xato taassurot beradi.
+ *
+ * @param prefix  'order' | 'hall' | 'request' | 'reservation'
+ * @param id      shu obyektning _id'si (notificationId shundan tuziladi)
+ * @param status  'ACCEPTED' | 'CANCELLED'
+ */
+export function resolveNotification(prefix, id, status = 'ACCEPTED') {
+  if (!id) return;
+  const notificationId = `${prefix}:${id}`;
+  const exists = useNotifications.getState().items.some(
+    (n) => n.notificationId === notificationId,
+  );
+  // Yo'q bildirishnoma uchun so'rov yubormaymiz — jim o'tamiz
+  if (exists) useNotifications.getState().patch(notificationId, status, { quiet: true });
+}
+
 export function startNotificationCenter() {
   if (started) return;
 
@@ -261,23 +316,18 @@ export function startNotificationCenter() {
   }
 
   /*
-   * Javob berilmagan CRITICAL bildirishnoma qayta eslatiladi.
-   * Ofitsiant chaqiruvi e'tibordan chetda qolmasligi kerak.
+   * Javob berilmagan bildirishnoma QAYTA-QAYTA eslatiladi —
+   * telefon jiringlagani kabi. Bitta marta chalinib jim
+   * qolsa, ekrandan uzoqdagi admin uni butunlay o'tkazib
+   * yuborishi mumkin edi — aynan shu "yaxshi ishlamayapti"
+   * degan shikoyatning sababi.
+   *
+   * Faqat NEW/DELIVERED holatidagilar takrorlanadi: bildirishnoma
+   * ochib ko'rilsa (SEEN) yoki chindan hal qilinsa (ACCEPTED/
+   * CANCELLED/MUTED) — jimiydi. Har bir tur o'zining ovozidan
+   * foydalanadi, sozlamada o'chirilgan turlar tinch qoladi.
    */
-  setInterval(() => {
-    const { repeatInterval } = useNotifSettings.getState();
-    if (!repeatInterval) return;
-
-    const cutoff = Date.now() - repeatInterval * 1000;
-    const stale = useNotifications.getState().items.filter((n) =>
-      n.priority === 'CRITICAL'
-      && ['NEW', 'DELIVERED', 'SEEN'].includes(n.status)
-      && new Date(n.createdAt).getTime() < cutoff);
-
-    if (stale.length && soundAllowed(stale[0].type)) {
-      playSound(stale[0].sound, 'CRITICAL');
-    }
-  }, 15000);
+  runRepeatLoop();
 
   // Ilova fonga o'tib qaytganda ham tekshiramiz
   document.addEventListener('visibilitychange', () => {

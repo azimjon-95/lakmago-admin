@@ -4,6 +4,7 @@ import { useDineInStatus } from '@/hooks/useDineInStatus';
 import { getSocket } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
+import { resolveNotification } from '@/lib/notificationCenter';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtTime = (d) => new Date(d).toLocaleTimeString('ru-RU', {
@@ -25,10 +26,6 @@ export function DineInLivePage() {
   const [dash, setDash] = useState(null);
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [soundOn, setSoundOn] = useState(() => {
-    try { return localStorage.getItem('dinein_sound') !== '0'; }
-    catch { return true; }
-  });
   const [receipt, setReceipt] = useState(null);
   const seenOrders = useRef(new Set());
 
@@ -49,25 +46,15 @@ export function DineInLivePage() {
     const socket = getSocket();
 
     const onNew = (data) => {
-      // Yangi buyurtma — ovoz va bildirishnoma
-      if (!seenOrders.current.has(data.orderId)) {
-        seenOrders.current.add(data.orderId);
-        if (soundOn) playBeep();
-        notify(`Yangi buyurtma #${data.dineInNumber}`, `${som(data.total)} so'm`);
-      }
+      // Ovoz va bildirishnoma markaziy tizimda (lib/notificationCenter)
+      // — bu yerda faqat ro'yxatni yangilaymiz
+      seenOrders.current.add(data.orderId);
       load();
     };
 
     socket.on('dinein:new', onNew);
     socket.on('dinein:order', load);
-    socket.on('dinein:request', (r) => {
-      if (soundOn) playBeep();
-      notify(
-        r.type === 'bill' ? 'Hisob so\u2018ralmoqda' : 'Ofitsiant chaqirilmoqda',
-        `Stol ${r.tableNumber}`,
-      );
-      load();
-    });
+    socket.on('dinein:request', load);
     socket.on('dinein:request-update', load);
     socket.on('table:update', load);
 
@@ -77,24 +64,17 @@ export function DineInLivePage() {
     return () => {
       socket.off('dinein:new', onNew);
       socket.off('dinein:order', load);
-      socket.off('dinein:request');
+      socket.off('dinein:request', load);
       socket.off('dinein:request-update', load);
       socket.off('table:update', load);
       clearInterval(timer);
     };
-  }, [load, soundOn]);
-
-  const toggleSound = () => {
-    const next = !soundOn;
-    setSoundOn(next);
-    try { localStorage.setItem('dinein_sound', next ? '1' : '0'); } catch { /* ignore */ }
-    if (next) {
-      playBeep();
-      requestNotifyPermission();
-    }
-  };
+  }, [load]);
 
   const setStatus = async (order, status) => {
+    // Bildirishnoma panelida alohida bosish shart emas — bu
+    // yerda haqiqiy amal bajarilishi bilan u ham yopiladi
+    resolveNotification('hall', order._id, status === 'cancelled' ? 'CANCELLED' : 'ACCEPTED');
     try {
       await panelApi.setDineInOrderStatus(order._id, status);
       load();
@@ -102,6 +82,9 @@ export function DineInLivePage() {
   };
 
   const handleRequest = async (r, status) => {
+    // updateRequest faqat 'accepted' | 'done' qabul qiladi —
+    // ikkalasi ham "chaqiruv ko'rildi/hal qilindi" degani
+    resolveNotification('request', r._id, 'ACCEPTED');
     try {
       await panelApi.updateTableRequest(r._id, status);
       load();
@@ -141,13 +124,11 @@ export function DineInLivePage() {
           <h1 className="text-xl font-semibold text-ink">Jonli buyurtmalar</h1>
           <p className="text-sm text-muted mt-0.5">Zal buyurtmalari va chaqiruvlar</p>
         </div>
-        <button onClick={toggleSound}
-          title={soundOn ? "Ovozni o'chirish" : 'Ovozni yoqish'}
-          className={`w-10 h-10 rounded-xl border flex items-center justify-center flex-none ${
-            soundOn ? 'border-brand-400 text-brand-600' : 'border-line text-muted'
-          }`}>
-          <i className={`ti ${soundOn ? 'ti-bell' : 'ti-bell-off'}`} />
-        </button>
+        {/*
+          Ovoz sozlamasi endi shu yerda emas — markaziy
+          bildirishnoma panelida (qo'ng'iroq belgisi →
+          Sozlamalar), butun ilova uchun bitta joyda.
+        */}
       </div>
 
       {/* Ko'rsatkichlar */}
@@ -397,24 +378,6 @@ function Stat({ label, value, raw, accent }) {
       {!raw && <div className="text-[10px] text-muted">so&apos;m</div>}
     </div>
   );
-}
-
-/* ═══ Bildirishnoma ═══
-   Ovoz markaziy tizimda (lib/soundQueue) — bu yerda o'z
-   signalimiz bo'lsa bir hodisaga ikki marta chalinardi. */
-function playBeep() { /* markaziy tizim chaladi */ }
-
-function requestNotifyPermission() {
-  if (typeof Notification === 'undefined') return;
-  if (Notification.permission === 'default') Notification.requestPermission();
-}
-
-function notify(title, body) {
-  try {
-    if (typeof Notification === 'undefined') return;
-    if (Notification.permission !== 'granted') return;
-    new Notification(title, { body, icon: '/logo-192.png' });
-  } catch { /* ignore */ }
 }
 
 /**

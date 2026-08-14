@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { confirm } from '@/components/ui/confirm';
+import { resolveNotification } from '@/lib/notificationCenter';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -22,11 +23,7 @@ export function RestaurantOrdersPage() {
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
   const [flashId, setFlashId] = useState(null);
-  const [soundOn, setSoundOn] = useState(true);
-  const soundOnRef = useRef(true);
   const knownIds = useRef(new Set());
-
-  useEffect(() => { soundOnRef.current = soundOn; }, [soundOn]);
 
   const load = useCallback(async () => {
     try {
@@ -81,6 +78,10 @@ export function RestaurantOrdersPage() {
 
     // Optimistik yangilash
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: next } : x)));
+    // Bildirishnoma panelida alohida bosish shart emas — bu
+    // yerda haqiqiy amal bajarilishi bilan u ham yopiladi va
+    // ovoz to'xtaydi
+    resolveNotification('order', o._id, 'ACCEPTED');
     try {
       await panelApi.updateOrderStatus(o._id, next);
     } catch {
@@ -107,6 +108,7 @@ export function RestaurantOrdersPage() {
   const cancel = async (o) => {
     if (!await confirm({ title: 'Buyurtma bekor qilinsinmi?' })) return;
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: 'cancelled' } : x)));
+    resolveNotification('order', o._id, 'CANCELLED');
     try { await panelApi.updateOrderStatus(o._id, 'cancelled'); } catch { load(); }
   };
 
@@ -130,13 +132,12 @@ export function RestaurantOrdersPage() {
           <p className="text-xs sm:text-sm text-muted mt-0.5 truncate">{restaurant?.name}</p>
         </div>
         <div className="flex flex-none items-center gap-3">
-          <button
-            onClick={() => setSoundOn((s) => !s)}
-            title={soundOn ? 'Ovozni o\u2018chirish' : 'Ovozni yoqish'}
-            className={`w-10 h-10 rounded-xl border flex items-center justify-center ${soundOn ? 'border-brand-400 text-brand-600 bg-brand-50' : 'border-line text-muted'}`}
-          >
-            <i className={`ti ${soundOn ? 'ti-volume' : 'ti-volume-off'} text-lg`} />
-          </button>
+          {/*
+            Ovoz tugmasi endi shu yerda emas — markaziy
+            bildirishnoma panelida (qo'ng'iroq belgisi →
+            Sozlamalar). Bu yerdagisi haqiqiy ovozga bog'liq
+            emas edi, faqat chalkashlik keltirardi.
+          */}
           <span className="flex items-center gap-2 text-sm text-green-600">
             <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" /> Jonli
           </span>

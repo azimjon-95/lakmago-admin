@@ -23,12 +23,21 @@ const TYPE_META = {
   support:      { label: 'Yordam',     icon: 'ti-message',         color: '#8E8E93' },
 };
 
-/** Qaysi sahifaga olib borishi. */
+/**
+ * Qaysi sahifaga olib borishi.
+ *
+ * MUHIM: restoran paneli marshrutida buyurtmalar '/orders'
+ * emas — TUBIDA ('/') joylashgan (App.jsx: RestaurantRoutes).
+ * '/orders' faqat admin monitoringida bor. Avval bu xato
+ * tufayli 'Qabul qilish' bosilganda mavjud bo'lmagan sahifaga
+ * yo'naltirilardi (amaldagi natija: catch-all qoida uni "/"
+ * ga qaytarardi — tasodifan ishlab turgan, ataylab emas).
+ */
 function routeFor(n) {
   if (n.refType === 'reservation') return '/reservations';
   if (n.refType === 'table') return '/dine-in-live';
   if (n.type === 'hall_order') return '/dine-in-live';
-  return '/orders';
+  return '/';
 }
 
 const timeOf = (iso) => {
@@ -155,8 +164,16 @@ export function NotificationCenter() {
                     <NotificationRow
                       key={n.notificationId}
                       n={n}
+                      /*
+                        "Qabul qilish" endi shu yerda hal
+                        qilmaydi — haqiqiy sahifaga olib boradi
+                        (masalan Buyurtmalar yoki Dine-in).
+                        Bildirishnoma o'sha sahifada real amal
+                        bajarilganda (resolveNotification orqali)
+                        avtomatik yopiladi va ovoz to'xtaydi.
+                      */
                       onOpen={() => openItem(n)}
-                      onAccept={() => patch(n.notificationId, 'ACCEPTED')}
+                      onAccept={() => openItem(n)}
                       onCancel={() => patch(n.notificationId, 'CANCELLED')}
                       onMute={() => patch(n.notificationId, 'MUTED')}
                     />

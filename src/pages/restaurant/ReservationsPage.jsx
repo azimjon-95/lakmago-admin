@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { confirmWithReason } from '@/components/ui/confirm';
+import { resolveNotification } from '@/lib/notificationCenter';
 
 // Mijoz javoblari va holatlar
 const STATUS = {
@@ -57,6 +58,9 @@ export function ReservationsPage() {
       reason = await confirmWithReason('Rad etish sababi (mijozga yuboriladi):') || '';
     }
     setBusyId(id);
+    // Bildirishnoma panelida alohida bosish shart emas — bu
+    // yerda haqiqiy amal bajarilishi bilan u ham yopiladi
+    resolveNotification('reservation', id, status === 'confirmed' ? 'ACCEPTED' : 'CANCELLED');
     try {
       await panelApi.updateReservationStatus(id, status, reason);
       await load();
