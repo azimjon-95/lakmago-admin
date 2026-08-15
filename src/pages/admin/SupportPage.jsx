@@ -57,6 +57,45 @@ export function SupportPage() {
     } catch { /* ignore */ }
   }, [loadList]);
 
+  /*
+   * "Online" holati — Telegram kabi ishlaydi.
+   *
+   * Sahifa ochiq VA oyna faol bo'lsa — online. Boshqa ilova/
+   * oynaga o'tilsa yoki sahifadan chiqilsa — darhol offline,
+   * mijoz "N daqiqa oldin faol edi" ko'radi. Refreshsiz,
+   * socket orqali jonli.
+   */
+  useEffect(() => {
+    const socket = getSocket();
+
+    const isForeground = () => document.visibilityState === 'visible' && document.hasFocus();
+
+    // Juda tez-tez almashib ketmasin (masalan boshqa oynaga
+    // sichqoncha bilan tegib o'tish) — kichik kechikish bilan
+    let debounce = null;
+    const sync = () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(() => {
+        socket.emit(isForeground() ? 'support:presence:online' : 'support:presence:offline');
+      }, 300);
+    };
+
+    sync();   // sahifa ochilganda darhol
+    document.addEventListener('visibilitychange', sync);
+    window.addEventListener('focus', sync);
+    window.addEventListener('blur', sync);
+
+    return () => {
+      clearTimeout(debounce);
+      document.removeEventListener('visibilitychange', sync);
+      window.removeEventListener('focus', sync);
+      window.removeEventListener('blur', sync);
+      // Sahifadan butunlay chiqilmoqda (boshqa admin bo'limiga
+      // o'tish) — darhol offline
+      socket.emit('support:presence:offline');
+    };
+  }, []);
+
   // Real-time: yangi xabar
   useEffect(() => {
     const socket = getSocket();
