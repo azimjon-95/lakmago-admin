@@ -320,7 +320,6 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
   const a = restaurant.info?.agreement;
   const [restPct, setRestPct] = useState(String(a?.restaurantCommissionPercent ?? 5));
   const [custPct, setCustPct] = useState(String(a?.customerFeePercent ?? 5));
-  const [base, setBase] = useState(a?.billingBase || 'CUSTOMER_FINAL_PRICE');
   const [note, setNote] = useState(a?.note || '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -330,12 +329,23 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
   const total = r + c;
   const valid = r >= 0 && r <= 100 && c >= 0 && c <= 100 && total <= 100;
 
-  // 10 000 so'mlik taomda nima bo'lishini ko'rsatamiz
+  /*
+   * 10 000 so'mlik taomda nima bo'lishini ko'rsatamiz.
+   *
+   * QOIDA: ikkala foiz ham BAZADAN mustaqil hisoblanadi va
+   * qo'shiladi — biri ikkinchisi ustiga qo'yilmaydi.
+   *   10 000 + ustama 5% (500) + mijoz haqi 5% (500) = 11 000
+   * Restoran o'z ustamasi bilan qoladi, undan faqat o'z
+   * komissiyasi chegiriladi — mijoz haqi butunlay LokmaGo'ga.
+   */
   const demoBase = 10000;
   const demoMarkup = restaurant.info?.deliveryMarkupPercent || 0;
-  const demoDelivery = Math.round(demoBase * (1 + demoMarkup / 100));
-  const demoFinal = Math.round(demoDelivery * (1 + c / 100));
-  const demoLokma = Math.round(demoFinal * total / 100);
+  const demoMarkupAmt = Math.round((demoBase * demoMarkup) / 100);
+  const demoFeeAmt = Math.round((demoBase * c) / 100);
+  const demoRestCommAmt = Math.round((demoBase * r) / 100);
+  const demoFinal = demoBase + demoMarkupAmt + demoFeeAmt;
+  const demoRestaurant = demoBase + demoMarkupAmt - demoRestCommAmt;
+  const demoLokma = demoRestCommAmt + demoFeeAmt;
   const som = (n) => n.toLocaleString('ru-RU');
 
   const save = async () => {
@@ -345,7 +355,6 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
       await adminApi.setAgreement(restaurant.id, {
         restaurantCommissionPercent: r,
         customerFeePercent: c,
-        billingBase: base,
         note: note.trim(),
       });
       onSaved();
@@ -389,30 +398,22 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
 
         {/* Misol */}
         <div className="mb-4 rounded-xl bg-canvas p-3 text-xs">
-          <div className="mb-1.5 font-medium text-ink">10 000 so&apos;mlik taom:</div>
+          <div className="mb-1.5 font-medium text-ink">10 000 so&apos;mlik taom (yetkazishda):</div>
           <Row label="Restoran narxi" value={`${som(demoBase)} so'm`} />
           {demoMarkup > 0 && (
-            <Row label={`Yetkazish ustamasi +${demoMarkup}%`} value={`${som(demoDelivery)} so'm`} />
+            <Row label={`+ Yetkazish ustamasi ${demoMarkup}%`} value={`${som(demoMarkupAmt)} so'm`} />
           )}
           {c > 0 && (
-            <Row label={`Mijoz haqi +${c}%`} value={`${som(demoFinal)} so'm`} strong />
+            <Row label={`+ Mijoz haqi ${c}%`} value={`${som(demoFeeAmt)} so'm`} />
           )}
           <Row label="Mijoz to'laydi" value={`${som(demoFinal)} so'm`} strong />
           <div className="my-1.5 h-px bg-line" />
           <Row label="LokmaGo oladi" value={`${som(demoLokma)} so'm`} accent />
-          <Row label="Restoran oladi" value={`${som(demoFinal - demoLokma)} so'm`} />
+          <Row label="Restoran oladi" value={`${som(demoRestaurant)} so'm`} strong />
           <div className="mt-2 text-[11px] text-muted">
             Zal va bronda narx o&apos;zgarmaydi: {som(demoBase)} so&apos;m
           </div>
         </div>
-
-        <Field label="Hisoblash bazasi" hint="Restoran ulushi nimadan hisoblanadi">
-          <select value={base} onChange={(e) => setBase(e.target.value)}
-            className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm">
-            <option value="CUSTOMER_FINAL_PRICE">Mijoz to&apos;lagan yakuniy summadan</option>
-            <option value="DELIVERY_PRICE">Xizmat haqisiz narxdan</option>
-          </select>
-        </Field>
 
         <Field label="Izoh">
           <input value={note} onChange={(e) => setNote(e.target.value)}
