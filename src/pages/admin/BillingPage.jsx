@@ -135,7 +135,7 @@ export function BillingPage() {
       )}
 
       {/* Bo'limlar */}
-      <div className="flex gap-2 mb-4 border-b border-line">
+      <div className="mb-4 flex gap-1 overflow-x-auto border-b border-line no-scrollbar sm:gap-2">
         {[
           ['overview', 'Restoranlar'],
           ['daily', 'Kunlik hisobot'],
@@ -145,7 +145,7 @@ export function BillingPage() {
           <button
             key={k}
             onClick={() => setTab(k)}
-            className={`px-4 py-2 text-sm font-medium border-b-2 -mb-px ${
+            className={`flex-none whitespace-nowrap border-b-2 -mb-px px-3 py-2 text-sm font-medium sm:px-4 ${
               tab === k
                 ? 'border-brand-400 text-ink'
                 : 'border-transparent text-muted hover:text-ink'

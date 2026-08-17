@@ -17,61 +17,80 @@ const adminNav = [
     icon: "ti-layout-dashboard",
     label: "Boshqaruv",
     end: true,
+    page: "dashboard",
   },
   {
     to: "/restaurants",
     icon: "ti-building-store",
     label: "Muassasalar",
+    page: "restaurants",
   },
   {
     to: "/orders",
     icon: "ti-clipboard-list",
     label: "Buyurtmalar",
+    page: "orders",
   },
   {
     to: "/revenue",
     icon: "ti-cash",
     label: "Daromad",
+    page: "revenue",
   },
   {
     to: "/banners",
     icon: "ti-photo",
     label: "Bannerlar",
+    page: "banners",
   },
   {
     to: "/support",
     icon: "ti-message-circle",
     label: "Xabarlar",
+    page: "notifications",
   },
   {
     to: "/groups",
     icon: "ti-brand-telegram",
     label: "Guruhlar",
+    page: "groups",
   },
   {
     to: "/catalog",
     icon: "ti-package",
     label: "Katalog",
+    page: "catalog",
   },
   {
     to: "/promo-admin",
     icon: "ti-speakerphone",
     label: "Mijoz jalb qilish",
+    page: "marketing",
   },
   {
     to: "/dine-in-admin",
     icon: "ti-armchair",
     label: "Dine-in",
+    page: "dinein",
   },
   {
     to: "/billing",
     icon: "ti-report-money",
     label: "Moliya",
+    page: "billing",
+  },
+  {
+    to: "/staff",
+    icon: "ti-users-group",
+    label: "Xodimlar",
+    page: "staff",
+    adminOnly: true,   // faqat 'admin' — hech qanday bo'lim (department) ko'rmaydi
   },
   {
     to: "/settings",
     icon: "ti-settings",
     label: "Sozlamalar",
+    page: "settings",
   },
 ];
 
@@ -160,12 +179,25 @@ const logout = useAuth((s)=>s.logout);
 
 
 const isAdmin = user?.role==="admin";
+const isStaff = user?.role==="staff";
+// Admin va xodim (staff) — ikkalasi ham "boshqaruv" turidagi
+// menyudan foydalanadi (restaurantNav emas), lekin xodim faqat
+// o'z bo'limiga tegishli bandlarni ko'radi.
+const isAdminLike = isAdmin || isStaff;
 
 // Dine-in tasdiqlanmaguncha zal bo'limlari ko'rinmaydi
-const {isActive: dineInActive}=useDineInStatus(!isAdmin);
+const {isActive: dineInActive}=useDineInStatus(!isAdminLike);
 
-const nav = (isAdmin ? adminNav : restaurantNav)
-  .filter((item) => !item.dineInOnly || dineInActive);
+const nav = (isAdminLike ? adminNav : restaurantNav)
+  .filter((item) => !item.dineInOnly || dineInActive)
+  // Xodim (staff): faqat serverdan kelgan allowedPages ro'yxatidagi
+  // sahifalar, va hech qachon adminOnly (Xodimlar) bandi
+  .filter((item) => {
+    if (!isStaff) return true;
+    if (item.adminOnly) return false;
+    if (!item.page) return true;
+    return user?.allowedPages?.includes(item.page);
+  });
 
 // Mobilda pastda 4 ta, qolgani "Ko'proq" da
 const MOBILE_TABS = 4;
@@ -173,8 +205,8 @@ const primaryNav = nav.slice(0, MOBILE_TABS);
 const moreNav = nav.slice(MOBILE_TABS);
 
 
-const {count: stoppedCount}=useStoppedCount(!isAdmin);
-const {count: transferCount}=usePendingTransfers(!isAdmin);
+const {count: stoppedCount}=useStoppedCount(!isAdminLike);
+const {count: transferCount}=usePendingTransfers(!isAdminLike);
 
 // "Ko'proq" ichidagi bildirishnomalar yig'indisi
 const moreBadge = moreNav.reduce((sum, item) => {
@@ -215,6 +247,8 @@ return ()=>{
 const title =
 isAdmin
 ?"Administrator"
+:isStaff
+?(user?.firstName || "Xodim")
 :restaurant?.name || "Restoran";
 
 
@@ -222,6 +256,8 @@ isAdmin
 const subtitle =
 isAdmin
 ?"Dastur egasi"
+:isStaff
+?(user?.departmentLabel || "Xodim")
 :"Restoran paneli";
 
 
@@ -230,6 +266,8 @@ const initials =
 (
 isAdmin
 ?"AD"
+:isStaff
+?(user?.firstName || "X")
 :(restaurant?.name || "R")
 )
 .slice(0,2)

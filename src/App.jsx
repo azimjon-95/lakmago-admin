@@ -19,6 +19,7 @@ import { RestaurantDetailPage } from '@/pages/admin/RestaurantDetailPage';
 import { UsersPage } from '@/pages/admin/UsersPage';
 import { SettingsPage } from '@/pages/admin/SettingsPage';
 import { BillingPage } from '@/pages/admin/BillingPage';
+import { StaffPage } from '@/pages/admin/StaffPage';
 import { CatalogPage } from '@/pages/admin/CatalogPage';
 import { PromoAdminPage } from '@/pages/admin/PromoAdminPage';
 import { DineInAdminPage } from '@/pages/admin/DineInAdminPage';
@@ -110,33 +111,46 @@ function Shell({ children }) {
   );
 }
 
-// Admin uchun himoyalangan sahifalar
+// Admin va LokmaGo xodimi (staff) uchun himoyalangan sahifalar.
+// Xodim uchun HAR BIR sahifa `allowedPages` orqali qayta
+// tekshiriladi — sidebar'da yashirilgan bo'lsa ham, to'g'ridan-
+// to'g'ri URL orqali kirishga urinilsa qayta yo'naltiriladi
+// (server API'si baribir 403 qaytaradi, lekin bo'sh/singan
+// sahifa ko'rsatish o'rniga tozaroq tajriba).
+function Guarded({ page, children }) {
+  const user = useAuth((s) => s.user);
+  if (user?.role === 'admin') return children;
+  if (user?.role === 'staff' && user?.allowedPages?.includes(page)) return children;
+  return <Navigate to="/" replace />;
+}
+
 function AdminRoutes() {
   return (
     <Shell>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
-        <Route path="/restaurants" element={<RestaurantsPage />} />
-        <Route path="/restaurants/new" element={<CreateRestaurantLayout />}>
+        <Route path="/restaurants" element={<Guarded page="restaurants"><RestaurantsPage /></Guarded>} />
+        <Route path="/restaurants/new" element={<Guarded page="restaurants"><CreateRestaurantLayout /></Guarded>}>
           <Route index element={<Navigate to="asosiy" replace />} />
           <Route path="asosiy" element={<Step1Basic />} />
           <Route path="manzil" element={<Step2Address />} />
           <Route path="sozlamalar" element={<Step3Settings />} />
           <Route path="tekshiruv" element={<Step4Review />} />
         </Route>
-        <Route path="/restaurants/:id/settings" element={<RestaurantSettingsPage />} />
-        <Route path="/restaurants/:id" element={<RestaurantDetailPage />} />
-        <Route path="/orders" element={<OrdersMonitorPage />} />
-        <Route path="/groups" element={<GroupsPage />} />
-        <Route path="/support" element={<SupportPage />} />
-        <Route path="/revenue" element={<RevenuePage />} />
-        <Route path="/banners" element={<BannersPage />} />
-        <Route path="/settings" element={<SettingsPage />} />
-        <Route path="/billing" element={<BillingPage />} />
-        <Route path="/catalog" element={<CatalogPage />} />
-        <Route path="/promo-admin" element={<PromoAdminPage />} />
-        <Route path="/dine-in-admin" element={<DineInAdminPage />} />
-        <Route path="/users" element={<UsersPage />} />
+        <Route path="/restaurants/:id/settings" element={<Guarded page="restaurants"><RestaurantSettingsPage /></Guarded>} />
+        <Route path="/restaurants/:id" element={<Guarded page="restaurants"><RestaurantDetailPage /></Guarded>} />
+        <Route path="/orders" element={<Guarded page="orders"><OrdersMonitorPage /></Guarded>} />
+        <Route path="/groups" element={<Guarded page="groups"><GroupsPage /></Guarded>} />
+        <Route path="/support" element={<Guarded page="notifications"><SupportPage /></Guarded>} />
+        <Route path="/revenue" element={<Guarded page="revenue"><RevenuePage /></Guarded>} />
+        <Route path="/banners" element={<Guarded page="banners"><BannersPage /></Guarded>} />
+        <Route path="/settings" element={<Guarded page="settings"><SettingsPage /></Guarded>} />
+        <Route path="/billing" element={<Guarded page="billing"><BillingPage /></Guarded>} />
+        <Route path="/staff" element={<Guarded page="staff"><StaffPage /></Guarded>} />
+        <Route path="/catalog" element={<Guarded page="catalog"><CatalogPage /></Guarded>} />
+        <Route path="/promo-admin" element={<Guarded page="marketing"><PromoAdminPage /></Guarded>} />
+        <Route path="/dine-in-admin" element={<Guarded page="dinein"><DineInAdminPage /></Guarded>} />
+        <Route path="/users" element={<Guarded page="settings"><UsersPage /></Guarded>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>
@@ -191,7 +205,7 @@ function AppInner() {
   }
 
   // Kirgan — rolga qarab
-  if (user?.role === 'admin') return <AdminRoutes />;
+  if (user?.role === 'admin' || user?.role === 'staff') return <AdminRoutes />;
   if (user?.role === 'restaurant') return <RestaurantRoutes />;
 
   return <div className="p-10 text-center text-muted">Noma'lum rol</div>;

@@ -228,3 +228,7 @@ body {
   .ios26-sheet,
   .ios26-live { animation: none; }
 }
+
+/* Scrollbar yashirilgan gorizontal surish — tab panellar uchun */
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

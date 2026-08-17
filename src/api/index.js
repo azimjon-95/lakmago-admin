@@ -171,6 +171,13 @@ export const adminApi = {
   createExpense: (data) => apiFetch('/admin/expenses', { method: 'POST', body: JSON.stringify(data) }),
   deleteExpense: (id) => apiFetch(`/admin/expenses/${id}`, { method: 'DELETE' }),
 
+  // Xodimlar (LokmaGo jamoasi) — faqat admin
+  getStaff: () => apiFetch('/admin/staff'),
+  getStaffDepartments: () => apiFetch('/admin/staff/departments'),
+  createStaff: (data) => apiFetch('/admin/staff', { method: 'POST', body: JSON.stringify(data) }),
+  updateStaff: (id, data) => apiFetch(`/admin/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteStaff: (id) => apiFetch(`/admin/staff/${id}`, { method: 'DELETE' }),
+
   // Komissiya shartnomalari (restoran bo'yicha alohida kelishuv)
   getAgreements: () => apiFetch('/admin/agreements'),
   setAgreement: (restaurantId, data) => apiFetch(`/admin/agreements/${restaurantId}`, {
