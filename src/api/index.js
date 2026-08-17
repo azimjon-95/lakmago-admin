@@ -162,6 +162,15 @@ export const adminApi = {
   payout: (data) => apiFetch('/admin/billing/payout', { method: 'POST', body: JSON.stringify(data) }),
   setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // Kunlik hisob-kitob — Click/Paynet ajratilgan, qo'lda tasdiqlash
+  getDailySettlement: (date) => apiFetch(`/admin/settlement/daily${date ? `?date=${date}` : ''}`),
+  confirmSettlement: (data) => apiFetch('/admin/settlement/confirm', { method: 'POST', body: JSON.stringify(data) }),
+
+  // Kirim-chiqim (platformaning o'z xarajatlari)
+  getExpenses: (q = '') => apiFetch(`/admin/expenses${q}`),
+  createExpense: (data) => apiFetch('/admin/expenses', { method: 'POST', body: JSON.stringify(data) }),
+  deleteExpense: (id) => apiFetch(`/admin/expenses/${id}`, { method: 'DELETE' }),
+
   // Komissiya shartnomalari (restoran bo'yicha alohida kelishuv)
   getAgreements: () => apiFetch('/admin/agreements'),
   setAgreement: (restaurantId, data) => apiFetch(`/admin/agreements/${restaurantId}`, {
