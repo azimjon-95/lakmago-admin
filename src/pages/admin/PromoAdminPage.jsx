@@ -108,12 +108,17 @@ export function PromoAdminPage() {
                 <div className="flex flex-wrap items-center gap-2">
                   <span className="font-semibold text-ink">{ad.restaurantId?.name}</span>
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-muted">
-                    {ad.targetType === 'dish' ? `Taom: ${ad.dishId?.name || '—'}` : 'Restoran reklamasi'}
+                    {ad.targetType === 'dish'
+                      ? `Taom: ${ad.dishId?.name || ad.customTitle || '\u2014'}`
+                      : (ad.customTitle || 'Restoran reklamasi')}
                   </span>
                 </div>
                 <div className="mt-1 text-sm text-muted">
                   {ad.days} kun · {som(ad.totalPrice / 100)} so'm · {fmtDateTime(ad.createdAt)} yuborilgan
                 </div>
+                {ad.customDescription && (
+                  <div className="mt-1 text-xs text-ink">"{ad.customDescription}"</div>
+                )}
                 {ad.status === 'rejected' && ad.rejectReason && (
                   <div className="mt-1.5 text-xs text-red-600">Sabab: {ad.rejectReason}</div>
                 )}

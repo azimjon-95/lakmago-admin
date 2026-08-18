@@ -103,7 +103,9 @@ export function PromotionPage() {
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-ink">
-                      {ad.targetType === 'dish' ? (ad.dishId?.name || 'Taom') : 'Restoran reklamasi'}
+                      {ad.targetType === 'dish'
+                        ? (ad.dishId?.name || ad.customTitle || 'Taom')
+                        : (ad.customTitle || 'Restoran reklamasi')}
                     </div>
                     <div className="text-xs text-muted">
                       {ad.days} kun · {som(ad.totalPrice / 100)} so'm
@@ -137,10 +139,15 @@ export function PromotionPage() {
 
 function AdForm({ pricePerDay, onClose, onCreated }) {
   const [targetType, setTargetType] = useState('restaurant');
+  // Faqat targetType==='dish' uchun: 'existing' — mavjud taomga
+  // bog'lash, 'custom' — o'zi rasm+matn yozadi (taomga bog'lanmaydi)
+  const [dishMode, setDishMode] = useState('existing');
   const [dishId, setDishId] = useState('');
   const [imageMode, setImageMode] = useState('existing');   // 'existing' | 'upload'
   const [selectedImage, setSelectedImage] = useState('');
   const [uploadedImage, setUploadedImage] = useState('');
+  const [customTitle, setCustomTitle] = useState('');
+  const [customDescription, setCustomDescription] = useState('');
   const [days, setDays] = useState(3);
   const [images, setImages] = useState({ restaurantImages: [], dishImages: [] });
   const [saving, setSaving] = useState(false);
@@ -150,8 +157,13 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
     panelApi.getAdImages().then(setImages).catch(() => {});
   }, []);
 
-  // Tanlangan turga mos "mavjud rasmlar" ro'yxati
-  const availableImages = targetType === 'restaurant'
+  const isCustomDish = targetType === 'dish' && dishMode === 'custom';
+
+  // Tanlangan turga mos "mavjud rasmlar" ro'yxati.
+  // O'zi yozadigan (custom) holatda ham taom rasmlariga emas,
+  // restoranning umumiy galereyasiga tayanadi — chunki hech
+  // qanday aniq taomga bog'lanmagan.
+  const availableImages = (targetType === 'restaurant' || isCustomDish)
     ? images.restaurantImages
     : images.dishImages.filter((d) => !dishId || String(d.dishId) === dishId).map((d) => d.url);
 
@@ -163,15 +175,23 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
 
   const submit = async () => {
     setError('');
-    if (targetType === 'dish' && !dishId) { setError('Taom tanlanmagan'); return; }
+    if (targetType === 'dish' && dishMode === 'existing' && !dishId) {
+      setError('Taom tanlanmagan'); return;
+    }
+    if (isCustomDish && !customTitle.trim()) {
+      setError('Reklama uchun sarlavha yozing'); return;
+    }
     if (!finalImage) { setError('Rasm tanlanmagan yoki yuklanmagan'); return; }
     if (!days || days < 1) { setError('Kunlar sonini kiriting'); return; }
 
     setSaving(true);
     try {
       await panelApi.createAd({
-        targetType, dishId: targetType === 'dish' ? dishId : undefined,
+        targetType,
+        dishId: targetType === 'dish' && dishMode === 'existing' ? dishId : undefined,
         imageUrl: finalImage, days: Number(days),
+        customTitle: customTitle.trim() || undefined,
+        customDescription: customDescription.trim() || undefined,
       });
       onCreated();
     } catch (e) {
@@ -205,24 +225,77 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
         </div>
       </div>
 
-      {/* 2. Taom tanlash (faqat targetType==='dish') */}
+      {/* 2. Taom turi: mavjud taomdan yoki o'zi yozadi */}
       {targetType === 'dish' && (
         <div className="mb-4">
-          <label className="mb-1.5 block text-sm font-medium text-ink">Qaysi taom?</label>
-          <select
-            value={dishId}
-            onChange={(e) => { setDishId(e.target.value); setSelectedImage(''); }}
-            className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
-          >
-            <option value="">Tanlang...</option>
-            {dishOptions.map((d) => (
-              <option key={d.dishId} value={d.dishId}>{d.dishName}</option>
-            ))}
-          </select>
+          <label className="mb-1.5 block text-sm font-medium text-ink">Qanday?</label>
+          <div className="mb-2 flex gap-2">
+            <button
+              onClick={() => { setDishMode('existing'); setSelectedImage(''); }}
+              className={`flex-1 rounded-lg border py-1.5 text-xs font-medium ${
+                dishMode === 'existing' ? 'border-brand-400 bg-brand-tint text-ink' : 'border-line text-muted'
+              }`}
+            >
+              Mavjud taom
+            </button>
+            <button
+              onClick={() => { setDishMode('custom'); setDishId(''); setSelectedImage(''); }}
+              className={`flex-1 rounded-lg border py-1.5 text-xs font-medium ${
+                dishMode === 'custom' ? 'border-brand-400 bg-brand-tint text-ink' : 'border-line text-muted'
+              }`}
+            >
+              O'zim yozaman
+            </button>
+          </div>
+
+          {dishMode === 'existing' ? (
+            <select
+              value={dishId}
+              onChange={(e) => { setDishId(e.target.value); setSelectedImage(''); }}
+              className="w-full rounded-lg border border-line bg-canvas px-3 py-2 text-sm"
+            >
+              <option value="">Tanlang...</option>
+              {dishOptions.map((d) => (
+                <option key={d.dishId} value={d.dishId}>{d.dishName}</option>
+              ))}
+            </select>
+          ) : (
+            <p className="text-[11px] leading-relaxed text-muted">
+              Menyuda hali yo'q maxsus taklif yoki kombinatsiya bo'lsa shu yerni tanlang —
+              pastda o'zingiz sarlavha va tavsif yozasiz.
+            </p>
+          )}
         </div>
       )}
 
-      {/* 3. Rasm — mavjuddan yoki yangi */}
+      {/* 3. Moslashtirilgan matn — restoran reklamasida ixtiyoriy,
+          "o'zim yozaman" taom reklamasida majburiy */}
+      {(targetType === 'restaurant' || isCustomDish) && (
+        <div className="mb-4 rounded-lg bg-canvas p-3">
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            Sarlavha {isCustomDish ? '' : <span className="text-muted font-normal">(ixtiyoriy)</span>}
+          </label>
+          <input
+            value={customTitle}
+            onChange={(e) => setCustomTitle(e.target.value)}
+            maxLength={80}
+            placeholder={targetType === 'restaurant' ? 'Masalan: Yangi filial ochildi!' : 'Masalan: Bayram seti'}
+            className="mb-3 w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          />
+          <label className="mb-1.5 block text-sm font-medium text-ink">
+            Tavsif <span className="text-muted font-normal">(ixtiyoriy)</span>
+          </label>
+          <input
+            value={customDescription}
+            onChange={(e) => setCustomDescription(e.target.value)}
+            maxLength={200}
+            placeholder="Qisqa izoh — mijoz modalda ko'radi"
+            className="w-full rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+          />
+        </div>
+      )}
+
+      {/* 4. Rasm — mavjuddan yoki yangi */}
       <div className="mb-4">
         <label className="mb-1.5 block text-sm font-medium text-ink">Banner rasmi</label>
         <div className="mb-2 flex gap-2">
@@ -247,7 +320,7 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
         {imageMode === 'existing' ? (
           availableImages.length === 0 ? (
             <div className="rounded-lg border border-dashed border-line py-4 text-center text-xs text-muted">
-              {targetType === 'dish' && !dishId ? 'Avval taomni tanlang' : 'Mavjud rasm topilmadi'}
+              {targetType === 'dish' && dishMode === 'existing' && !dishId ? 'Avval taomni tanlang' : 'Mavjud rasm topilmadi'}
             </div>
           ) : (
             <div className="grid grid-cols-4 gap-2">
@@ -269,7 +342,7 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
         )}
       </div>
 
-      {/* 4. Necha kun */}
+      {/* 5. Necha kun */}
       <div className="mb-4">
         <label className="mb-1.5 block text-sm font-medium text-ink">Necha kun ko'rsatilsin?</label>
         <input
