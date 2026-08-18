@@ -18,6 +18,13 @@ export const panelApi = {
     method: 'PATCH', body: JSON.stringify({ deliveryMarkupPercent: percent }),
   }),
 
+  // Reklama (banner) so'rovlari — ikki tur: restoran yoki taom
+  getAds: () => apiFetch('/panel/ads'),
+  getAdPrice: () => apiFetch('/panel/ads/price'),
+  getAdImages: () => apiFetch('/panel/ads/images'),
+  createAd: (data) => apiFetch('/panel/ads', { method: 'POST', body: JSON.stringify(data) }),
+  cancelAd: (id) => apiFetch(`/panel/ads/${id}`, { method: 'DELETE' }),
+
   getProfile: () => apiFetch('/panel/me'),
   // Dine-in
   downloadFile,
@@ -177,6 +184,11 @@ export const adminApi = {
   createStaff: (data) => apiFetch('/admin/staff', { method: 'POST', body: JSON.stringify(data) }),
   updateStaff: (id, data) => apiFetch(`/admin/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteStaff: (id) => apiFetch(`/admin/staff/${id}`, { method: 'DELETE' }),
+
+  // Reklama (banner) so'rovlari — tasdiqlash/rad etish
+  getAllAds: (status) => apiFetch(`/admin/ads${status ? `?status=${status}` : ''}`),
+  approveAd: (id) => apiFetch(`/admin/ads/${id}/approve`, { method: 'PATCH' }),
+  rejectAd: (id, reason) => apiFetch(`/admin/ads/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
 
   // Komissiya shartnomalari (restoran bo'yicha alohida kelishuv)
   getAgreements: () => apiFetch('/admin/agreements'),
