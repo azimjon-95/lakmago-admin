@@ -44,8 +44,27 @@ function runRepeatLoop() {
     const liveIds = new Set(items.map((n) => n.notificationId));
     lastPlayedAt.forEach((_, id) => { if (!liveIds.has(id)) lastPlayedAt.delete(id); });
 
+    /*
+     * XATO TUZATILDI (2026-08): ESKI bildirishnomalar
+     * takrorlanmaydi.
+     *
+     * Avval yosh chegarasi yo'q edi: agar allaqachon
+     * ahamiyatini yo'qotgan (masalan bir necha soat oldingi,
+     * buyurtma bajarilib bo'lgan) bildirishnoma NEW/DELIVERED
+     * holatida qolib ketsa, u CHEKSIZ chalinaverardi — panel
+     * ochilib "Bildirishnoma yo'q" ko'ringan holatda ham
+     * muzika chalinishining sababi shu edi (server ham eski
+     * yozuvlarni qaytarardi — u tomoni ham tuzatildi).
+     *
+     * Endi: 2 soatdan eski bildirishnoma takroran chalinmaydi.
+     * U hali ro'yxatda ko'rinadi (admin ko'rishi mumkin),
+     * lekin ovoz bilan bezovta qilmaydi.
+     */
+    const REPEAT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+
     items
       .filter((n) => ['NEW', 'DELIVERED'].includes(n.status) && soundAllowed(n.type))
+      .filter((n) => now - new Date(n.createdAt).getTime() < REPEAT_MAX_AGE_MS)
       .forEach((n) => {
         const last = lastPlayedAt.get(n.notificationId)
           ?? new Date(n.createdAt).getTime();

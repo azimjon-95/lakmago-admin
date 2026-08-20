@@ -48,6 +48,9 @@ export function RestaurantSettingsPage() {
             freeDeliveryThreshold: r.freeDeliveryThreshold ?? null,
             reservationEnabled: r.reservationEnabled ?? false,
             reservationNote: r.reservationNote || '',
+            // Xizmat turlari — yetkazish/olib ketish yoqilganmi
+            deliveryEnabled: r.deliveryEnabled !== false,
+            pickupEnabled: r.pickupEnabled !== false,
             name: r.name,
             imageUrl: r.imageUrl || '',
             // Joylashuv — kuryer va mijoz topishi uchun
@@ -215,6 +218,44 @@ export function RestaurantSettingsPage() {
               onChange={(v) => set('reservationNote', v)}
               placeholder="Kamida 2 soat oldin bron qiling"
             />
+          )}
+        </section>
+
+        {/* Yetkazib berish va olib ketish — LokmaGo admin boshqaradi */}
+        <section className="bg-surface border border-line rounded-2xl p-5">
+          <h2 className="text-sm font-semibold text-ink mb-1 flex items-center gap-2">
+            <i className="ti ti-truck-delivery text-brand-600" /> Xizmat turlari
+          </h2>
+          <p className="text-xs text-muted mb-4">
+            Ba'zi muassasalarda yetkazib berish bo'lmasligi mumkin — o'chirilsa,
+            mijoz savatida bu tanlov bloklanadi va ogohlantirish ko'rsatiladi
+          </p>
+
+          <label className="flex items-center gap-3 cursor-pointer mb-3">
+            <input
+              type="checkbox"
+              checked={form.deliveryEnabled !== false}
+              onChange={(e) => set('deliveryEnabled', e.target.checked)}
+              className="w-4 h-4 accent-brand-400"
+            />
+            <span className="text-sm text-ink">Yetkazib berish xizmati</span>
+          </label>
+
+          <label className="flex items-center gap-3 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={form.pickupEnabled !== false}
+              onChange={(e) => set('pickupEnabled', e.target.checked)}
+              className="w-4 h-4 accent-brand-400"
+            />
+            <span className="text-sm text-ink">O'zi olib ketish</span>
+          </label>
+
+          {form.deliveryEnabled === false && form.pickupEnabled === false && (
+            <div className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-600">
+              Diqqat: ikkalasi ham o'chirilgan — mijoz umuman buyurtma bera olmaydi.
+              Kamida bittasi yoqilgan bo'lishi kerak.
+            </div>
           )}
         </section>
 
