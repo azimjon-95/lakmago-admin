@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
@@ -18,21 +19,51 @@ const flow = {
   cancelled: { label: 'Bekor qilindi', color: '#9A9A96', next: null },
 };
 
+const ORDERS_KEY = ['panel', 'orders'];
+
 export function RestaurantOrdersPage() {
   const restaurant = useAuth((s) => s.restaurant);
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [flashId, setFlashId] = useState(null);
   const knownIds = useRef(new Set());
+  const qc = useQueryClient();
 
-  const load = useCallback(async () => {
-    try {
+  /*
+   * REACT QUERY (2026-08 optimizatsiya).
+   *
+   * Avval useState + setInterval(25s) edi — sahifadan chiqib
+   * qaytilsa ro'yxat NOLDAN yuklanardi (bo'sh ekran + kutish).
+   * Endi kesh bor: qaytganda darhol ko'rinadi.
+   *
+   * MUHIM: optimistik yangilashlar (buyurtma holatini o'zgartirish)
+   * saqlab qolindi. Buning uchun `setOrders` nomi o'zgartirilmadi —
+   * u endi React Query keshiga yozadi. Shu tufayli quyidagi 5 ta
+   * chaqiruv joyi O'ZGARISHSIZ ishlaydi: kod o'zgarishi minimal,
+   * xato ehtimoli kam.
+   */
+  const { data: ordersRaw, isLoading: loading } = useQuery({
+    queryKey: ORDERS_KEY,
+    queryFn: async () => {
       const data = await panelApi.getOrders();
-      setOrders(data);
-      data.forEach((o) => knownIds.current.add(o._id));
-    } catch { /* ignore */ }
-    finally { setLoading(false); }
-  }, []);
+      // Server kutilmagan shakl qaytarsa sahifa yiqilmasin
+      const list = Array.isArray(data) ? data : [];
+      list.forEach((o) => knownIds.current.add(o._id));
+      return list;
+    },
+    refetchInterval: 30_000,
+  });
+  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+
+  // Keshga yozuvchi shim — eski setOrders(...) chaqiruvlari bilan
+  // bir xil imzo (qiymat yoki funksiya qabul qiladi)
+  const setOrders = useCallback((updater) => {
+    qc.setQueryData(ORDERS_KEY, (prev = []) => (
+      typeof updater === 'function' ? updater(prev) : updater
+    ));
+  }, [qc]);
+
+  const load = useCallback(() => {
+    qc.invalidateQueries({ queryKey: ORDERS_KEY });
+  }, [qc]);
 
   useEffect(() => {
     load();
@@ -58,13 +89,15 @@ export function RestaurantOrdersPage() {
     socket.on('order:new', onNew);
     socket.on('order:update', onUpdate);
 
-    const poll = setInterval(load, 25000);
+    // Polling YO'Q — React Query o'zi refetchInterval bilan
+    // yangilaydi (yuqorida, 30s). Avval bu yerda alohida
+    // setInterval(25s) bor edi; React Query qo'shilgach ikkalasi
+    // birga ishlab, so'rovlar IKKI BARAVAR ko'p ketardi.
     return () => {
-      clearInterval(poll);
       socket.off('order:new', onNew);
       socket.off('order:update', onUpdate);
     };
-  }, [load, restaurant]);
+  }, [restaurant]);
 
   // Ayni paytda so'rov ketayotgan buyurtmalar — takror bosishni bloklaydi
   const [busyIds, setBusyIds] = useState(() => new Set());

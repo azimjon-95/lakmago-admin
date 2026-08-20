@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 
@@ -58,47 +59,73 @@ function delta(now, before) {
 }
 
 export function DashboardPage() {
-  const [stats, setStats] = useState(null);
-  const [orders, setOrders] = useState([]);
   const [filter, setFilter] = useState('open');
   const [flash, setFlash] = useState(null);
-  const [updatedAt, setUpdatedAt] = useState(null);
-  const timerRef = useRef(null);
+  const qc = useQueryClient();
 
-  const loadStats = useCallback(async () => {
-    try {
-      setStats(await adminApi.getStats());
-      setUpdatedAt(new Date());
-    } catch { /* ignore */ }
-  }, []);
+  /*
+   * REACT QUERY (2026-08 optimizatsiya).
+   *
+   * Avval useState+useEffect+setInterval(20s) edi. Muammolari:
+   *  - sahifadan chiqib qaytilsa hamma narsa NOLDAN yuklanardi
+   *  - 20 soniyalik polling sahifa ochiq turganda TO'XTOVSIZ
+   *    ishlardi, hattoki brauzer fonda bo'lsa ham
+   *
+   * Endi kesh bor: qaytib kelinganda darhol ko'rinadi (eski
+   * ma'lumot ekranda, yangisi fonda kelib almashadi).
+   *
+   * refetchInterval 30s ga uzaytirildi VA socket orqali yangi
+   * buyurtma kelganda darhol yangilanadi — polling faqat zaxira
+   * (socket uzilib qolgan holat uchun).
+   */
+  const { data: stats, dataUpdatedAt } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => adminApi.getStats(),
+    refetchInterval: 30_000,
+  });
 
-  const loadOrders = useCallback(async () => {
-    try { setOrders(await adminApi.getOrders()); } catch { /* ignore */ }
-  }, []);
+  const { data: ordersRaw } = useQuery({
+    queryKey: ['admin', 'orders'],
+    queryFn: () => adminApi.getOrders(),
+    refetchInterval: 30_000,
+  });
+  /*
+   * HIMOYA: server kutilmagan shakl qaytarsa ham sahifa
+   * yiqilmasin.
+   *
+   * Sinov paytida aniqlandi: agar API massiv o'rniga obyekt
+   * qaytarsa (server xatosi, proxy xato sahifasi, noto'g'ri
+   * marshrut), `orders.filter(...)` xato tashlab BUTUN SAHIFA
+   * OQ bo'lib qolardi — ishlab chiqarishda eng yomon nosozlik
+   * turi (foydalanuvchi nima bo'lganini tushunmaydi).
+   * Endi bunday holatda shunchaki bo'sh ro'yxat ko'rsatiladi.
+   */
+  const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
+
+  const updatedAt = dataUpdatedAt ? new Date(dataUpdatedAt) : null;
 
   useEffect(() => {
-    loadStats();
-    loadOrders();
-    timerRef.current = setInterval(() => { loadStats(); loadOrders(); }, 20000);
-
     const socket = getSocket();
     joinAdmin();
     const onNewOrder = (order) => {
-      setOrders((prev) => [order, ...prev.filter((o) => o._id !== order._id)]);
+      // Keshni to'g'ridan-to'g'ri yangilaymiz — qayta so'rovsiz,
+      // buyurtma DARHOL ekranda paydo bo'ladi
+      qc.setQueryData(['admin', 'orders'], (prev = []) =>
+        [order, ...prev.filter((o) => o._id !== order._id)]);
       setFlash(order._id);
       setTimeout(() => setFlash(null), 3000);
-      loadStats();
+      // Statistika o'zgardi — uni qayta so'raymiz
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     };
     socket.on('order:new', onNewOrder);
 
     return () => {
-      clearInterval(timerRef.current);
       // Faqat shu sahifa qo'ygan tinglovchi olib tashlanadi.
-      // removeAllListeners() markaziy bildirishnoma tizimининг
+      // removeAllListeners() markaziy bildirishnoma tizimining
       // tinglovchisini ham o'chirib yuborardi.
       socket.off('order:new', onNewOrder);
     };
-  }, [loadStats, loadOrders]);
+  }, [qc]);
 
   const today = stats?.today;
   const counts = useMemo(() => ({
@@ -166,7 +193,7 @@ export function DashboardPage() {
           <SectionTitle>Bugun</SectionTitle>
           <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
             <Kpi label="Buyurtma" value={today?.orders} icon="ti-clipboard-list"
-              delta={stats && delta(today.orders, stats.yesterday.orders)}
+              delta={stats?.yesterday && delta(today.orders, stats.yesterday?.orders)}
               sub={today ? `${today.delivered} yetkazildi` : null} />
 
             <Kpi label="Berilgan taom" value={today?.dishes} icon="ti-tools-kitchen-2"
@@ -175,7 +202,7 @@ export function DashboardPage() {
 
             <Kpi label="Aylanma" value={today ? som(today.revenue) : null} unit="so'm"
               icon="ti-cash" small
-              delta={stats && delta(today.revenue, stats.yesterday.revenue)}
+              delta={stats?.yesterday && delta(today.revenue, stats.yesterday?.revenue)}
               sub={today ? `O'rtacha chek ${som(today.avgCheck)}` : null} />
 
             <Kpi label={`Komissiya (${stats?.commissionPercent ?? 0}%)`}
