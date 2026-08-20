@@ -1,56 +1,53 @@
-import { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { useEffect, lazy, Suspense } from 'react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
-import { FullscreenButton } from '@/components/FullscreenButton';
 import { NotificationCenter } from '@/components/NotificationCenter';
-import { useFullscreen, useIsMobile, useAutoFullscreenOnMobile } from '@/hooks/useFullscreen';
 import { LoginPage } from '@/pages/LoginPage';
-// Admin sahifalari
-import { DashboardPage } from '@/pages/admin/DashboardPage';
-import { RestaurantsPage } from '@/pages/admin/RestaurantsPage';
-import { CreateRestaurantLayout } from '@/pages/admin/create-restaurant/context';
-import { Step1Basic } from '@/pages/admin/create-restaurant/Step1Basic';
-import { Step2Address } from '@/pages/admin/create-restaurant/Step2Address';
-import { Step3Settings } from '@/pages/admin/create-restaurant/Step3Settings';
-import { Step4Review } from '@/pages/admin/create-restaurant/Step4Review';
-import { RestaurantSettingsPage } from '@/pages/admin/RestaurantSettingsPage';
-import { RestaurantDetailPage } from '@/pages/admin/RestaurantDetailPage';
-import { UsersPage } from '@/pages/admin/UsersPage';
-import { SettingsPage } from '@/pages/admin/SettingsPage';
-import { BillingPage } from '@/pages/admin/BillingPage';
-import { StaffPage } from '@/pages/admin/StaffPage';
-import { CatalogPage } from '@/pages/admin/CatalogPage';
-import { PromoAdminPage } from '@/pages/admin/PromoAdminPage';
-import { DineInAdminPage } from '@/pages/admin/DineInAdminPage';
-import { RevenuePage } from '@/pages/admin/RevenuePage';
-import { BannersPage } from '@/pages/admin/BannersPage';
-import { OrdersMonitorPage } from '@/pages/admin/OrdersMonitorPage';
-import { GroupsPage } from '@/pages/admin/GroupsPage';
-import { SupportPage } from '@/pages/admin/SupportPage';
-// Restoran sahifalari
-import { RestaurantOrdersPage } from '@/pages/restaurant/OrdersPage';
-import { RestaurantMenuPage } from '@/pages/restaurant/MenuPage';
-import { RestaurantBannerPage } from '@/pages/restaurant/BannerPage';
-import { RestaurantProfilePage } from '@/pages/restaurant/ProfilePage';
-import { StopListPage } from '@/pages/restaurant/StopListPage';
-import { DineInPage } from '@/pages/restaurant/DineInPage';
-import { DineInLivePage } from '@/pages/restaurant/DineInLivePage';
-import { DineInHistoryPage } from '@/pages/restaurant/DineInHistoryPage';
-import { MenuTransferPage } from '@/pages/restaurant/MenuTransferPage';
-import { PromotionPage } from '@/pages/restaurant/PromotionPage';
-import { ReservationsPage } from '@/pages/restaurant/ReservationsPage';
 
-// To'liq ekran tugmasi ko'rinadigan bo'limlar.
-// Bular kun bo'yi ochiq turadigan nazorat ekranlari — sidebar
-// ular uchun keraksiz joy egallaydi.
-const FULLSCREEN_ROUTES = [
-  '/',                // Boshqaruv paneli (admin) / Buyurtmalar (restoran)
-  '/orders',          // Jonli buyurtmalar
-  '/dine-in',         // Dine-in
-  '/dine-in-live',    // Zal buyurtmalari
-  '/dine-in-admin',   // Dine-in (admin)
-];
+/*
+ * KOD BO'LINISHI (code splitting) — 2026-08 optimizatsiya.
+ *
+ * Avval 37 ta sahifa bitta faylga (554 KB) qo'shilib, foydalanuvchi
+ * qaysi sahifaga kirishidan qat'i nazar HAMMASI birdan yuklanardi —
+ * "panel og'ir ochiladi" shikoyatining asosiy sababi shu edi.
+ *
+ * Endi har bir sahifa alohida bo'lak: faqat ochilgan sahifa
+ * yuklanadi. Login sahifasi ataylab lazy EMAS — u birinchi
+ * ko'rinadigan ekran, uni kechiktirish mantiqsiz.
+ */
+const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+const RestaurantsPage = lazy(() => import('@/pages/admin/RestaurantsPage').then((m) => ({ default: m.RestaurantsPage })));
+const CreateRestaurantLayout = lazy(() => import('@/pages/admin/create-restaurant/context').then((m) => ({ default: m.CreateRestaurantLayout })));
+const Step1Basic = lazy(() => import('@/pages/admin/create-restaurant/Step1Basic').then((m) => ({ default: m.Step1Basic })));
+const Step2Address = lazy(() => import('@/pages/admin/create-restaurant/Step2Address').then((m) => ({ default: m.Step2Address })));
+const Step3Settings = lazy(() => import('@/pages/admin/create-restaurant/Step3Settings').then((m) => ({ default: m.Step3Settings })));
+const Step4Review = lazy(() => import('@/pages/admin/create-restaurant/Step4Review').then((m) => ({ default: m.Step4Review })));
+const RestaurantSettingsPage = lazy(() => import('@/pages/admin/RestaurantSettingsPage').then((m) => ({ default: m.RestaurantSettingsPage })));
+const RestaurantDetailPage = lazy(() => import('@/pages/admin/RestaurantDetailPage').then((m) => ({ default: m.RestaurantDetailPage })));
+const UsersPage = lazy(() => import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })));
+const SettingsPage = lazy(() => import('@/pages/admin/SettingsPage').then((m) => ({ default: m.SettingsPage })));
+const BillingPage = lazy(() => import('@/pages/admin/BillingPage').then((m) => ({ default: m.BillingPage })));
+const StaffPage = lazy(() => import('@/pages/admin/StaffPage').then((m) => ({ default: m.StaffPage })));
+const CatalogPage = lazy(() => import('@/pages/admin/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const PromoAdminPage = lazy(() => import('@/pages/admin/PromoAdminPage').then((m) => ({ default: m.PromoAdminPage })));
+const DineInAdminPage = lazy(() => import('@/pages/admin/DineInAdminPage').then((m) => ({ default: m.DineInAdminPage })));
+const RevenuePage = lazy(() => import('@/pages/admin/RevenuePage').then((m) => ({ default: m.RevenuePage })));
+const BannersPage = lazy(() => import('@/pages/admin/BannersPage').then((m) => ({ default: m.BannersPage })));
+const OrdersMonitorPage = lazy(() => import('@/pages/admin/OrdersMonitorPage').then((m) => ({ default: m.OrdersMonitorPage })));
+const GroupsPage = lazy(() => import('@/pages/admin/GroupsPage').then((m) => ({ default: m.GroupsPage })));
+const SupportPage = lazy(() => import('@/pages/admin/SupportPage').then((m) => ({ default: m.SupportPage })));
+const RestaurantOrdersPage = lazy(() => import('@/pages/restaurant/OrdersPage').then((m) => ({ default: m.RestaurantOrdersPage })));
+const RestaurantMenuPage = lazy(() => import('@/pages/restaurant/MenuPage').then((m) => ({ default: m.RestaurantMenuPage })));
+const RestaurantBannerPage = lazy(() => import('@/pages/restaurant/BannerPage').then((m) => ({ default: m.RestaurantBannerPage })));
+const RestaurantProfilePage = lazy(() => import('@/pages/restaurant/ProfilePage').then((m) => ({ default: m.RestaurantProfilePage })));
+const StopListPage = lazy(() => import('@/pages/restaurant/StopListPage').then((m) => ({ default: m.StopListPage })));
+const DineInPage = lazy(() => import('@/pages/restaurant/DineInPage').then((m) => ({ default: m.DineInPage })));
+const DineInLivePage = lazy(() => import('@/pages/restaurant/DineInLivePage').then((m) => ({ default: m.DineInLivePage })));
+const DineInHistoryPage = lazy(() => import('@/pages/restaurant/DineInHistoryPage').then((m) => ({ default: m.DineInHistoryPage })));
+const MenuTransferPage = lazy(() => import('@/pages/restaurant/MenuTransferPage').then((m) => ({ default: m.MenuTransferPage })));
+const PromotionPage = lazy(() => import('@/pages/restaurant/PromotionPage').then((m) => ({ default: m.PromotionPage })));
+const ReservationsPage = lazy(() => import('@/pages/restaurant/ReservationsPage').then((m) => ({ default: m.ReservationsPage })));
 
 // Panel karkasi (sidebar + sahifa).
 //
@@ -64,46 +61,37 @@ const FULLSCREEN_ROUTES = [
 //
 // Mobilda sahifa emas, ichki maydon suriladi — yuqori panel va
 // pastki menyu joyida qotib turadi.
+
+/** Sahifa bo'lagi yuklanayotganda ko'rinadigan yengil ko'rsatkich. */
+function PageLoading() {
+  return (
+    <div className="flex min-h-[60vh] items-center justify-center">
+      <div className="h-7 w-7 animate-spin rounded-full border-[2.5px] border-line border-t-brand-400" />
+    </div>
+  );
+}
+
 function Shell({ children }) {
-  const { pathname } = useLocation();
-  const { active: fullscreen } = useFullscreen();
-  const isMobile = useIsMobile();
-
-  useAutoFullscreenOnMobile();
-
-  // Sidebar faqat desktopda yashiriladi
-  const hideChrome = fullscreen && !isMobile;
-
-  // Tugma mobilda kerak emas — u yerda rejim o'zi yoqiladi va
-  // tugma yuqori panel ustiga tushib qolardi.
-  const showButton = !isMobile && (fullscreen || FULLSCREEN_ROUTES.includes(pathname));
-
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-canvas lg:block lg:h-auto lg:min-h-screen lg:overflow-visible">
 
-      {/* Sidebar — desktopda to'liq ekranda yashiriladi */}
-      {!hideChrome && <Sidebar />}
-
-      {showButton && <FullscreenButton />}
+      <Sidebar />
 
       {/* Bildirishnoma markazi — sahifa almashsa ham yashamaydi,
           shuning uchun karkas darajasida turadi */}
       <NotificationCenter />
 
       {/* Kontent. Mobilda aynan shu maydon suriladi. */}
-      <main
-        className={`min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:min-h-screen lg:flex-none lg:overflow-visible ${
-          hideChrome ? '' : 'lg:ml-[280px] lg:pb-0'
-        }`}
-      >
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
         {/* Pastki menyu fixed — oxirgi element uning ostida
             qolib ketmasligi uchun bo'shliq qoldiramiz */}
-        <div
-          className={`w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0 ${
-            showButton ? 'pr-14' : ''
-          }`}
-        >
-          {children}
+        <div className="w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0">
+          {/* Sahifa bo'lagi yuklanguncha — yengil ko'rsatkich.
+              Kod bo'linishi tufayli bu odatda bir lahza (bo'lak
+              kichik va keshlanadi). */}
+          <Suspense fallback={<PageLoading />}>
+            {children}
+          </Suspense>
         </div>
       </main>
 
