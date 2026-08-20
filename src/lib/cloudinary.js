@@ -10,15 +10,19 @@ import { apiFetch } from '@/api/client';
 export async function uploadImage(file, folder = 'dishes', onProgress) {
   // 1. Serverdan imzo
   const sig = await apiFetch(`/upload/signature?folder=${folder}`);
-  // sig = { cloudName, apiKey, timestamp, folder, signature }
+  // sig = { cloudName, apiKey, timestamp, folder, allowedFormats, signature }
 
-  // 2. Cloudinary'ga to'g'ridan yuklash
+  // 2. Cloudinary'ga to'g'ridan yuklash.
+  // MUHIM: allowed_formats IMZOGA kiritilgan (server tarafda) —
+  // shuning uchun bu yerda ANIQ SHU QIYMAT bilan yuborilishi
+  // kerak, aks holda Cloudinary imzoni rad etadi.
   const form = new FormData();
   form.append('file', file);
   form.append('api_key', sig.apiKey);
   form.append('timestamp', sig.timestamp);
   form.append('signature', sig.signature);
   form.append('folder', sig.folder);
+  form.append('allowed_formats', sig.allowedFormats);
 
   const url = `https://api.cloudinary.com/v1_1/${sig.cloudName}/image/upload`;
 
