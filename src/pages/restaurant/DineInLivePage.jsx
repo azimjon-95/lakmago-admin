@@ -52,21 +52,40 @@ export function DineInLivePage() {
       load();
     };
 
+    /*
+     * DEBOUNCE (2026-08 tuzatish).
+     *
+     * Bu sahifada 5 xil hodisa bir xil `load()` ni chaqiradi.
+     * Band paytda (masalan bir stol buyurtma bersa: dinein:order
+     * + table:update + dinein:request birga keladi) 3-5 ta
+     * BIR XIL to'liq so'rov ketardi.
+     *
+     * Endi hodisalar 250 ms ichida guruhlanadi va FAQAT BITTA
+     * so'rov yuboriladi. Foydalanuvchi uchun farqi sezilmaydi
+     * (250 ms), lekin serverga yuk bir necha barobar kamayadi.
+     */
+    let debounceTimer = null;
+    const loadDebounced = () => {
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(load, 250);
+    };
+
     socket.on('dinein:new', onNew);
-    socket.on('dinein:order', load);
-    socket.on('dinein:request', load);
-    socket.on('dinein:request-update', load);
-    socket.on('table:update', load);
+    socket.on('dinein:order', loadDebounced);
+    socket.on('dinein:request', loadDebounced);
+    socket.on('dinein:request-update', loadDebounced);
+    socket.on('table:update', loadDebounced);
 
     // Zaxira: socket uzilsa ham yangilanadi
     const timer = setInterval(load, 45000);
 
     return () => {
       socket.off('dinein:new', onNew);
-      socket.off('dinein:order', load);
-      socket.off('dinein:request', load);
-      socket.off('dinein:request-update', load);
-      socket.off('table:update', load);
+      clearTimeout(debounceTimer);
+      socket.off('dinein:order', loadDebounced);
+      socket.off('dinein:request', loadDebounced);
+      socket.off('dinein:request-update', loadDebounced);
+      socket.off('table:update', loadDebounced);
       clearInterval(timer);
     };
   }, [load]);

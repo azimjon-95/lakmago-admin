@@ -32,6 +32,20 @@ const SEQ_KEY = 'lokmago_notif_seq';
  */
 const lastPlayedAt = new Map();
 
+/**
+ * Har bir bildirishnoma NECHA MARTA chalinganini sanaydi.
+ *
+ * Talab (2026-08): ovoz 4-5 marta chalinib TO'XTASIN. Undan
+ * keyin xabar "eski" hisoblanadi — ro'yxatda ko'rinaveradi va
+ * qabul qilinishini kutadi, LEKIN boshqa ovoz chiqarmaydi.
+ * Faqat YANGI kelganlar chaladi.
+ *
+ * Avval cheksiz chalinardi (faqat 2 soatlik yosh chegarasi bor
+ * edi) — bu esa restoran xodimini bezovta qilardi.
+ */
+const playCount = new Map();
+const MAX_PLAYS = 5;
+
 function runRepeatLoop() {
   setInterval(() => {
     const { repeatInterval } = useNotifSettings.getState();
@@ -43,6 +57,7 @@ function runRepeatLoop() {
     // Endi yo'q bo'lgan yozuvlarni tozalaymiz — xotira o'smasin
     const liveIds = new Set(items.map((n) => n.notificationId));
     lastPlayedAt.forEach((_, id) => { if (!liveIds.has(id)) lastPlayedAt.delete(id); });
+    playCount.forEach((_, id) => { if (!liveIds.has(id)) playCount.delete(id); });
 
     /*
      * XATO TUZATILDI (2026-08): ESKI bildirishnomalar
@@ -69,7 +84,11 @@ function runRepeatLoop() {
         const last = lastPlayedAt.get(n.notificationId)
           ?? new Date(n.createdAt).getTime();
         if (now - last >= repeatInterval * 1000) {
+          // 5 martadan keyin jimiydi — xabar "eski" hisoblanadi
+          const played = playCount.get(n.notificationId) || 0;
+          if (played >= MAX_PLAYS) return;
           playSound(n.sound, n.priority);
+          playCount.set(n.notificationId, played + 1);
           lastPlayedAt.set(n.notificationId, now);
         }
       });
@@ -102,6 +121,7 @@ export const useNotifications = create((set, get) => ({
   connected: false,
   muted: isMuted(),
   open: false,          // panel ochiqmi
+  didFirstSync: false,  // birinchi sync tugadimi (poyga himoyasi)
 
   /** Bittasi yoki bir nechtasi keldi. Dublikatlar bu yerda to'siladi. */
   ingest(list, { silent = false } = {}) {
@@ -135,7 +155,13 @@ export const useNotifications = create((set, get) => ({
       fresh
         .filter((n) => ['NEW', 'DELIVERED'].includes(n.status))
         .filter((n) => soundAllowed(n.type))
-        .forEach((n) => playSound(n.sound, n.priority));
+        .forEach((n) => {
+          playSound(n.sound, n.priority);
+          // Birinchi chalish ham hisobga olinadi — takroriy sikl
+          // bilan birga JAMI 5 marta bo'lsin (6 emas)
+          playCount.set(n.notificationId, 1);
+          lastPlayedAt.set(n.notificationId, Date.now());
+        });
 
       // Ilova ochiq, lekin boshqa oynada — brauzer bildirishnomasi
       if (document.visibilityState === 'hidden'
@@ -171,8 +197,24 @@ export const useNotifications = create((set, get) => ({
     }
   },
 
-  /** Yo'qolganlarini serverdan olib kelish. */
+  /**
+   * Yo'qolganlarini serverdan olib kelish.
+   *
+   * POYGA HOLATI TUZATILDI (2026-08): avval faqat `initial: true`
+   * bilan chaqirilgan sync jim edi. Lekin socket 'connect'
+   * hodisasi ham sync() chaqirardi — JIM EMAS. Agar socket
+   * dastlabki sync tugashidan OLDIN ulansa (login paytida
+   * odatda shunday bo'ladi), u `?after=0` bilan BARCHA eski
+   * bildirishnomalarni olib kelib, ularni "yangi" deb OVOZ
+   * bilan chalardi — foydalanuvchi shikoyat qilgan holat aynan
+   * shu edi.
+   *
+   * Endi: birinchi muvaffaqiyatli sync HAR DOIM jim, qaysi
+   * yo'ldan chaqirilishidan qat'i nazar.
+   */
   async sync({ initial = false } = {}) {
+    const firstEver = !get().didFirstSync;
+    const silent = initial || firstEver;
     try {
       // Birinchi yuklanишda javob berilmaganlar, keyin esa
       // oxirgi seq'dan keyingilari
@@ -182,7 +224,8 @@ export const useNotifications = create((set, get) => ({
 
       // Dastlabki yuklanishda ovoz chalinmaydi: bu eski ishlar,
       // panel ochilishi bilan shovqin bo'lmasin
-      get().ingest(items, { silent: initial });
+      get().ingest(items, { silent });
+      if (firstEver) set({ didFirstSync: true });
 
       if (data?.lastSeq) {
         set({ lastSeq: Math.max(get().lastSeq, data.lastSeq) });

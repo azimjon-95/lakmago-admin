@@ -68,10 +68,46 @@ export function DineInPage() {
   useEffect(() => {
     load();
     const socket = getSocket();
-    socket.on('table:update', load);
+
+    /*
+     * REAL-TIME ANIQLIGI (2026-08 tuzatish).
+     *
+     * Avval `socket.on('table:update', load)` edi — ya'ni HAR
+     * BIR stol o'zgarishida BUTUN ro'yxat serverdan qayta
+     * so'ralardi. Muammolari:
+     *   1) load() ichida setLoading(true) bor — ekran har safar
+     *      "yuklanmoqda" holatiga o'tib, stollar KO'ZDAN
+     *      G'OYIB BO'LARDI (band/bo'sh holati sakrab turardi)
+     *   2) Bir vaqtda bir necha stol o'zgarsa — bir necha to'liq
+     *      so'rov ketardi (keraksiz yuk)
+     *
+     * Server ALLAQACHON aniq ma'lumot yuboradi:
+     *   { tableId, status }
+     * Endi shu ma'lumotdan foydalanib faqat O'SHA stolni
+     * yangilaymiz — so'rovsiz, darhol, ko'z oldida.
+     */
+    const onTableUpdate = (payload) => {
+      if (!payload?.tableId) { load(); return; }   // eski format — zaxira
+      setTables((prev) => prev.map((t) => (
+        String(t._id) === String(payload.tableId)
+          ? {
+              ...t,
+              status: payload.status ?? t.status,
+              // Ofitsant mijoz sonini o'zgartirsa ham darhol ko'rinsin
+              // (server waiter.js da guestCount ham yuboradi)
+              ...(payload.guestCount !== undefined && { guestCount: payload.guestCount }),
+            }
+          : t
+      )));
+    };
+
+    // Dine-in xizmati holati o'zgarsa (yoqildi/o'chirildi) —
+    // bu kamdan-kam bo'ladi va butun sahifa tuzilishiga ta'sir
+    // qiladi, shuning uchun to'liq qayta yuklash o'rinli
+    socket.on('table:update', onTableUpdate);
     socket.on('dinein:status', load);
     return () => {
-      socket.off('table:update', load);
+      socket.off('table:update', onTableUpdate);
       socket.off('dinein:status', load);
     };
   }, [load]);
