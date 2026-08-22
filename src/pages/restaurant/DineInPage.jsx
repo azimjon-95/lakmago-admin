@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -754,8 +754,30 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
     win.document.close();
   };
 
-  const filteredMenu = (menu || []).filter((d) =>
-    !menuSearch.trim() || d.name.toLowerCase().includes(menuSearch.trim().toLowerCase()));
+  /*
+   * TEZLIK (2026-08): filteredMenu endi useMemo bilan — avval
+   * har render'da (shu jumladan savatga +1 bosilganda ham,
+   * chunki cart o'zgarishi butun modalni qayta render qiladi)
+   * BUTUN menyu qayta filtrlanardi. Katta menyuda (100+ taom)
+   * bu sezilarli sekinlashuvga olib kelardi ("dastur qotib
+   * qolyapti" shikoyatining bir sababi).
+   */
+  const filteredMenu = useMemo(() => {
+    const q = menuSearch.trim().toLowerCase();
+    return (menu || []).filter((d) => !q || d.name.toLowerCase().includes(q));
+  }, [menu, menuSearch]);
+
+  // Kategoriya bo'yicha guruhlash — katta menyuda navigatsiya
+  // qilishni osonlashtiradi (bir tekis 100 ta qatordan ko'ra)
+  const groupedMenu = useMemo(() => {
+    const groups = new Map();
+    for (const d of filteredMenu) {
+      const key = d.category || d.section || 'Boshqa';
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key).push(d);
+    }
+    return [...groups.entries()];
+  }, [filteredMenu]);
 
   return (
     <Modal title={table.tableName || `Stol ${table.tableNumber}`} onClose={onClose} wide>
@@ -873,14 +895,17 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
         </>
       ) : (
         <>
-          <input value={menuSearch} onChange={(e) => setMenuSearch(e.target.value)}
-            placeholder="Taom qidirish..."
-            className="mb-3 w-full rounded-[13px] px-3.5 py-2.5 text-[14px]"
-            style={{ background: 'rgba(120,120,128,0.08)' }} />
+          <div className="relative mb-3">
+            <i className="ti ti-search absolute left-3.5 top-1/2 -translate-y-1/2 text-[15px] text-muted" />
+            <input value={menuSearch} onChange={(e) => setMenuSearch(e.target.value)}
+              placeholder="Taom qidirish..."
+              className="w-full rounded-[13px] py-2.5 pl-9 pr-3.5 text-[14px]"
+              style={{ background: 'rgba(120,120,128,0.08)' }} />
+          </div>
 
           {menu === null ? (
             <div className="py-10 text-center text-[13px] text-muted">Menyu yuklanmoqda...</div>
-          ) : filteredMenu.length === 0 && err ? (
+          ) : groupedMenu.length === 0 && err ? (
             <div className="py-10 text-center">
               <p className="mb-3 text-[13px] text-muted">{err}</p>
               <button
@@ -890,29 +915,22 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
                 Qayta urinish
               </button>
             </div>
-          ) : filteredMenu.length === 0 ? (
+          ) : groupedMenu.length === 0 ? (
             <div className="py-10 text-center text-[13px] text-muted">Taom topilmadi</div>
           ) : (
-            <div className="mb-4 max-h-[40vh] space-y-1.5 overflow-y-auto">
-              {filteredMenu.map((d) => (
-                <div key={d._id} className="flex items-center justify-between rounded-[13px] px-3 py-2.5"
-                  style={{ background: 'rgba(120,120,128,0.06)' }}>
-                  <div className="min-w-0">
-                    <div className="truncate text-[13.5px] font-medium text-ink">{d.name}</div>
-                    <div className="text-[12px] text-muted">{(d.dineInPrice || d.price).toLocaleString('ru-RU')} so'm</div>
-                  </div>
-                  <div className="flex flex-none items-center gap-2">
-                    {cart[d._id] > 0 && (
-                      <>
-                        <button onClick={() => removeFromCart(d._id)}
-                          className="tap flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold"
-                          style={{ background: 'rgba(120,120,128,0.14)' }}>−</button>
-                        <span className="w-4 text-center text-[13px] font-semibold text-ink">{cart[d._id]}</span>
-                      </>
-                    )}
-                    <button onClick={() => addToCart(d._id)}
-                      className="tap flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-brand-text"
-                      style={{ background: '#F5A623' }}>+</button>
+            <div className="mb-4 max-h-[46vh] space-y-4 overflow-y-auto pr-0.5">
+              {groupedMenu.map(([category, dishes]) => (
+                <div key={category}>
+                  {groupedMenu.length > 1 && (
+                    <div className="mb-1.5 px-0.5 text-[11px] font-bold uppercase tracking-wide text-muted">
+                      {category}
+                    </div>
+                  )}
+                  <div className="space-y-1.5">
+                    {dishes.map((d) => (
+                      <MenuRow key={d._id} dish={d} qty={cart[d._id] || 0}
+                        onAdd={() => addToCart(d._id)} onRemove={() => removeFromCart(d._id)} />
+                    ))}
                   </div>
                 </div>
               ))}
@@ -929,6 +947,53 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
   );
 }
 
+
+/**
+ * Bitta menyu qatori — rasm bilan, chiroyli.
+ *
+ * memo() bilan o'ralgan: savatga +1 bosilganda FAQAT shu
+ * qatorning o'zi qayta render bo'ladi, boshqa 50-100 ta qator
+ * tegilmaydi. Katta menyuda bu sezilarli tezlik farqi beradi —
+ * avval har bosishda BUTUN ro'yxat qayta chizilardi.
+ */
+const MenuRow = memo(function MenuRow({ dish: d, qty, onAdd, onRemove }) {
+  const price = d.dineInPrice || d.price;
+  return (
+    <div className={`flex items-center gap-3 rounded-[14px] p-2 pr-2.5 transition-colors ${qty > 0 ? '' : ''}`}
+      style={{ background: qty > 0 ? 'rgba(245,166,35,0.10)' : '#fff', border: '1px solid rgba(120,120,128,0.10)' }}>
+
+      {/* Rasm — bo'lmasa taom nomining birinchi harfi bilan chiroyli placeholder */}
+      {d.imageUrl ? (
+        <img src={d.imageUrl} alt="" loading="lazy"
+          className="h-12 w-12 flex-none rounded-[11px] object-cover" />
+      ) : (
+        <div className="flex h-12 w-12 flex-none items-center justify-center rounded-[11px] text-[17px] font-bold"
+          style={{ background: tint('#EF9F27', 0.16), color: '#BA7517' }}>
+          {d.name?.[0]?.toUpperCase() || '?'}
+        </div>
+      )}
+
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[13.5px] font-semibold leading-tight text-ink">{d.name}</div>
+        <div className="mt-0.5 text-[12px] font-medium text-muted">{price.toLocaleString('ru-RU')} so'm</div>
+      </div>
+
+      <div className="flex flex-none items-center gap-1.5">
+        {qty > 0 && (
+          <>
+            <button onClick={onRemove}
+              className="tap flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold"
+              style={{ background: 'rgba(120,120,128,0.14)' }}>−</button>
+            <span className="w-5 text-center text-[13.5px] font-bold text-ink">{qty}</span>
+          </>
+        )}
+        <button onClick={onAdd}
+          className="tap flex h-7 w-7 items-center justify-center rounded-full text-[15px] font-semibold text-brand-text shadow-sm"
+          style={{ background: '#F5A623' }}>+</button>
+      </div>
+    </div>
+  );
+});
 
 function EmptyState({ icon, title, text, action }) {
   return (
