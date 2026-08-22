@@ -39,6 +39,23 @@ export const panelApi = {
   deleteTable: (id) => apiFetch(`/panel/tables/${id}`, { method: 'DELETE' }),
   regenerateQr: (id) => apiFetch(`/panel/tables/${id}/regenerate`, { method: 'POST' }),
 
+  /*
+   * Stol boshqaruvi — restoran admini o'zi mehmon qabul qilib,
+   * taom kiritib, chekni yopa oladi (ofitsiant kabi, 2026-08).
+   */
+  getTableDetail: (id) => apiFetch(`/panel/dinein/tables/${id}`),
+  setTableGuests: (id, count) => apiFetch(`/panel/dinein/tables/${id}/guests`, {
+    method: 'PATCH', body: JSON.stringify({ count }),
+  }),
+  createDineInOrder: (d) => apiFetch('/panel/dinein/orders', { method: 'POST', body: JSON.stringify(d) }),
+  updateDineInOrderStatus: (id, status) => apiFetch(`/panel/dinein/orders/${id}/status`, {
+    method: 'PATCH', body: JSON.stringify({ status }),
+  }),
+  closeDineInTable: (tableId, opts = {}) => apiFetch(`/panel/dinein/tables/${tableId}/close`, {
+    method: 'POST', body: JSON.stringify(opts),
+  }),
+  getDineInMenu: (restaurantId) => apiFetch(`/panel/dinein/menu/${restaurantId}`),
+
   // Ofitsiantlar
   getWaiters: () => apiFetch('/panel/waiters'),
   createWaiter: (d) => apiFetch('/panel/waiters', { method: 'POST', body: JSON.stringify(d) }),

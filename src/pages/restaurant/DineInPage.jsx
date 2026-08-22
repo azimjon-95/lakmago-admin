@@ -5,6 +5,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { getSocket } from '@/lib/socket';
 import { confirm } from '@/components/ui/confirm';
+import { useAuth } from '@/store/auth';
 
 /* ═══════════════════════════════════════════════════
    Dine-in — iOS 26 (Liquid Glass)
@@ -45,11 +46,13 @@ const tint = (hex, a = 0.14) => {
 };
 
 export function DineInPage() {
+  const restaurant = useAuth((s) => s.restaurant);
   const [tab, setTab] = useState('tables');
   const [cfg, setCfg] = useState(null);
   const [tables, setTables] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [managing, setManaging] = useState(null);   // stol boshqaruv modali (mehmon/taom/chek)
   const [themeOpen, setThemeOpen] = useState(false);
   const [bulkOpen, setBulkOpen] = useState(false);
 
@@ -273,6 +276,7 @@ export function DineInPage() {
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {tables.map((t) => (
                       <TableTile key={t._id} table={t}
+                        onManage={() => setManaging(t)}
                         onQr={() => downloadQr(t, 'svg')}
                         onEdit={() => setEditing(t)}
                         onRegen={() => regenerate(t)}
@@ -289,6 +293,15 @@ export function DineInPage() {
           </main>
         </div>
       </div>
+
+      {managing && (
+        <TableManageModal
+          table={managing}
+          restaurantId={restaurant?._id}
+          onClose={() => setManaging(null)}
+          onChanged={load}
+        />
+      )}
 
       {editing && (
         <TableForm
@@ -466,7 +479,7 @@ function TableActions({ onTheme, onPdf, onBulk, onAdd, layout }) {
 }
 
 /* ═══ Stol katakchasi ═══ */
-function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
+function TableTile({ table: t, onManage, onQr, onEdit, onRegen, onRemove }) {
   const ts = TABLE_STATUS[t.status] || TABLE_STATUS.available;
 
   const buttons = [
@@ -477,7 +490,13 @@ function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
   ];
 
   return (
-    <article className="g relative overflow-hidden rounded-[20px] p-3 pl-3.5">
+    <article
+      onClick={onManage}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => { if (e.key === 'Enter') onManage(); }}
+      className="g tap relative overflow-hidden rounded-[20px] p-3 pl-3.5 text-left"
+    >
       {/* Holat chizig'i — 40 ta stol orasidan bir qarashda ko'rinadi */}
       <span aria-hidden className="absolute inset-y-0 left-0 w-[3px]"
         style={{ background: ts.color }} />
@@ -488,7 +507,8 @@ function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
 
       <div className="mb-2.5 mt-1 flex items-center justify-between gap-1.5">
         <p className="truncate text-[11px] text-muted">
-          {t.tableName ? `№${t.tableNumber} · ` : ''}{t.capacity} kishi
+          {t.tableName ? `№${t.tableNumber} · ` : ''}
+          {t.guestCount > 0 ? `${t.guestCount}/${t.capacity} kishi` : `${t.capacity} kishi`}
         </p>
 
         <div className="flex flex-none items-center gap-1.5">
@@ -505,7 +525,9 @@ function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
 
       <div className="grid grid-cols-4 gap-1">
         {buttons.map(([icon, label, fn, danger]) => (
-          <button key={label} onClick={fn} title={label} aria-label={label}
+          <button key={label}
+            onClick={(e) => { e.stopPropagation(); fn(); }}
+            title={label} aria-label={label}
             className="tap flex h-8 items-center justify-center rounded-[11px] text-[15px]"
             style={{
               background: danger ? tint('#FF3B30', 0.1) : 'rgba(120,120,128,0.1)',
@@ -520,6 +542,394 @@ function TableTile({ table: t, onQr, onEdit, onRegen, onRemove }) {
 }
 
 /* ═══ Bo'sh holat ═══ */
+/* ═══════════════════════════════════════════════════════════
+   STOL BOSHQARUVI — mehmon qabul qilish, taom kiritish, chek
+   yopish. Restoran admini VA ofitsiant ikkalasi ham ishlata
+   oladi (server: waiterOrRestaurantAuth, 2026-08).
+   ═══════════════════════════════════════════════════════════ */
+
+const ORDER_STATUS_FLOW = {
+  accepted: { next: 'preparing', label: 'Qabul qilindi', nextLabel: 'Tayyorlashni boshlash' },
+  preparing: { next: 'ready', label: 'Tayyorlanmoqda', nextLabel: 'Tayyor deb belgilash' },
+  ready: { next: 'served', label: 'Tayyor', nextLabel: 'Berildi deb belgilash' },
+  served: { next: 'completed', label: 'Berildi', nextLabel: 'Yakunlash' },
+  completed: { next: null, label: 'Yakunlangan', nextLabel: null },
+  cancelled: { next: null, label: 'Bekor qilingan', nextLabel: null },
+};
+
+function TableManageModal({ table, restaurantId, onClose, onChanged }) {
+  useLockScroll();
+  const [detail, setDetail] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [guestCount, setGuestCount] = useState(table.guestCount || 0);
+  const [savingGuests, setSavingGuests] = useState(false);
+  const [view, setView] = useState('bill');   // 'bill' | 'menu'
+  const [menu, setMenu] = useState(null);      // null = hali yuklanmagan
+  const [menuSearch, setMenuSearch] = useState('');
+  const [cart, setCart] = useState({});        // { dishId: qty }
+  const [submitting, setSubmitting] = useState(false);
+  const [closing, setClosing] = useState(false);
+  const [err, setErr] = useState(null);
+
+  const load = useCallback(async () => {
+    try {
+      const d = await panelApi.getTableDetail(table._id);
+      setDetail(d);
+      setGuestCount(d.table?.guestCount ?? 0);
+    } catch (e) {
+      setErr(e.message);
+    }
+    setLoading(false);
+  }, [table._id]);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Real-time: shu stolga tegishli o'zgarish kelsa yangilaymiz
+  useEffect(() => {
+    const socket = getSocket();
+    const relevant = (payload) => !payload?.tableId || String(payload.tableId) === String(table._id);
+    const onOrderEvent = (payload) => { if (relevant(payload)) load(); };
+    socket.on('dinein:order', onOrderEvent);
+    socket.on('dinein:new', onOrderEvent);
+    socket.on('table:update', onOrderEvent);
+    return () => {
+      socket.off('dinein:order', onOrderEvent);
+      socket.off('dinein:new', onOrderEvent);
+      socket.off('table:update', onOrderEvent);
+    };
+  }, [table._id, load]);
+
+  const loadMenu = useCallback(async (force = false) => {
+    if (menu !== null && !force) return;
+
+    /*
+     * XATO TUZATILDI (2026-08): restaurantId hali kelmagan bo'lsa
+     * (masalan tarmoq sekin bo'lsa, /panel/me hali javob
+     * bermagan bo'lsa) funksiya jim qaytardi — menu HAM
+     * o'zgarmasdi, HECH QANDAY xato ko'rsatilmasdi. Natija:
+     * "Menyu yuklanmoqda..." ekranda ABADIY qolib ketardi,
+     * foydalanuvchida na xato xabari, na qayta urinish tugmasi
+     * bor edi.
+     *
+     * Endi: restaurantId yo'q bo'lsa ham ANIQ xato holatiga
+     * o'tiladi (bo'sh massiv + tushunarli xabar), foydalanuvchi
+     * "Qayta urinish" bosishi mumkin (force=true bilan chaqiradi
+     * — React holat yangilanishi asinxron bo'lgani uchun oddiy
+     * setMenu(null) dan keyin darhol loadMenu() chaqirish ETARLI
+     * EMAS, `menu` hali eski qiymatda qoladi).
+     */
+    if (!restaurantId) {
+      setErr('Restoran ma\u2018lumoti hali yuklanmagan. Bir necha soniyadan so\u2018ng qayta urining.');
+      setMenu([]);
+      return;
+    }
+
+    setMenu(null);
+    try {
+      setErr(null);
+      setMenu(await panelApi.getDineInMenu(restaurantId));
+    } catch (e) {
+      setErr(e.message);
+      setMenu([]);
+    }
+  }, [menu, restaurantId]);
+
+  useEffect(() => { if (view === 'menu') loadMenu(); }, [view, loadMenu]);
+
+  const saveGuests = async (next) => {
+    const count = Math.max(0, Math.min(50, next));
+    setGuestCount(count);
+    setSavingGuests(true);
+    try {
+      await panelApi.setTableGuests(table._id, count);
+      onChanged?.();
+    } catch (e) {
+      setErr(e.message);
+    }
+    setSavingGuests(false);
+  };
+
+  const addToCart = (dishId) => setCart((c) => ({ ...c, [dishId]: (c[dishId] || 0) + 1 }));
+  const removeFromCart = (dishId) => setCart((c) => {
+    const next = { ...c };
+    if (next[dishId] <= 1) delete next[dishId];
+    else next[dishId] -= 1;
+    return next;
+  });
+  const cartCount = Object.values(cart).reduce((s, q) => s + q, 0);
+
+  const submitCart = async () => {
+    const items = Object.entries(cart).map(([dishId, quantity]) => ({ dishId, quantity }));
+    if (!items.length) return;
+    setSubmitting(true); setErr(null);
+    try {
+      await panelApi.createDineInOrder({ tableId: table._id, items });
+      setCart({});
+      setView('bill');
+      await load();
+      onChanged?.();
+    } catch (e) {
+      setErr(e.message);
+    }
+    setSubmitting(false);
+  };
+
+  const advanceOrder = async (order) => {
+    const flow = ORDER_STATUS_FLOW[order.status];
+    if (!flow?.next) return;
+    try {
+      await panelApi.updateDineInOrderStatus(order._id, flow.next);
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
+  const cancelOrder = async (order) => {
+    const ok = await confirm({
+      title: 'Buyurtma bekor qilinsinmi?',
+      content: `${order.dineInNumber || ''} — bu amalni qaytarib bo\u2018lmaydi.`,
+      tone: 'danger', okText: 'Bekor qilish',
+    });
+    if (!ok) return;
+    try {
+      await panelApi.updateDineInOrderStatus(order._id, 'cancelled');
+      await load();
+    } catch (e) {
+      setErr(e.message);
+    }
+  };
+
+  const closeTable = async () => {
+    const openOrders = (detail?.orders || []).filter(
+      (o) => !['completed', 'cancelled'].includes(o.status),
+    ).length;
+
+    const ok = await confirm({
+      title: 'Chek yopilsinmi?',
+      content: openOrders > 0
+        ? `${openOrders} ta buyurtma hali yakunlanmagan — baribir yopish uchun tugallanadi deb belgilanadi.`
+        : `${table.tableName || `Stol ${table.tableNumber}`} bo\u2018shatiladi.`,
+      tone: openOrders > 0 ? 'warning' : 'default',
+      okText: 'Yopish',
+    });
+    if (!ok) return;
+
+    setClosing(true); setErr(null);
+    try {
+      await panelApi.closeDineInTable(table._id, { force: true, reason: 'Admin yopdi' });
+      onChanged?.();
+      onClose();
+    } catch (e) {
+      setErr(e.message);
+      setClosing(false);
+    }
+  };
+
+  const printCheck = () => {
+    const orders = (detail?.orders || []).filter((o) => o.status !== 'cancelled');
+    const win = window.open('', '_blank', 'width=380,height=600');
+    if (!win) return;
+    const rows = orders.flatMap((o) => (o.items || []).map((it) => `
+      <tr>
+        <td>${it.name}</td>
+        <td style="text-align:center">${it.quantity}</td>
+        <td style="text-align:right">${(it.unitPrice * it.quantity).toLocaleString('ru-RU')}</td>
+      </tr>`)).join('');
+    win.document.write(`
+      <html><head><title>Chek</title><style>
+        body{font-family:monospace;padding:16px;font-size:13px}
+        h2{text-align:center;margin:0 0 4px}
+        p{text-align:center;margin:0 0 12px;color:#555}
+        table{width:100%;border-collapse:collapse}
+        td{padding:3px 0;border-bottom:1px dashed #ccc}
+        .total{font-weight:bold;font-size:15px;border-top:2px solid #000;margin-top:8px;padding-top:8px}
+      </style></head><body>
+        <h2>LokmaGo</h2>
+        <p>${table.tableName || `Stol ${table.tableNumber}`} · ${new Date().toLocaleString('ru-RU')}</p>
+        <table>${rows}</table>
+        <div class="total">Jami: ${(detail?.summary?.total || 0).toLocaleString('ru-RU')} so'm</div>
+        <script>window.print()</script>
+      </body></html>`);
+    win.document.close();
+  };
+
+  const filteredMenu = (menu || []).filter((d) =>
+    !menuSearch.trim() || d.name.toLowerCase().includes(menuSearch.trim().toLowerCase()));
+
+  return (
+    <Modal title={table.tableName || `Stol ${table.tableNumber}`} onClose={onClose} wide>
+      {err && <ErrBox text={err} />}
+
+      {/* Mehmon soni — stepper */}
+      <div className="mb-4 flex items-center justify-between rounded-[16px] px-4 py-3"
+        style={{ background: 'rgba(120,120,128,0.08)' }}>
+        <div>
+          <div className="text-[13px] font-semibold text-ink">Mehmonlar soni</div>
+          <div className="text-[11px] text-muted">Sig'im: {table.capacity} kishi</div>
+        </div>
+        <div className="flex items-center gap-3">
+          <button onClick={() => saveGuests(guestCount - 1)} disabled={savingGuests || guestCount <= 0}
+            className="tap flex h-9 w-9 items-center justify-center rounded-full text-lg font-semibold disabled:opacity-30"
+            style={{ background: 'rgba(120,120,128,0.14)' }}>−</button>
+          <span className="w-6 text-center text-[17px] font-bold text-ink">{guestCount}</span>
+          <button onClick={() => saveGuests(guestCount + 1)} disabled={savingGuests}
+            className="tap flex h-9 w-9 items-center justify-center rounded-full text-lg font-semibold"
+            style={{ background: 'rgba(120,120,128,0.14)' }}>+</button>
+        </div>
+      </div>
+
+      {/* Tab: Hisob / Menyu */}
+      <div className="mb-3 flex gap-1.5 rounded-[13px] p-1" style={{ background: 'rgba(120,120,128,0.08)' }}>
+        {[['bill', 'Hisob'], ['menu', `Taom qo'shish${cartCount ? ` (${cartCount})` : ''}`]].map(([k, label]) => (
+          <button key={k} onClick={() => setView(k)}
+            className={`tap flex-1 rounded-[10px] py-2 text-[13px] font-semibold ${view === k ? 'bg-white text-ink shadow-sm' : 'text-muted'}`}>
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="py-10 text-center text-[13px] text-muted">Yuklanmoqda...</div>
+      ) : view === 'bill' ? (
+        <>
+          {(detail?.orders || []).length === 0 ? (
+            <EmptyState icon="ti-receipt-2" title="Hali buyurtma yo'q"
+              text="Mehmon uchun taom qo'shish uchun yuqoridagi tabga o'ting" />
+          ) : (
+            <div className="mb-3 space-y-2">
+              {detail.orders.map((o) => {
+                const flow = ORDER_STATUS_FLOW[o.status] || {};
+                const canAct = !['completed', 'cancelled'].includes(o.status);
+                return (
+                  <div key={o._id} className="rounded-[15px] px-3.5 py-3" style={{ background: 'rgba(120,120,128,0.06)' }}>
+                    <div className="mb-1.5 flex items-center justify-between">
+                      <span className="text-[12px] font-semibold text-muted">
+                        {o.dineInNumber || ''} · {new Date(o.createdAt).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                      <span className="rounded-full px-2 py-0.5 text-[10.5px] font-semibold"
+                        style={{
+                          background: tint(o.status === 'cancelled' ? '#FF3B30' : '#007AFF'),
+                          color: o.status === 'cancelled' ? '#D70015' : '#007AFF',
+                        }}>
+                        {flow.label || o.status}
+                      </span>
+                    </div>
+                    {(o.items || []).map((it, i) => (
+                      <div key={i} className="flex justify-between text-[13px] text-ink">
+                        <span>{it.quantity}× {it.name}</span>
+                        <span>{(it.unitPrice * it.quantity).toLocaleString('ru-RU')}</span>
+                      </div>
+                    ))}
+                    {canAct && (
+                      <div className="mt-2.5 flex gap-1.5">
+                        {flow.next && (
+                          <button onClick={() => advanceOrder(o)}
+                            className="tap flex-1 rounded-[10px] bg-brand-400 py-1.5 text-[12px] font-semibold text-brand-text">
+                            {flow.nextLabel}
+                          </button>
+                        )}
+                        <button onClick={() => cancelOrder(o)}
+                          className="tap rounded-[10px] px-3 py-1.5 text-[12px] font-semibold"
+                          style={{ background: tint('#FF3B30', 0.1), color: '#D70015' }}>
+                          Bekor
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Hisob jami */}
+          {detail?.summary && detail.orders.length > 0 && (
+            <div className="mb-4 space-y-1 rounded-[15px] px-3.5 py-3" style={{ background: 'rgba(120,120,128,0.06)' }}>
+              <div className="flex justify-between text-[13px] text-muted">
+                <span>Taomlar</span><span>{detail.summary.subtotal.toLocaleString('ru-RU')} so'm</span>
+              </div>
+              {detail.summary.serviceFee > 0 && (
+                <div className="flex justify-between text-[13px] text-muted">
+                  <span>Xizmat haqi</span><span>{detail.summary.serviceFee.toLocaleString('ru-RU')} so'm</span>
+                </div>
+              )}
+              <div className="flex justify-between border-t border-black/10 pt-1.5 text-[15px] font-bold text-ink">
+                <span>Jami</span><span>{detail.summary.total.toLocaleString('ru-RU')} so'm</span>
+              </div>
+            </div>
+          )}
+
+          <div className="flex gap-2">
+            <button onClick={printCheck} disabled={!detail?.orders?.length}
+              className="tap flex-1 rounded-[15px] py-3 text-[15px] font-medium text-ink disabled:opacity-40"
+              style={{ background: 'rgba(120,120,128,0.12)' }}>
+              <i className="ti ti-printer mr-1.5" />Chek chop etish
+            </button>
+            <button onClick={closeTable} disabled={closing}
+              className="tap flex-1 rounded-[15px] bg-brand-400 py-3 text-[15px] font-semibold text-brand-text disabled:opacity-60">
+              {closing ? '...' : "Stolni bo'shatish"}
+            </button>
+          </div>
+        </>
+      ) : (
+        <>
+          <input value={menuSearch} onChange={(e) => setMenuSearch(e.target.value)}
+            placeholder="Taom qidirish..."
+            className="mb-3 w-full rounded-[13px] px-3.5 py-2.5 text-[14px]"
+            style={{ background: 'rgba(120,120,128,0.08)' }} />
+
+          {menu === null ? (
+            <div className="py-10 text-center text-[13px] text-muted">Menyu yuklanmoqda...</div>
+          ) : filteredMenu.length === 0 && err ? (
+            <div className="py-10 text-center">
+              <p className="mb-3 text-[13px] text-muted">{err}</p>
+              <button
+                onClick={() => loadMenu(true)}
+                className="tap rounded-[12px] px-4 py-2 text-[13px] font-semibold text-ink"
+                style={{ background: 'rgba(120,120,128,0.12)' }}>
+                Qayta urinish
+              </button>
+            </div>
+          ) : filteredMenu.length === 0 ? (
+            <div className="py-10 text-center text-[13px] text-muted">Taom topilmadi</div>
+          ) : (
+            <div className="mb-4 max-h-[40vh] space-y-1.5 overflow-y-auto">
+              {filteredMenu.map((d) => (
+                <div key={d._id} className="flex items-center justify-between rounded-[13px] px-3 py-2.5"
+                  style={{ background: 'rgba(120,120,128,0.06)' }}>
+                  <div className="min-w-0">
+                    <div className="truncate text-[13.5px] font-medium text-ink">{d.name}</div>
+                    <div className="text-[12px] text-muted">{(d.dineInPrice || d.price).toLocaleString('ru-RU')} so'm</div>
+                  </div>
+                  <div className="flex flex-none items-center gap-2">
+                    {cart[d._id] > 0 && (
+                      <>
+                        <button onClick={() => removeFromCart(d._id)}
+                          className="tap flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold"
+                          style={{ background: 'rgba(120,120,128,0.14)' }}>−</button>
+                        <span className="w-4 text-center text-[13px] font-semibold text-ink">{cart[d._id]}</span>
+                      </>
+                    )}
+                    <button onClick={() => addToCart(d._id)}
+                      className="tap flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold text-brand-text"
+                      style={{ background: '#F5A623' }}>+</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button onClick={submitCart} disabled={!cartCount || submitting}
+            className="tap w-full rounded-[15px] bg-brand-400 py-3 text-[15px] font-semibold text-brand-text disabled:opacity-40">
+            {submitting ? 'Yuborilmoqda...' : cartCount ? `Yuborish (${cartCount} ta)` : 'Taom tanlang'}
+          </button>
+        </>
+      )}
+    </Modal>
+  );
+}
+
+
 function EmptyState({ icon, title, text, action }) {
   return (
     <div className="g rounded-[22px] px-6 py-12 text-center">
