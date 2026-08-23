@@ -516,46 +516,36 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
 }
 
 /**
- * Kuryerga yuborish modali.
+ * Kuryerga yuborish modali — BOSQICH 1 (2026-08, ulashish orqali).
  *
- * Restoran bir yoki bir nechta kuryerni tanlaydi (yoki
- * "Barcha faol kuryerlarga" tugmasi bilan hammasiga birdan).
- * Tanlanganlarga Telegram orqali ALOHIDA havola yuboriladi —
- * birinchi qabul qilgani oladi (server: services/courierDispatch.js).
+ * Hozircha LokmaGo'da ro'yxatdan o'tgan ishchi kuryerlar yo'q —
+ * shuning uchun ro'yxatdan tanlash O'RNIGA: bitta havola
+ * yaratiladi, restoran/admin uni O'ZINING shaxsiy Telegram/
+ * WhatsApp akkaunti orqali xohlagan odam(lar)ga ulashadi.
+ * Bir nechta odamga forward qilinishi mumkin — birinchi
+ * "Qabul qilaman" bosgani buyurtmani oladi (server: atomik
+ * yozuv, services/courierDispatch.js).
  */
 function CourierDispatchModal({ order, onClose, onSent }) {
-  const [couriers, setCouriers] = useState(null);   // null = yuklanmoqda
-  const [selected, setSelected] = useState(new Set());
-  const [sending, setSending] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [urls, setUrls] = useState(null);   // { link, telegram, whatsapp }
   const [err, setErr] = useState(null);
-  const [sentInfo, setSentInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
-    panelApi.getCouriers()
-      .then((list) => setCouriers(Array.isArray(list) ? list.filter((c) => c.isActive) : []))
-      .catch((e) => { setErr(e.message); setCouriers([]); });
-  }, []);
+    panelApi.createDeliveryLink(order._id)
+      .then((res) => { setUrls(res); setLoading(false); })
+      .catch((e) => { setErr(e.message); setLoading(false); });
+  }, [order._id]);
 
-  const toggle = (id) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
-      return next;
-    });
-  };
-
-  const selectAll = () => setSelected(new Set((couriers || []).map((c) => c._id)));
-
-  const send = async () => {
-    if (!selected.size) { setErr('Kamida bitta kuryer tanlang'); return; }
-    setSending(true); setErr(null);
+  const copyLink = async () => {
     try {
-      const res = await panelApi.dispatchCourier(order._id, [...selected]);
-      setSentInfo(res);
-    } catch (e) {
-      setErr(e.message);
+      await navigator.clipboard.writeText(urls.link);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Clipboard ruxsati yo'q bo'lsa — jim, foydalanuvchi qo'lda nusxalaydi
     }
-    setSending(false);
   };
 
   return (
@@ -568,63 +558,43 @@ function CourierDispatchModal({ order, onClose, onSent }) {
           <h2 className="text-lg font-semibold text-ink">Kuryerga yuborish</h2>
           <button onClick={onClose} className="text-muted text-xl leading-none">&times;</button>
         </div>
-        <p className="text-sm text-muted mb-4">
-          {order.dineInNumber || `#${String(order._id).slice(-6)}`} — tanlangan kuryerlarga Telegram orqali
-          havola yuboriladi. Birinchi qabul qilgani buyurtmani oladi.
+        <p className="text-sm text-muted mb-5">
+          {order.dineInNumber || `#${String(order._id).slice(-6)}`} — havolani xohlagan kuryeringizga
+          Telegram yoki WhatsApp orqali yuboring. Birinchi qabul qilgani buyurtmani oladi.
         </p>
 
-        {sentInfo ? (
-          <div className="text-center py-6">
-            <div className="text-4xl mb-2">{'\ud83d\udce8'}</div>
-            <div className="text-ink font-medium mb-1">{sentInfo.sentTo} ta kuryerga yuborildi</div>
-            <p className="text-sm text-muted mb-5">Kim birinchi qabul qilsa, buyurtma unga biriktiriladi.</p>
-            <button onClick={onSent} className="w-full rounded-xl bg-brand-400 py-3 text-sm font-semibold text-brand-text">
-              Tushunarli
-            </button>
-          </div>
+        {loading ? (
+          <div className="py-8 text-center text-sm text-muted">Havola tayyorlanmoqda...</div>
+        ) : err ? (
+          <div className="text-sm text-red-600 mb-3">{err}</div>
         ) : (
           <>
-            {couriers === null ? (
-              <div className="py-8 text-center text-sm text-muted">Yuklanmoqda...</div>
-            ) : couriers.length === 0 ? (
-              <div className="py-8 text-center text-sm text-muted">
-                Faol kuryer topilmadi.<br />Avval "Kuryerlar" bo'limidan qo'shing.
-              </div>
-            ) : (
-              <>
-                <button onClick={selectAll} className="text-xs text-brand-600 font-medium mb-2">
-                  Barchasini tanlash ({couriers.length})
-                </button>
-                <div className="space-y-1.5 mb-4">
-                  {couriers.map((c) => (
-                    <label key={c._id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={selected.has(c._id)}
-                        onChange={() => toggle(c._id)}
-                        className="w-4 h-4 accent-brand-400"
-                      />
-                      <div className="min-w-0 flex-1">
-                        <div className="text-sm font-medium text-ink truncate">{c.name}</div>
-                        {c.phone && <div className="text-xs text-muted">{c.phone}</div>}
-                      </div>
-                      {c.totalDeliveries > 0 && (
-                        <span className="text-xs text-muted flex-none">{c.totalDeliveries} ta yetkazgan</span>
-                      )}
-                    </label>
-                  ))}
-                </div>
-              </>
-            )}
+            <div className="mb-5 flex flex-col gap-2.5">
+              <a
+                href={urls.telegram}
+                target="_blank" rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#2AABEE] py-3.5 text-sm font-semibold text-white"
+              >
+                <i className="ti ti-brand-telegram text-lg" /> Telegram orqali yuborish
+              </a>
+              <a
+                href={urls.whatsapp}
+                target="_blank" rel="noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3.5 text-sm font-semibold text-white"
+              >
+                <i className="ti ti-brand-whatsapp text-lg" /> WhatsApp orqali yuborish
+              </a>
+            </div>
 
-            {err && <div className="text-sm text-red-600 mb-3">{err}</div>}
+            <div className="flex items-center gap-2 rounded-xl border border-line bg-canvas px-3 py-2.5">
+              <span className="min-w-0 flex-1 truncate text-xs text-muted">{urls.link}</span>
+              <button onClick={copyLink} className="flex-none rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-ink border border-line">
+                {copied ? "Nusxalandi \u2713" : 'Nusxalash'}
+              </button>
+            </div>
 
-            <button
-              onClick={send}
-              disabled={sending || !couriers?.length}
-              className="w-full rounded-xl bg-brand-400 py-3 text-sm font-semibold text-brand-text disabled:opacity-50"
-            >
-              {sending ? 'Yuborilmoqda...' : `Yuborish${selected.size ? ` (${selected.size})` : ''}`}
+            <button onClick={onSent} className="mt-5 w-full rounded-xl bg-brand-400 py-3 text-sm font-semibold text-brand-text">
+              Tushunarli
             </button>
           </>
         )}

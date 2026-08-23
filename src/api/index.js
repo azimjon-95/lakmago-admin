@@ -15,11 +15,8 @@ export const panelApi = {
   // Yetkazish ustamasi — restoran o'zi belgilaydi
   getAgreement: () => apiFetch('/panel/agreement'),
 
-  // Kuryer tizimi (2026-08)
-  getCouriers: () => apiFetch('/panel/couriers'),
-  dispatchCourier: (orderId, courierIds) => apiFetch(`/panel/orders/${orderId}/dispatch-courier`, {
-    method: 'POST', body: JSON.stringify({ courierIds }),
-  }),
+  // Kuryer tizimi (2026-08, BOSQICH 1 — ulashish orqali)
+  createDeliveryLink: (orderId) => apiFetch(`/panel/orders/${orderId}/create-delivery-link`, { method: 'POST' }),
   getDispatchStatus: (orderId) => apiFetch(`/panel/orders/${orderId}/dispatch-status`),
   setDeliveryMarkup: (percent) => apiFetch('/panel/delivery-markup', {
     method: 'PATCH', body: JSON.stringify({ deliveryMarkupPercent: percent }),
