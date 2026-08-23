@@ -148,6 +148,12 @@ const restaurantNav = [
     dineInOnly:true
   },
   {
+    to:"/kiosk-links",
+    icon:"ti-device-tablet",
+    label:"Kiosk linklar",
+    dineInOnly:true
+  },
+  {
     to:"/reservations",
     icon:"ti-calendar-check",
     label:"Bronlar"

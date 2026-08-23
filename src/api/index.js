@@ -84,6 +84,23 @@ export const panelApi = {
 
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
+  /*
+   * Kiosk linklar — zaldagi planshet uchun.
+   *
+   * To'liq havola ATAYLAB ro'yxatda kelmaydi: `getKioskLinks`
+   * faqat qisqartirilgan tokenni qaytaradi, to'lig'i esa
+   * `revealKioskLink` orqali so'ralganda. Panel ekrani zalda
+   * ochiq turgan bo'lishi mumkin.
+   */
+  getKioskLinks: () => apiFetch('/panel/kiosk'),
+  createKioskLink: (d) => apiFetch('/panel/kiosk', { method: 'POST', body: JSON.stringify(d) }),
+  revealKioskLink: (id) => apiFetch(`/panel/kiosk/${id}/reveal`),
+  updateKioskLink: (id, d) => apiFetch(`/panel/kiosk/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  rotateKioskLink: (id) => apiFetch(`/panel/kiosk/${id}/rotate`, { method: 'POST' }),
+  resetKioskDevices: (id) => apiFetch(`/panel/kiosk/${id}/reset-devices`, { method: 'POST' }),
+  deleteKioskLink: (id) => apiFetch(`/panel/kiosk/${id}`, { method: 'DELETE' }),
+  kioskQrPath: (id) => `/panel/kiosk/${id}/qr`,
+
   // Mijozlarni jalb qilish — Super Admin
   // Dine-in — Super Admin
   // Продвижение

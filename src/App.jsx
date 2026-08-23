@@ -46,6 +46,7 @@ const StopListPage = lazy(() => import('@/pages/restaurant/StopListPage').then((
 const DineInPage = lazy(() => import('@/pages/restaurant/DineInPage').then((m) => ({ default: m.DineInPage })));
 const DineInLivePage = lazy(() => import('@/pages/restaurant/DineInLivePage').then((m) => ({ default: m.DineInLivePage })));
 const DineInHistoryPage = lazy(() => import('@/pages/restaurant/DineInHistoryPage').then((m) => ({ default: m.DineInHistoryPage })));
+const KioskLinksPage = lazy(() => import('@/pages/restaurant/KioskLinksPage').then((m) => ({ default: m.KioskLinksPage })));
 const MenuTransferPage = lazy(() => import('@/pages/restaurant/MenuTransferPage').then((m) => ({ default: m.MenuTransferPage })));
 const PromotionPage = lazy(() => import('@/pages/restaurant/PromotionPage').then((m) => ({ default: m.PromotionPage })));
 const ReservationsPage = lazy(() => import('@/pages/restaurant/ReservationsPage').then((m) => ({ default: m.ReservationsPage })));
@@ -160,6 +161,7 @@ function RestaurantRoutes() {
         <Route path="/dine-in" element={<DineInPage />} />
         <Route path="/dine-in-live" element={<DineInLivePage />} />
         <Route path="/dine-in-history" element={<DineInHistoryPage />} />
+        <Route path="/kiosk-links" element={<KioskLinksPage />} />
         <Route path="/menu-transfer" element={<MenuTransferPage />} />
         <Route path="/promotion" element={<PromotionPage />} />
         <Route path="/reservations" element={<ReservationsPage />} />
