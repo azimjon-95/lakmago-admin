@@ -8,12 +8,30 @@ import { resolveNotification } from '@/lib/notificationCenter';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
-// Status oqimi: pending → accepted → preparing → ready → delivering → delivered
+/*
+ * Status oqimi SODDALASHTIRILDI (talab bo'yicha): restoran uchun
+ * FAQAT 3 ta amal tugmasi — "tayyorlanmoqda" kabi oraliq
+ * bosqichlar YO'Q.
+ *
+ *   pending  → (Qabul qildim)      → accepted
+ *   accepted → (Taom tayyor)       → ready      [preparing CHETLAB OTILADI]
+ *   ready    → (Kuryer olib ketdi) → delivering
+ *
+ * 'preparing' Order modelida hali ham mavjud enum qiymati —
+ * MUVOZANATSIZLIK BO'LMASLIGI uchun sxemadan olib tashlanmadi
+ * (eski buyurtmalar shu holatda qolgan bo'lishi mumkin), lekin
+ * ENDI hech qanday tugma orqali bu holatga o'tilmaydi va undan
+ * "Taom tayyor" bosilsa to'g'ridan-to'g'ri 'ready'ga o'tadi
+ * (pastdagi getNextStatus() orqali).
+ */
 const flow = {
-  pending: { label: 'Yangi buyurtma', color: '#E24B4A', next: 'accepted', nextLabel: '✓ Qabul qilish', glow: true },
-  accepted: { label: 'Qabul qilindi', color: '#EF9F27', next: 'preparing', nextLabel: 'Tayyorlashni boshlash' },
-  preparing: { label: 'Tayyorlanmoqda', color: '#6BA8F0', next: 'ready', nextLabel: '🍽 Tayyor bo\u2018ldi' },
-  ready: { label: 'Tayyor', color: '#5DCAA5', next: 'delivering', nextLabel: '🛵 Kuryer olib ketdi' },
+  pending: { label: 'Yangi buyurtma', color: '#E24B4A', next: 'accepted', nextLabel: 'Qabul qildim', glow: true },
+  accepted: { label: 'Qabul qilindi', color: '#EF9F27', next: 'ready', nextLabel: 'Taom tayyor' },
+  // Eski buyurtmalar hali shu holatda bo'lishi mumkin — ko'rsatiladi,
+  // lekin bu holatga YANGI o'tish yo'q (yuqoridagi accepted endi
+  // to'g'ridan-to'g'ri 'ready'ga o'tadi)
+  preparing: { label: 'Tayyorlanmoqda', color: '#6BA8F0', next: 'ready', nextLabel: 'Taom tayyor' },
+  ready: { label: 'Tayyor', color: '#5DCAA5', next: 'delivering', nextLabel: 'Kuryer olib ketdi' },
   delivering: { label: 'Kuryer yo\u2018lda', color: '#9B8FE0', next: null, nextLabel: 'Mijoz qabul qilishini kuting' },
   delivered: { label: 'Yetkazildi', color: '#5DCAA5', next: null },
   cancelled: { label: 'Bekor qilindi', color: '#9A9A96', next: null },
@@ -145,6 +163,10 @@ export function RestaurantOrdersPage() {
     try { await panelApi.updateOrderStatus(o._id, 'cancelled'); } catch { load(); }
   };
 
+  // Kuryerga yuborish — modal ochiladi, haqiqiy yuborish shu
+  // modal ichida (CourierDispatchModal)
+  const [dispatchingOrder, setDispatchingOrder] = useState(null);
+
   // Faol buyurtmalar tepada, yakunlangan/bekor pastda
   const active = orders.filter((o) => !['delivered', 'cancelled'].includes(o.status));
   const done = orders.filter((o) => ['delivered', 'cancelled'].includes(o.status));
@@ -188,7 +210,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onPaid={markPaid} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onPaid={markPaid} onDispatch={setDispatchingOrder} />
             ))}
           </div>
 
@@ -210,11 +232,19 @@ export function RestaurantOrdersPage() {
           )}
         </>
       )}
+
+      {dispatchingOrder && (
+        <CourierDispatchModal
+          order={dispatchingOrder}
+          onClose={() => setDispatchingOrder(null)}
+          onSent={() => { setDispatchingOrder(null); load(); }}
+        />
+      )}
     </div>
   );
 }
 
-function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
+function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispatch }) {
   const meta = flow[o.status] || {};
   const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
   // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
@@ -438,14 +468,35 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
       {/* Amal tugmalari */}
       {meta.next && (
         <div className="px-4 pb-4 flex gap-2">
-          <button
-            onClick={() => onAdvance(o)}
-            disabled={busy}
-            className="min-w-0 flex-1 truncate rounded-xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
-            style={{ background: meta.color }}
-          >
-            {busy ? '...' : meta.nextLabel}
-          </button>
+          {/*
+            TAYYOR + YETKAZISH — oddiy status o'zgartirish o'rniga
+            kuryer tanlash modalini ochamiz. Haqiqiy "delivering"
+            holatiga o'tish ENDI kuryer taklifni QABUL QILGANDA
+            avtomatik bo'ladi (services/courierDispatch.js), admin
+            bu yerda faqat KIMLARGA yuborishni tanlaydi.
+
+            Olib ketish (pickup) buyurtmalarida kuryer kerak emas —
+            ular eski, oddiy tugma bilan davom etadi.
+          */}
+          {o.status === 'ready' && o.fulfillment === 'delivery' ? (
+            <button
+              onClick={() => onDispatch(o)}
+              disabled={busy}
+              className="min-w-0 flex-1 truncate rounded-xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+              style={{ background: meta.color }}
+            >
+              {busy ? '...' : "\ud83d\udeb4 Kuryerga yuborish"}
+            </button>
+          ) : (
+            <button
+              onClick={() => onAdvance(o)}
+              disabled={busy}
+              className="min-w-0 flex-1 truncate rounded-xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
+              style={{ background: meta.color }}
+            >
+              {busy ? '...' : meta.nextLabel}
+            </button>
+          )}
           {canCancel && (
             <button onClick={() => onCancel(o)} className="flex-none rounded-xl border border-line px-4 py-3 text-sm text-muted hover:bg-red-50 hover:text-red-600">
               Bekor
@@ -460,6 +511,124 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid }) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+/**
+ * Kuryerga yuborish modali.
+ *
+ * Restoran bir yoki bir nechta kuryerni tanlaydi (yoki
+ * "Barcha faol kuryerlarga" tugmasi bilan hammasiga birdan).
+ * Tanlanganlarga Telegram orqali ALOHIDA havola yuboriladi —
+ * birinchi qabul qilgani oladi (server: services/courierDispatch.js).
+ */
+function CourierDispatchModal({ order, onClose, onSent }) {
+  const [couriers, setCouriers] = useState(null);   // null = yuklanmoqda
+  const [selected, setSelected] = useState(new Set());
+  const [sending, setSending] = useState(false);
+  const [err, setErr] = useState(null);
+  const [sentInfo, setSentInfo] = useState(null);
+
+  useEffect(() => {
+    panelApi.getCouriers()
+      .then((list) => setCouriers(Array.isArray(list) ? list.filter((c) => c.isActive) : []))
+      .catch((e) => { setErr(e.message); setCouriers([]); });
+  }, []);
+
+  const toggle = (id) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const selectAll = () => setSelected(new Set((couriers || []).map((c) => c._id)));
+
+  const send = async () => {
+    if (!selected.size) { setErr('Kamida bitta kuryer tanlang'); return; }
+    setSending(true); setErr(null);
+    try {
+      const res = await panelApi.dispatchCourier(order._id, [...selected]);
+      setSentInfo(res);
+    } catch (e) {
+      setErr(e.message);
+    }
+    setSending(false);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50" onClick={onClose}>
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="w-full sm:max-w-md sm:rounded-2xl rounded-t-2xl bg-white p-5 max-h-[85vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-1">
+          <h2 className="text-lg font-semibold text-ink">Kuryerga yuborish</h2>
+          <button onClick={onClose} className="text-muted text-xl leading-none">&times;</button>
+        </div>
+        <p className="text-sm text-muted mb-4">
+          {order.dineInNumber || `#${String(order._id).slice(-6)}`} — tanlangan kuryerlarga Telegram orqali
+          havola yuboriladi. Birinchi qabul qilgani buyurtmani oladi.
+        </p>
+
+        {sentInfo ? (
+          <div className="text-center py-6">
+            <div className="text-4xl mb-2">{'\ud83d\udce8'}</div>
+            <div className="text-ink font-medium mb-1">{sentInfo.sentTo} ta kuryerga yuborildi</div>
+            <p className="text-sm text-muted mb-5">Kim birinchi qabul qilsa, buyurtma unga biriktiriladi.</p>
+            <button onClick={onSent} className="w-full rounded-xl bg-brand-400 py-3 text-sm font-semibold text-brand-text">
+              Tushunarli
+            </button>
+          </div>
+        ) : (
+          <>
+            {couriers === null ? (
+              <div className="py-8 text-center text-sm text-muted">Yuklanmoqda...</div>
+            ) : couriers.length === 0 ? (
+              <div className="py-8 text-center text-sm text-muted">
+                Faol kuryer topilmadi.<br />Avval "Kuryerlar" bo'limidan qo'shing.
+              </div>
+            ) : (
+              <>
+                <button onClick={selectAll} className="text-xs text-brand-600 font-medium mb-2">
+                  Barchasini tanlash ({couriers.length})
+                </button>
+                <div className="space-y-1.5 mb-4">
+                  {couriers.map((c) => (
+                    <label key={c._id} className="flex items-center gap-3 rounded-xl border border-line px-3 py-2.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={selected.has(c._id)}
+                        onChange={() => toggle(c._id)}
+                        className="w-4 h-4 accent-brand-400"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="text-sm font-medium text-ink truncate">{c.name}</div>
+                        {c.phone && <div className="text-xs text-muted">{c.phone}</div>}
+                      </div>
+                      {c.totalDeliveries > 0 && (
+                        <span className="text-xs text-muted flex-none">{c.totalDeliveries} ta yetkazgan</span>
+                      )}
+                    </label>
+                  ))}
+                </div>
+              </>
+            )}
+
+            {err && <div className="text-sm text-red-600 mb-3">{err}</div>}
+
+            <button
+              onClick={send}
+              disabled={sending || !couriers?.length}
+              className="w-full rounded-xl bg-brand-400 py-3 text-sm font-semibold text-brand-text disabled:opacity-50"
+            >
+              {sending ? 'Yuborilmoqda...' : `Yuborish${selected.size ? ` (${selected.size})` : ''}`}
+            </button>
+          </>
+        )}
+      </div>
     </div>
   );
 }

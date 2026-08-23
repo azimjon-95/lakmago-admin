@@ -87,6 +87,12 @@ const adminNav = [
     adminOnly: true,   // faqat 'admin' — hech qanday bo'lim (department) ko'rmaydi
   },
   {
+    to: "/couriers",
+    icon: "ti-moped",
+    label: "Kuryerlar",
+    page: "couriers",
+  },
+  {
     to: "/settings",
     icon: "ti-settings",
     label: "Sozlamalar",

@@ -14,6 +14,13 @@ export const auth = {
 export const panelApi = {
   // Yetkazish ustamasi — restoran o'zi belgilaydi
   getAgreement: () => apiFetch('/panel/agreement'),
+
+  // Kuryer tizimi (2026-08)
+  getCouriers: () => apiFetch('/panel/couriers'),
+  dispatchCourier: (orderId, courierIds) => apiFetch(`/panel/orders/${orderId}/dispatch-courier`, {
+    method: 'POST', body: JSON.stringify({ courierIds }),
+  }),
+  getDispatchStatus: (orderId) => apiFetch(`/panel/orders/${orderId}/dispatch-status`),
   setDeliveryMarkup: (percent) => apiFetch('/panel/delivery-markup', {
     method: 'PATCH', body: JSON.stringify({ deliveryMarkupPercent: percent }),
   }),
@@ -201,6 +208,12 @@ export const adminApi = {
   createStaff: (data) => apiFetch('/admin/staff', { method: 'POST', body: JSON.stringify(data) }),
   updateStaff: (id, data) => apiFetch(`/admin/staff/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteStaff: (id) => apiFetch(`/admin/staff/${id}`, { method: 'DELETE' }),
+
+  // Kuryerlar ro'yxati (2026-08)
+  getCouriers: () => apiFetch('/admin/couriers'),
+  createCourier: (data) => apiFetch('/admin/couriers', { method: 'POST', body: JSON.stringify(data) }),
+  updateCourier: (id, data) => apiFetch(`/admin/couriers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteCourier: (id) => apiFetch(`/admin/couriers/${id}`, { method: 'DELETE' }),
 
   // Reklama (banner) so'rovlari — tasdiqlash/rad etish
   getAllAds: (status) => apiFetch(`/admin/ads${status ? `?status=${status}` : ''}`),
