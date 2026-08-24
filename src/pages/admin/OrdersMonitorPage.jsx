@@ -30,18 +30,40 @@ export function OrdersMonitorPage() {
 
   useEffect(() => { setLoading(true); load(); }, [load]);
 
-  // Real-time — yangi buyurtma va status yangilanishi
+  /*
+   * Real-time — yangi buyurtma va status yangilanishi.
+   *
+   * DEBOUNCE, lokal yangilash EMAS. Sabab:
+   * bu sahifada 'live' filtri holat bo'yicha ishlaydi, ya'ni
+   * status o'zgarganda buyurtma ro'yxatga KIRISHI yoki undan
+   * CHIQIB KETISHI mumkin. Bundan tashqari ro'yxat groupId
+   * bo'yicha guruhlanadi. Kelgan payloadni joyida almashtirish
+   * bu ikki qoidani buzardi — ro'yxatda "yetkazildi" bo'lgan
+   * buyurtma osilib qolardi.
+   *
+   * Shuning uchun to'liq so'rov qoladi, lekin hodisalar 300 ms
+   * ichida guruhlanadi: band paytda bir necha buyurtma ketma-ket
+   * o'zgarsa (masalan kuryer 5 tasini birdan yopsa) 5 ta emas,
+   * BITTA so'rov ketadi.
+   */
   useEffect(() => {
     const socket = getSocket();
     joinAdmin();
-    const onOrderNew = () => load();
-    const onOrderUpdate = () => load();
-    socket.on('order:new', onOrderNew);
-    socket.on('order:update', onOrderUpdate);
+
+    let timer = null;
+    const refresh = () => {
+      clearTimeout(timer);
+      timer = setTimeout(load, 300);
+    };
+
+    socket.on('order:new', refresh);
+    socket.on('order:update', refresh);
     socketRef.current = socket;
+
     return () => {
-      socket.off('order:new', onOrderNew);
-      socket.off('order:update', onOrderUpdate);
+      clearTimeout(timer);
+      socket.off('order:new', refresh);
+      socket.off('order:update', refresh);
     };
   }, [load]);
 

@@ -67,7 +67,16 @@ export function RestaurantOrdersPage() {
       list.forEach((o) => knownIds.current.add(o._id));
       return list;
     },
-    refetchInterval: 30_000,
+    /*
+     * ZAXIRA polling (30s -> 120s).
+     *
+     * Socket allaqachon ASOSIY manba: 'order:new' va
+     * 'order:update' keshni to'g'ridan-to'g'ri yangilaydi
+     * (pastda), API qayta chaqirilmaydi. Ya'ni 30 soniya
+     * hech narsa qo'shmasdi — u faqat socket butunlay
+     * uzilib qolgan holat uchun kerak.
+     */
+    refetchInterval: 120_000,
   });
   const orders = Array.isArray(ordersRaw) ? ordersRaw : [];
 

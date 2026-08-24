@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { panelApi } from '@/api';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
@@ -61,19 +61,47 @@ export function RestaurantMenuPage() {
     load();
   };
 
-  // Kategoriya bo'yicha guruhlash — DISH_CATEGORIES tartibida.
-  // Bir kategoriya ichida bo'limlar ham ajratiladi.
-  const grouped = DISH_CATEGORIES
-    .map((cat) => ({
-      ...cat,
-      items: dishes.filter((d) => (d.category || 'issiq') === cat.value),
-    }))
-    .filter((g) => g.items.length > 0);
+  /*
+   * Kategoriya bo'yicha guruhlash — DISH_CATEGORIES tartibida.
+   *
+   * ILGARI ikki muammo bor edi:
+   *
+   * 1) 20 ta kategoriyaning HAR BIRI uchun butun taomlar
+   *    ro'yxati filtrlanardi (20 x N taqqoslash), keyin
+   *    "boshqalar" uchun yana bir marta. 200 taomli menyuda
+   *    bu ~8000 taqqoslash.
+   *
+   * 2) useMemo YO'Q edi — demak bu hisob HAR RENDERDA qaytadan
+   *    bajarilardi: qidiruvga harf yozilsa ham, modal ochilsa
+   *    ham, istalgan state o'zgarsa ham.
+   *
+   * Endi bitta o'tishda (N ta amal) guruhlanadi va natija
+   * `dishes` o'zgarmaguncha eslab turiladi.
+   */
+  const grouped = useMemo(() => {
+    const known = new Set(DISH_CATEGORIES.map((c) => c.value));
+    const buckets = new Map();
+    const orphans = [];
 
-  // Kategoriyasi noma'lum taomlar (eski ma'lumot)
-  const known = new Set(DISH_CATEGORIES.map((c) => c.value));
-  const orphans = dishes.filter((d) => !known.has(d.category || 'issiq'));
-  if (orphans.length) grouped.push({ value: '_', label: 'Boshqalar', items: orphans });
+    for (const d of dishes) {
+      const cat = d.category || 'issiq';
+      if (!known.has(cat)) { orphans.push(d); continue; }
+      let list = buckets.get(cat);
+      if (!list) { list = []; buckets.set(cat, list); }
+      list.push(d);
+    }
+
+    // DISH_CATEGORIES tartibi saqlanadi — mijoz ilovasidagi
+    // tartib bilan bir xil bo'lishi kerak
+    const out = DISH_CATEGORIES
+      .filter((cat) => buckets.has(cat.value))
+      .map((cat) => ({ ...cat, items: buckets.get(cat.value) }));
+
+    // Kategoriyasi noma'lum taomlar (eski ma'lumot)
+    if (orphans.length) out.push({ value: '_', label: 'Boshqalar', items: orphans });
+
+    return out;
+  }, [dishes]);
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">

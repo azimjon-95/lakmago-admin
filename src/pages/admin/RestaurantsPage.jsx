@@ -25,13 +25,62 @@ export function RestaurantsPage() {
 
   useEffect(() => { load(); }, [load]);
 
-  // Real-time: restoran qo'shilsa/o'zgarsa ro'yxat yangilanadi
+  /*
+   * Real-time: restoran qo'shilsa/o'zgarsa ro'yxat yangilanadi.
+   *
+   * DIQQAT — payload UCH XIL shaklda keladi (server kodida
+   * tekshirildi):
+   *   1) to'liq restoran obyekti  — admin.js
+   *   2) { _id }                  — restaurantPanel.js, deliveryCheck.js
+   *   3) { _id, deleted: true }   — o'chirilganda
+   *
+   * Shuning uchun ko'r-ko'rona `setState(payload)` qilib
+   * bo'lmaydi: 2-holatda restoranning barcha maydonlari
+   * o'chib, ro'yxatda bo'sh qator qolardi.
+   *
+   * Qaror:
+   *   to'liq obyekt -> joyida almashtiramiz, SO'ROVSIZ
+   *   deleted       -> ro'yxatdan olib tashlaymiz, SO'ROVSIZ
+   *   faqat {_id}   -> boshqa iloj yo'q, qayta so'raymiz
+   *                    (lekin 300 ms debounce bilan)
+   */
   useEffect(() => {
     const socket = getSocket();
     joinAdmin();
-    const refresh = () => load();
-    socket.on('restaurant:update', refresh);
-    return () => socket.off('restaurant:update', refresh);
+
+    let timer = null;
+    const refreshSoon = () => {
+      clearTimeout(timer);
+      timer = setTimeout(load, 300);
+    };
+
+    const onUpdate = (payload) => {
+      const id = payload?._id;
+      if (!id) { refreshSoon(); return; }
+
+      if (payload.deleted) {
+        setList((prev) => prev.filter((r) => r._id !== id));
+        return;
+      }
+
+      // "To'liq obyekt" belgisi: _id dan boshqa maydonlar ham bor
+      const isFull = Object.keys(payload).length > 1;
+      if (!isFull) { refreshSoon(); return; }
+
+      setList((prev) => {
+        const known = prev.some((r) => r._id === id);
+        // Yangi restoran qo'shilgan — ro'yxat tartibi serverda
+        // hisoblanadi, shuning uchun qayta so'raymiz
+        if (!known) { refreshSoon(); return prev; }
+        return prev.map((r) => (r._id === id ? { ...r, ...payload } : r));
+      });
+    };
+
+    socket.on('restaurant:update', onUpdate);
+    return () => {
+      clearTimeout(timer);
+      socket.off('restaurant:update', onUpdate);
+    };
   }, [load]);
 
   const toggleActive = async (r) => {

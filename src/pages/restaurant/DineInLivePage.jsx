@@ -76,10 +76,26 @@ export function DineInLivePage() {
     socket.on('dinein:request-update', loadDebounced);
     socket.on('table:update', loadDebounced);
 
-    // Zaxira: socket uzilsa ham yangilanadi
-    const timer = setInterval(load, 45000);
+    /*
+     * Zaxira: socket uzilsa ham yangilanadi.
+     *
+     * Sahifa FONDA bo'lsa so'rov yuborilmaydi — ko'rinmayotgan
+     * tabdan har 45 soniyada 2 ta API chaqirishning ma'nosi yo'q.
+     * Qaytib kelinganda darhol bir marta yangilanadi, ya'ni
+     * ekrandagi ma'lumot hech qachon eskirmaydi.
+     */
+    const timer = setInterval(() => {
+      if (document.visibilityState !== 'visible') return;
+      load();
+    }, 45000);
+
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') loadDebounced();
+    };
+    document.addEventListener('visibilitychange', onVisible);
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisible);
       socket.off('dinein:new', onNew);
       clearTimeout(debounceTimer);
       socket.off('dinein:order', loadDebounced);
