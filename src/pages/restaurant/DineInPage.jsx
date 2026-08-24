@@ -252,7 +252,9 @@ export function DineInPage() {
               <StatusCard cfg={cfg} compact />
               {active && (
                 <div className="sticky top-2 z-20 my-3">
-                  <div className="g rounded-[17px] p-1">
+                  {/* g-live: sticky — ostidan ro'yxat surilib o'tadi,
+                      shuning uchun bu yerda blur haqiqatan ko'rinadi */}
+                  <div className="g g-live rounded-[17px] p-1">
                     <Segmented value={tab} onChange={setTab}
                       items={TABS.map(([k, , , short]) => [k, short])} />
                   </div>
@@ -1338,7 +1340,7 @@ function Modal({ title, children, onClose, wide }) {
     <div onClick={onClose}
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 backdrop-blur-md sm:items-center sm:p-4">
       <div onClick={(e) => e.stopPropagation()}
-        className={`ios26-sheet g w-full overflow-y-auto rounded-t-[26px] px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-[26px] sm:pt-5 sm:pb-5 ${
+        className={`ios26-sheet g g-live w-full overflow-y-auto rounded-t-[26px] px-5 pt-3 pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:rounded-[26px] sm:pt-5 sm:pb-5 ${
           wide ? 'sm:max-w-2xl' : 'sm:max-w-md'
         } max-h-[92dvh] sm:max-h-[88dvh]`}>
         {/* iOS tortish chizig'i */}

@@ -83,30 +83,90 @@ body {
    ta'sir qilmaydi.
    ═══════════════════════════════════════════════════ */
 .ios26 {
-  --g-fill: rgba(255, 255, 255, 0.72);
-  --g-fill-soft: rgba(255, 255, 255, 0.52);
-  --g-blur: saturate(180%) blur(28px);
+  /*
+   * Fon endi biroz to'qroq (0.72 -> 0.86).
+   * SABAB: oddiy kartalardan backdrop-filter olib tashlandi
+   * (pastda batafsil). Blur yo'qolgach shaffoflik ortda
+   * qolgan matnni ko'rsatib yuborardi — shuning uchun
+   * to'ldirish zichlashtirildi. Ko'zga farq bilinmaydi.
+   */
+  --g-fill: rgba(255, 255, 255, 0.86);
+  --g-fill-soft: rgba(255, 255, 255, 0.7);
   --g-fill-3: rgba(120, 120, 128, 0.12);
   --spring: cubic-bezier(0.32, 0.72, 0, 1);
+
+  /*
+   * Haqiqiy backdrop-filter FAQAT ustma-ust turadigan
+   * sirtlar uchun (.g-live): sheet, sticky sarlavha, modal.
+   * Radius 28 -> 16: blur narxi radius bilan deyarli chiziqli
+   * o'sadi, 16px da esa "shisha" effekti saqlanadi.
+   */
+  --g-blur: saturate(150%) blur(16px);
 }
 
-/* Ambient yorug'lik — shisha nimanidir sindirishi kerak */
+/*
+ * Ambient yorug'lik.
+ *
+ * ILGARI: filter: blur(90px) — 288px li doira uchun brauzer
+ * ~860x860 px offscreen bufer ajratib, ko'p bosqichli Gauss
+ * blur hisoblardi. Sahifada 3 ta shunday doira bor.
+ *
+ * ENDI: radial-gradient MASK. Ko'rinish deyarli bir xil
+ * (yumshoq chekkali rangli dog'), lekin bu — bitta alfa
+ * ko'paytirish, Gauss yo'q. JSX o'zgarmadi: rang avvalgidek
+ * inline `background` dan keladi, mask faqat chekkasini
+ * so'ndiradi.
+ *
+ * will-change ATAYLAB QO'YILMAGAN: u elementni doimiy
+ * kompozitor qatlamiga ko'chiradi va GPU xotirasini band
+ * qiladi. Bu element umuman harakatlanmaydi — foyda yo'q,
+ * zarar bor.
+ */
 .ios26-glow {
   position: absolute;
   border-radius: 999px;
-  filter: blur(90px);
   pointer-events: none;
+  -webkit-mask-image: radial-gradient(closest-side, #000 12%, transparent 100%);
+  mask-image: radial-gradient(closest-side, #000 12%, transparent 100%);
+  /* Qayta bo'yash shu elementdan tashqariga chiqmasin */
+  contain: layout paint;
 }
 
-/* Shisha sirt */
+/*
+ * Shisha sirt (oddiy kartalar).
+ *
+ * BACKDROP-FILTER OLIB TASHLANDI. Sabab tekshirib chiqildi:
+ * `.g` sinfi 26 joyda ishlatilgan va ULARNING HAMMASI oddiy,
+ * oqim ichidagi karta — hech biri sticky ham, fixed ham emas.
+ * Ya'ni ularning ostida faqat bir xil sahifa foni va yumshoq
+ * ambient dog'lar turadi: blur qilinadigan tasvir deyarli
+ * tekis, natijada blur KO'ZGA HECH QANDAY farq bermasdi.
+ *
+ * Narxi esa katta edi: backdrop-filter har kadrda ortdagi
+ * tasvirni suratga olib, blurlab, qayta joylashtiradi.
+ * Sahifada 26 ta bunday sirt bo'lsa — scroll paytida har
+ * kadrda 26 marta. Noutbuk ventilyatori aynan shundan
+ * g'uvillaydi.
+ *
+ * Endi: yarim shaffof fon + 1px yorug'lik halqasi. Ikkalasi
+ * ham oddiy bo'yash, kompozitor ishi yo'q.
+ */
 .ios26 .g {
   position: relative;
   background: var(--g-fill);
-  backdrop-filter: var(--g-blur);
-  -webkit-backdrop-filter: var(--g-blur);
   box-shadow:
     0 1px 2px rgba(26, 26, 23, 0.05),
     0 14px 34px -14px rgba(26, 26, 23, 0.16);
+}
+
+/*
+ * Haqiqiy shisha — ostidan kontent SURILIB o'tadigan
+ * sirtlar uchun. Bu yerda blur ko'rinadi va o'rinli.
+ * Ishlatish: <div className="g g-live"> (sheet, sticky panel).
+ */
+.ios26 .g-live {
+  backdrop-filter: var(--g-blur);
+  -webkit-backdrop-filter: var(--g-blur);
 }
 
 /* Yuqori qirradagi yorug'lik aksi — Liquid Glass imzosi.
@@ -132,14 +192,25 @@ body {
 
 .ios26 .g-soft {
   background: var(--g-fill-soft);
-  backdrop-filter: var(--g-blur);
-  -webkit-backdrop-filter: var(--g-blur);
 }
 
 /* Blur ishlamasa — to'q oq fon */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .ios26 .g,
-  .ios26 .g-soft { background: #fff; }
+  .ios26 .g-live { background: #fff; }
+}
+
+/*
+ * Tizimda "shaffoflikni kamaytirish" yoqilgan bo'lsa
+ * (iOS/macOS/Windows imkoniyat sozlamasi) — blur butunlay
+ * o'chadi. Bu ayni paytda eng zaif qurilmalarga ham foyda.
+ */
+@media (prefers-reduced-transparency: reduce) {
+  .ios26 .g-live {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #fff;
+  }
+  .ios26-glow { display: none; }
 }
 
 /* Segment boshqaruvi */
