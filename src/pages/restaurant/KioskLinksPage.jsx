@@ -322,7 +322,9 @@ function EditModal({ item, onClose, onSaved }) {
   const [pin, setPin] = useState('');
   const [deviceLimit, setDeviceLimit] = useState(item?.deviceLimit ?? 0);
   const [sections, setSections] = useState(item?.sections || ['tables', 'stoplist', 'menu']);
-  const [inactivitySec, setInactivitySec] = useState(item?.inactivitySec ?? 120);
+  // TEST: default 15 soniya. Ishlab chiqarishda 120 ga qaytariladi
+  // (serverdagi KioskToken.inactivitySec bilan birga).
+  const [inactivitySec, setInactivitySec] = useState(item?.inactivitySec ?? 15);
   const [autoFullscreen, setAutoFullscreen] = useState(item?.autoFullscreen ?? true);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
@@ -435,14 +437,23 @@ function EditModal({ item, onClose, onSaved }) {
         </div>
       </Field>
 
-      <Field label="Qulf vaqti" hint="Shu vaqt tegilmasa animatsiya chiqadi va PIN so‘raladi">
-        <div className="flex gap-2">
-          {[60, 120, 300, 600].map((s) => (
+      <Field
+        label="Qulf vaqti"
+        hint="Shu vaqt tegilmasa animatsiya chiqadi va PIN so‘raladi"
+      >
+        <div className="flex flex-wrap gap-2">
+          {[15, 30, 60, 120, 300, 600].map((s) => (
             <Chip key={s} on={inactivitySec === s} onClick={() => setInactivitySec(s)}>
               {s < 60 ? `${s}s` : `${s / 60} daq`}
             </Chip>
           ))}
         </div>
+        {inactivitySec < 60 && (
+          <p className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+            Qisqa vaqt — sinov uchun. Kunlik ishda 2 daqiqa qulayroq,
+            aks holda ofitsiant buyurtma yozayotganda qulf tushib qoladi.
+          </p>
+        )}
       </Field>
 
       <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-line px-3 py-2.5">
