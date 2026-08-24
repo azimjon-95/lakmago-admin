@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
@@ -74,20 +75,31 @@ export function DashboardPage() {
    * Endi kesh bor: qaytib kelinganda darhol ko'rinadi (eski
    * ma'lumot ekranda, yangisi fonda kelib almashadi).
    *
-   * refetchInterval 30s ga uzaytirildi VA socket orqali yangi
-   * buyurtma kelganda darhol yangilanadi — polling faqat zaxira
-   * (socket uzilib qolgan holat uchun).
+   * POLLING 30s -> 120s (2026-08).
+   *
+   * Buni qilish uchun avval socket TO'LIQ qilindi: ilgari faqat
+   * 'order:new' tinglanardi, holat o'zgarishlari ('order:update')
+   * esa polling kelguncha ekranda ko'rinmasdi. Ya'ni 30 soniya
+   * ASOSIY yo'l edi, zaxira emas.
+   *
+   * Endi ikkala hodisa ham keshni to'g'ridan-to'g'ri yangilaydi,
+   * shuning uchun polling haqiqiy zaxiraga aylandi — u faqat
+   * socket butunlay uzilib qolgan holat uchun.
+   *
+   * Eslatma: React Query fon tabida refetch qilmaydi
+   * (refetchIntervalInBackground standart holatda false), ya'ni
+   * ko'rinmayotgan panel tarmoqni umuman bezovta qilmaydi.
    */
   const { data: stats, dataUpdatedAt } = useQuery({
     queryKey: ['admin', 'stats'],
     queryFn: () => adminApi.getStats(),
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
   });
 
   const { data: ordersRaw } = useQuery({
     queryKey: ['admin', 'orders'],
     queryFn: () => adminApi.getOrders(),
-    refetchInterval: 30_000,
+    refetchInterval: 120_000,
   });
   /*
    * HIMOYA: server kutilmagan shakl qaytarsa ham sahifa
@@ -117,13 +129,41 @@ export function DashboardPage() {
       // Statistika o'zgardi — uni qayta so'raymiz
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     };
+    /*
+     * Holat o'zgarishi (tayyor, yo'lda, yetkazildi, bekor).
+     *
+     * Ilgari bu hodisa TINGLANMAGAN edi: kuryer buyurtmani
+     * yetkazsa ham dashboard'da eski holat 30 soniyagacha
+     * turaverardi. Endi darhol almashadi va polling'ga
+     * ehtiyoj qolmaydi.
+     */
+    const onUpdate = (patch) => {
+      if (!patch?._id) return;
+      qc.setQueryData(['admin', 'orders'], (prev = []) => {
+        if (!Array.isArray(prev)) return prev;
+        let found = false;
+        const next = prev.map((o) => {
+          if (o._id !== patch._id) return o;
+          found = true;
+          return { ...o, ...patch };
+        });
+        // Keshda yo'q buyurtma haqida xabar keldi — ro'yxat
+        // eskirgan, qayta so'raymiz
+        if (!found) qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
+        return next;
+      });
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
+    };
+
     socket.on('order:new', onNewOrder);
+    socket.on('order:update', onUpdate);
 
     return () => {
       // Faqat shu sahifa qo'ygan tinglovchi olib tashlanadi.
       // removeAllListeners() markaziy bildirishnoma tizimining
       // tinglovchisini ham o'chirib yuborardi.
       socket.off('order:new', onNewOrder);
+      socket.off('order:update', onUpdate);
     };
   }, [qc]);
 
@@ -400,7 +440,25 @@ function Leaderboard({ rows }) {
 }
 
 /* ═══ Buyurtmalar oqimi ═══ */
+/*
+ * Dashboard lentasi.
+ *
+ * Server 100 tagacha buyurtma qaytaradi va ilgari HAMMASI
+ * chizilardi. Dashboard esa "nima bo'lyapti" degan savolga
+ * javob beradigan ekran — 100-chi buyurtmani bu yerda hech
+ * kim qidirmaydi, uning uchun Buyurtmalar sahifasi bor.
+ *
+ * 40 ta yetarli: ekranga 5-6 tasi sig'adi, qolgani zaxira.
+ * Virtualizatsiya (react-virtual) ATAYLAB qo'shilmadi —
+ * u 500+ element uchun ma'noga ega; 40 ta uchun esa faqat
+ * bog'liqlik va murakkablik qo'shadi, foyda bermaydi.
+ */
+const FEED_LIMIT = 40;
+
 function OrderFeed({ orders, flash, filter }) {
+  const hidden = Math.max(0, orders.length - FEED_LIMIT);
+  const visible = hidden ? orders.slice(0, FEED_LIMIT) : orders;
+
   if (orders.length === 0) {
     return (
       <div className="g rounded-[20px] px-6 py-10 text-center">
@@ -417,7 +475,7 @@ function OrderFeed({ orders, flash, filter }) {
 
   return (
     <div className="space-y-2">
-      {orders.map((o) => {
+      {visible.map((o) => {
         const st = STATUS[o.status] || { label: o.status, color: '#8E8E93' };
         const isFlash = flash === o._id;
 
@@ -466,6 +524,17 @@ function OrderFeed({ orders, flash, filter }) {
           </article>
         );
       })}
+
+      {hidden > 0 && (
+        <Link
+          to="/orders"
+          className="g flex items-center justify-center gap-1.5 rounded-[18px]
+                     px-4 py-3 text-[13px] font-semibold text-ink transition-shadow"
+        >
+          Yana {hidden} ta buyurtma
+          <i className="ti ti-arrow-right text-base" />
+        </Link>
+      )}
     </div>
   );
 }

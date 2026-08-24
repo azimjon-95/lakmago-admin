@@ -46,53 +46,95 @@ const lastPlayedAt = new Map();
 const playCount = new Map();
 const MAX_PLAYS = 5;
 
-function runRepeatLoop() {
-  setInterval(() => {
-    const { repeatInterval } = useNotifSettings.getState();
-    if (!repeatInterval) return;
+/*
+ * ═══ TAKRORIY OVOZ ═══
+ *
+ * ILGARI: setInterval(2000) butun seans davomida aylanardi va
+ * har 2 soniyada butun ro'yxatni skanerlardi. Kutilayotgan
+ * bildirishnoma BO'LMASA HAM ishlayverardi — daqiqasiga 30 ta
+ * bekorga uyg'onish. Bu protsessorni bo'sh turishга qo'ymaydi:
+ * brauzer tabni past quvvat rejimiga tushira olmaydi.
+ *
+ * ENDI: har bildirishnoma O'ZI uchun aniq vaqtga setTimeout
+ * qo'yadi. Kutilayotgan xabar yo'q bo'lsa — taymer ham yo'q,
+ * protsessor butunlay bo'sh.
+ *
+ * Nega intervalni 10-15 soniyaga uzaytirish yetarli emas edi:
+ * u bo'sh uyg'onishlarni faqat kamaytiradi, YO'QOTMAYDI, va
+ * takroriy ovoz 15 soniyagacha kechikib chalinadi. Rejalangan
+ * taymer esa ikkala muammoni ham bir yo'la hal qiladi.
+ */
 
-    const now = Date.now();
-    const items = useNotifications.getState().items;
+// notificationId → setTimeout identifikatori
+const repeatTimers = new Map();
 
-    // Endi yo'q bo'lgan yozuvlarni tozalaymiz — xotira o'smasin
-    const liveIds = new Set(items.map((n) => n.notificationId));
-    lastPlayedAt.forEach((_, id) => { if (!liveIds.has(id)) lastPlayedAt.delete(id); });
-    playCount.forEach((_, id) => { if (!liveIds.has(id)) playCount.delete(id); });
+const REPEAT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
 
-    /*
-     * XATO TUZATILDI (2026-08): ESKI bildirishnomalar
-     * takrorlanmaydi.
-     *
-     * Avval yosh chegarasi yo'q edi: agar allaqachon
-     * ahamiyatini yo'qotgan (masalan bir necha soat oldingi,
-     * buyurtma bajarilib bo'lgan) bildirishnoma NEW/DELIVERED
-     * holatida qolib ketsa, u CHEKSIZ chalinaverardi — panel
-     * ochilib "Bildirishnoma yo'q" ko'ringan holatda ham
-     * muzika chalinishining sababi shu edi (server ham eski
-     * yozuvlarni qaytarardi — u tomoni ham tuzatildi).
-     *
-     * Endi: 2 soatdan eski bildirishnoma takroran chalinmaydi.
-     * U hali ro'yxatda ko'rinadi (admin ko'rishi mumkin),
-     * lekin ovoz bilan bezovta qilmaydi.
-     */
-    const REPEAT_MAX_AGE_MS = 2 * 60 * 60 * 1000;
+function clearRepeat(id) {
+  const t = repeatTimers.get(id);
+  if (t) clearTimeout(t);
+  repeatTimers.delete(id);
+  lastPlayedAt.delete(id);
+  playCount.delete(id);
+}
 
-    items
-      .filter((n) => ['NEW', 'DELIVERED'].includes(n.status) && soundAllowed(n.type))
-      .filter((n) => now - new Date(n.createdAt).getTime() < REPEAT_MAX_AGE_MS)
-      .forEach((n) => {
-        const last = lastPlayedAt.get(n.notificationId)
-          ?? new Date(n.createdAt).getTime();
-        if (now - last >= repeatInterval * 1000) {
-          // 5 martadan keyin jimiydi — xabar "eski" hisoblanadi
-          const played = playCount.get(n.notificationId) || 0;
-          if (played >= MAX_PLAYS) return;
-          playSound(n.sound, n.priority);
-          playCount.set(n.notificationId, played + 1);
-          lastPlayedAt.set(n.notificationId, now);
-        }
-      });
-  }, 2000);
+/**
+ * Bitta bildirishnoma uchun keyingi ovozni rejalashtirish.
+ *
+ * O'zini o'zi qayta rejalashtiradi — MAX_PLAYS ga yetguncha
+ * yoki xabar ro'yxatdan chiqguncha.
+ */
+function scheduleRepeat(n) {
+  const id = n.notificationId;
+  if (repeatTimers.has(id)) return;              // allaqachon rejada
+
+  const { repeatInterval } = useNotifSettings.getState();
+  if (!repeatInterval) return;                   // takrorlash o'chirilgan
+  if (!['NEW', 'DELIVERED'].includes(n.status)) return;
+  if (!soundAllowed(n.type)) return;
+
+  const born = new Date(n.createdAt).getTime();
+  // Eski xabar takrorlanmaydi — ahamiyatini yo'qotgan
+  if (Date.now() - born >= REPEAT_MAX_AGE_MS) return;
+  if ((playCount.get(id) || 0) >= MAX_PLAYS) return;
+
+  const last = lastPlayedAt.get(id) ?? born;
+  const wait = Math.max(0, last + repeatInterval * 1000 - Date.now());
+
+  const timer = setTimeout(() => {
+    repeatTimers.delete(id);
+
+    // Vaqt kelganda holatni QAYTA tekshiramiz: xabar shu orada
+    // qabul qilingan yoki o'chirilgan bo'lishi mumkin
+    const fresh = useNotifications.getState().items
+      .find((x) => x.notificationId === id);
+    if (!fresh) { clearRepeat(id); return; }
+    if (!['NEW', 'DELIVERED'].includes(fresh.status)) { clearRepeat(id); return; }
+    if (Date.now() - new Date(fresh.createdAt).getTime() >= REPEAT_MAX_AGE_MS) return;
+
+    const played = playCount.get(id) || 0;
+    if (played >= MAX_PLAYS) return;
+
+    playSound(fresh.sound, fresh.priority);
+    playCount.set(id, played + 1);
+    lastPlayedAt.set(id, Date.now());
+
+    scheduleRepeat(fresh);          // keyingisini rejalashtirish
+  }, wait);
+
+  repeatTimers.set(id, timer);
+}
+
+/**
+ * Ro'yxat o'zgarganda rejalarni moslashtirish.
+ * Yangi kutilayotganlarga reja qo'yadi, yo'qolganlarni tozalaydi.
+ */
+function syncRepeats() {
+  const items = useNotifications.getState().items;
+  const live = new Set(items.map((n) => n.notificationId));
+
+  repeatTimers.forEach((_, id) => { if (!live.has(id)) clearRepeat(id); });
+  items.forEach(scheduleRepeat);
 }
 
 /**
@@ -174,6 +216,9 @@ export const useNotifications = create((set, get) => ({
     fresh
       .filter((n) => n.status === 'NEW')
       .forEach((n) => get().patch(n.notificationId, 'DELIVERED', { quiet: true }));
+
+    // Yangi kelganlar uchun takroriy ovoz rejasi
+    syncRepeats();
   },
 
   /** Holatni o'zgartirish. Yakuniy amallarda ovoz darhol to'xtaydi. */
@@ -184,6 +229,17 @@ export const useNotifications = create((set, get) => ({
       items: get().items.map((n) =>
         (n.notificationId === notificationId ? { ...n, status } : n)),
     });
+
+    /*
+     * Qabul qilingan/bekor qilingan xabar boshqa chalinmaydi.
+     * Rejani DARHOL bekor qilamiz — ilgari 2 soniyalik sikl
+     * keyingi aylanishida o'zi payqashini kutish kerak edi.
+     */
+    if (['ACCEPTED', 'CANCELLED', 'MUTED'].includes(status)) {
+      clearRepeat(notificationId);
+    } else {
+      syncRepeats();
+    }
 
     try {
       await apiFetch(`/panel/notifications/${encodeURIComponent(notificationId)}`, {
@@ -328,6 +384,13 @@ export function startNotificationCenter() {
       items: useNotifications.getState().items.map((n) =>
         (n.notificationId === notificationId ? { ...n, status } : n)),
     });
+
+    // Boshqa qurilmada qabul qilinsa — bu yerda ham jimiydi
+    if (['ACCEPTED', 'CANCELLED', 'MUTED'].includes(status)) {
+      clearRepeat(notificationId);
+    } else {
+      syncRepeats();
+    }
   });
 
   socket.on('connect', () => {
@@ -348,7 +411,26 @@ export function startNotificationCenter() {
 
   // Zaxira: socket "ulangan" ko'rinib turib hodisa kelmasligi
   // mumkin (proxy uzib qo'ysa). Har 60 soniyada tekshiramiz.
-  setInterval(() => useNotifications.getState().sync(), 60000);
+  /*
+   * Zaxira sinxronlash.
+   *
+   * Sahifa fonda bo'lsa so'rov YUBORILMAYDI: socket baribir
+   * ulanib turibdi va hodisalarni yetkazadi, ko'rinmayotgan
+   * tabdan har daqiqada tarmoqni bezovta qilishning ma'nosi
+   * yo'q. Qaytib kelinganda darhol bir marta sinxronlanadi —
+   * ya'ni ma'lumot eskirib qolmaydi.
+   */
+  setInterval(() => {
+    if (document.visibilityState !== 'visible') return;
+    useNotifications.getState().sync();
+  }, 60000);
+
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      useNotifications.getState().sync();
+      syncRepeats();
+    }
+  });
 
   // Brauzer ovozga ruxsatni faqat foydalanuvchi harakatidan
   // keyin beradi
@@ -389,10 +471,17 @@ export function startNotificationCenter() {
    * CANCELLED/MUTED) — jimiydi. Har bir tur o'zining ovozidan
    * foydalanadi, sozlamada o'chirilgan turlar tinch qoladi.
    */
-  runRepeatLoop();
+  syncRepeats();
 
-  // Ilova fonga o'tib qaytganda ham tekshiramiz
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') useNotifications.getState().sync();
+  /*
+   * Takrorlash oralig'i sozlamada o'zgarsa rejalar qayta
+   * quriladi. Ilgari 2 soniyalik sikl yangi qiymatni keyingi
+   * aylanishida o'zi o'qib olardi; rejalangan taymerga esa
+   * aniq xabar berish kerak.
+   */
+  useNotifSettings.subscribe(() => {
+    repeatTimers.forEach((t) => clearTimeout(t));
+    repeatTimers.clear();
+    syncRepeats();
   });
 }

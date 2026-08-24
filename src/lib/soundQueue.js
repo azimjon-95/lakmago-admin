@@ -27,16 +27,33 @@ import { currentVolume } from '@/lib/notifSettings';
 /**
  * Jimjit halqa — fon rejimida ovozni saqlab qolish uchun.
  *
- * Telefon brauzeri ilova fonga o'tganda audio sessiyani
- * to'xtatadi va keyingi play() jim o'tib ketadi. Agar bitta
- * ovoz UZLUKSIZ chalinib tursa, tizim sessiyani ochiq deb
- * biladi va yangi ovozlar ham eshitiladi.
+ * MUAMMO: telefon brauzeri ilova fonga o'tganda audio
+ * sessiyani to'xtatadi va keyingi play() jim o'tib ketadi.
+ * Bitta ovoz uzluksiz chalinib tursa, tizim sessiyani ochiq
+ * deb biladi.
  *
- * Shuning uchun eshitilmaydigan (butunlay jim) qisqa fayl
- * halqa bilan chalinadi. Batareyaga ta'siri sezilarsiz:
- * dekodlash yuki deyarli nol.
+ * ILGARI: halqa unlockSound() da yoqilib, BUTUN SEANS
+ * davomida to'xtovsiz aylanardi. Noutbukda bu:
+ *   - audio qurilmasini uyquga ketishдan to'sadi
+ *   - har soniyada WAV dekodlanadi
+ *   - brauzer tabni "ovoz chalayotgan" deb belgilaydi va
+ *     uni past quvvat rejimiga tushirmaydi
+ * Ish stolida esa u UMUMAN KERAK EMAS: desktop brauzerlar
+ * fon tabidagi audio sessiyani to'xtatmaydi.
+ *
+ * ENDI: halqa faqat KERAK BO'LGANDA — mobil qurilmada va
+ * faqat sahifa FONGA o'tgan paytda ishlaydi. Qaytib
+ * kelinganda darhol o'chadi.
  */
 let keepAlive = null;
+
+/*
+ * Sensorli, sichqonchasiz qurilma — ya'ni telefon/planshet.
+ * Noutbukda (sensorli ekran bo'lsa ham sichqonchasi bor)
+ * `hover: hover` rost bo'ladi va halqa umuman yoqilmaydi.
+ */
+const needsKeepAlive = () => typeof window !== 'undefined'
+  && window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
 
 function makeSilentLoop() {
   // 1 soniyalik jim WAV — tashqi faylsiz, base64 orqali
@@ -50,7 +67,7 @@ function makeSilentLoop() {
 
 /** Fon rejimida ovoz o'chib qolmasligi uchun sessiyani ushlab turadi. */
 export function startKeepAlive() {
-  if (keepAlive) return;
+  if (keepAlive || !needsKeepAlive()) return;
   keepAlive = makeSilentLoop();
   keepAlive.play().catch(() => { keepAlive = null; });
 }
@@ -95,17 +112,17 @@ export function unlockSound() {
       .catch(() => { el.volume = prev; });
   });
 
-  // Shu paytdan boshlab fon rejimi ham qo'llab-quvvatlanadi
-  startKeepAlive();
-
   /*
-   * Telefonda ilova fonga o'tib qaytganda audio sessiya uzilgan
-   * bo'lishi mumkin — qaytarib yoqamiz.
+   * Halqa DARHOL yoqilmaydi.
+   *
+   * Sahifa ko'rinib turganda play() baribir ishlaydi — halqa
+   * hech narsa bermaydi, faqat quvvat sarflaydi. U faqat
+   * sahifa fonga o'tganda kerak, o'sha paytda yoqiladi:
+   * sessiya hali tirik bo'lgani uchun halqa uni ushlab qoladi.
    */
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      if (keepAlive?.paused) keepAlive.play().catch(() => {});
-    }
+    if (document.visibilityState === 'hidden') startKeepAlive();
+    else stopKeepAlive();
   });
 }
 
