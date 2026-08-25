@@ -39,6 +39,31 @@ const flow = {
   cancelled: { label: 'Bekor qilindi', color: '#9A9A96', next: null },
 };
 
+/*
+ * OLIB KETISH uchun alohida matnlar.
+ *
+ * Ilgari `flow` fulfillment'ni hisobga olmasdi va mijoz o'zi
+ * olib ketadigan buyurtmada ham "Kuryer olib ketdi" chiqardi —
+ * hech qanday kuryer yo'q bo'lsa ham. Xodim chalkashardi.
+ *
+ * Holatlar o'zgarmaydi (server bir xil), faqat MATN boshqa:
+ * bazani ikkiga bo'lish o'rniga ko'rinishni moslaymiz.
+ */
+const PICKUP_FLOW = {
+  ready: { nextLabel: 'Mijoz olib ketdi' },
+  delivering: { label: 'Olib ketildi' },
+  delivered: { label: 'Olib ketildi' },
+};
+
+const isPickup = (o) => o.fulfillment === 'pickup';
+
+/** Holat ma'lumoti — olib ketish bo'lsa matnlar almashadi. */
+function metaOf(o) {
+  const base = flow[o.status] || {};
+  if (!isPickup(o)) return base;
+  return { ...base, ...(PICKUP_FLOW[o.status] || {}) };
+}
+
 const ORDERS_KEY = ['panel', 'orders'];
 
 export function RestaurantOrdersPage() {
@@ -255,7 +280,7 @@ export function RestaurantOrdersPage() {
 }
 
 function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispatch }) {
-  const meta = flow[o.status] || {};
+  const meta = metaOf(o);
   const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
   // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
   const elapsedMin = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
@@ -498,7 +523,35 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
             </button>
           ) : (
             <button
-              onClick={() => onAdvance(o)}
+              onClick={async () => {
+                /*
+                 * OLIB KETISHDA PUL OLINGANINI TEKSHIRAMIZ.
+                 *
+                 * Naqd buyurtmada mijoz kelib taomni oladi va
+                 * SHU YERDA to'laydi. "Olib ketdi" bosilishi
+                 * bilan buyurtma yopiladi va u ro'yxatdan
+                 * chiqadi — agar pul olinmagan bo'lsa, keyin
+                 * buni payqash deyarli imkonsiz.
+                 *
+                 * Yetkazishda bunday tekshiruv KERAK EMAS:
+                 * u yerda pulni kuryer oladi, restoran emas.
+                 *
+                 * Bu qattiq taqiq emas, ogohlantirish: xodim
+                 * pulni oldindan olgan bo'lishi ham mumkin.
+                 */
+                if (isPickup(o) && o.status === 'ready' && !o.isPaid) {
+                  const ok = await confirm({
+                    title: 'To\u2018lov belgilanmagan',
+                    content: `${som(o.total)} so'm \u00b7 naqd. `
+                      + 'Mijozdan pul olganingizga ishonchingiz komilmi? '
+                      + 'Yopilgandan keyin buyurtma ro\u2018yxatdan chiqadi.',
+                    tone: 'warning',
+                    okText: 'Ha, pul olindi',
+                  });
+                  if (!ok) return;
+                }
+                onAdvance(o);
+              }}
               disabled={busy}
               className="min-w-0 flex-1 truncate rounded-xl py-3 text-sm font-semibold text-white transition-transform active:scale-[0.98] disabled:opacity-60"
               style={{ background: meta.color }}
