@@ -117,7 +117,7 @@ export function RestaurantOrdersPage() {
     socket.on('order:update', onUpdate);
 
     // Polling YO'Q — React Query o'zi refetchInterval bilan
-    // yangilaydi (yuqorida, 30s). Avval bu yerda alohida
+    // yangilaydi (yuqorida, 120s). Avval bu yerda alohida
     // setInterval(25s) bor edi; React Query qo'shilgach ikkalasi
     // birga ishlab, so'rovlar IKKI BARAVAR ko'p ketardi.
     return () => {

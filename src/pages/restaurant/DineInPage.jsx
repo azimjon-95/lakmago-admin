@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, memo } from 'react';
+import { useState, useEffect, useCallback, useMemo, memo, useRef } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -159,6 +159,31 @@ export function DineInPage() {
   const downloadPdf = () =>
     download('/panel/tables/qr/pdf', 'qr-kodlar.pdf');
 
+  /*
+   * TableTile uchun BARQAROR ishlovchilar.
+   *
+   * Ular stolni ARGUMENT sifatida oladi, shuning uchun bog'liqlik
+   * ro'yxati bo'sh bo'la oladi va identifikatori hech qachon
+   * o'zgarmaydi. Aynan shu memo(TableTile) ni ishlatadi: socket
+   * bitta stolni yangilaganda faqat O'SHA plitka qayta chiziladi,
+   * qolgan 20-50 tasi tegilmaydi.
+   *
+   * useRef ishlatilmadi: quyidagi uchta funksiya (regenerate,
+   * removeTable, downloadQr) komponent ichida e'lon qilingan va
+   * har renderda yangilanadi — lekin ular FAQAT chaqirilish
+   * paytida o'qiladi, ya'ni eskirgan nusxa ushlanib qolmaydi.
+   * Buning uchun useRef bilan indirection qo'shish ortiqcha
+   * murakkablik bo'lardi.
+   */
+  const fns = useRef(null);
+  fns.current = { setManaging, setEditing, downloadQr, regenerate, removeTable };
+
+  const handleManage = useCallback((t) => fns.current.setManaging(t), []);
+  const handleEdit = useCallback((t) => fns.current.setEditing(t), []);
+  const handleQr = useCallback((t) => fns.current.downloadQr(t, 'svg'), []);
+  const handleRegen = useCallback((t) => fns.current.regenerate(t), []);
+  const handleRemove = useCallback((t) => fns.current.removeTable(t), []);
+
   const stats = useMemo(() => {
     const by = (s) => tables.filter((t) => t.status === s).length;
     return {
@@ -276,13 +301,20 @@ export function DineInPage() {
                     action={{ label: 'Birinchi stolni qo\u2018shish', onClick: () => setEditing('new') }} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+                    {/*
+                      Ishlovchilar STOL OBYEKTINI argument sifatida
+                      oladi. Ilgari har stol uchun 5 ta yangi
+                      strelka funksiya yaratilardi — bu holda
+                      memo() umuman ishlamaydi, chunki proplar
+                      har renderda yangi bo'lib chiqadi.
+                    */}
                     {tables.map((t) => (
                       <TableTile key={t._id} table={t}
-                        onManage={() => setManaging(t)}
-                        onQr={() => downloadQr(t, 'svg')}
-                        onEdit={() => setEditing(t)}
-                        onRegen={() => regenerate(t)}
-                        onRemove={() => removeTable(t)} />
+                        onManage={handleManage}
+                        onQr={handleQr}
+                        onEdit={handleEdit}
+                        onRegen={handleRegen}
+                        onRemove={handleRemove} />
                     ))}
                   </div>
                 )}
@@ -481,7 +513,20 @@ function TableActions({ onTheme, onPdf, onBulk, onAdd, layout }) {
 }
 
 /* ═══ Stol katakchasi ═══ */
-function TableTile({ table: t, onManage, onQr, onEdit, onRegen, onRemove }) {
+/*
+ * Stol plitkasi — memo bilan.
+ *
+ * Zalda 20-50 stol bo'ladi va 'table:update' socket hodisasi
+ * band paytda tez-tez keladi. memo'siz har hodisada BARCHA
+ * plitkalar qayta chizilardi; endi faqat o'zgargani.
+ *
+ * memo ishlashi uchun proplar barqaror bo'lishi SHART —
+ * yuqoridagi handleManage/handleQr/... useCallback bilan
+ * shu uchun qilingan.
+ */
+const TableTile = memo(function TableTile({
+  table: t, onManage, onQr, onEdit, onRegen, onRemove,
+}) {
   const ts = TABLE_STATUS[t.status] || TABLE_STATUS.available;
 
   const buttons = [
@@ -493,10 +538,10 @@ function TableTile({ table: t, onManage, onQr, onEdit, onRegen, onRemove }) {
 
   return (
     <article
-      onClick={onManage}
+      onClick={() => onManage(t)}
       role="button"
       tabIndex={0}
-      onKeyDown={(e) => { if (e.key === 'Enter') onManage(); }}
+      onKeyDown={(e) => { if (e.key === 'Enter') onManage(t); }}
       className="g tap relative overflow-hidden rounded-[20px] p-3 pl-3.5 text-left"
     >
       {/* Holat chizig'i — 40 ta stol orasidan bir qarashda ko'rinadi */}
@@ -528,7 +573,7 @@ function TableTile({ table: t, onManage, onQr, onEdit, onRegen, onRemove }) {
       <div className="grid grid-cols-4 gap-1">
         {buttons.map(([icon, label, fn, danger]) => (
           <button key={label}
-            onClick={(e) => { e.stopPropagation(); fn(); }}
+            onClick={(e) => { e.stopPropagation(); fn(t); }}
             title={label} aria-label={label}
             className="tap flex h-8 items-center justify-center rounded-[11px] text-[15px]"
             style={{
@@ -541,9 +586,8 @@ function TableTile({ table: t, onManage, onQr, onEdit, onRegen, onRemove }) {
       </div>
     </article>
   );
-}
+});
 
-/* ═══ Bo'sh holat ═══ */
 /* ═══════════════════════════════════════════════════════════
    STOL BOSHQARUVI — mehmon qabul qilish, taom kiritish, chek
    yopish. Restoran admini VA ofitsiant ikkalasi ham ishlata
