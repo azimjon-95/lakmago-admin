@@ -4,6 +4,7 @@ import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 const CATEGORIES = [
   { value: 'salqin', label: 'Ichimliklar' },
@@ -133,9 +134,8 @@ export function CatalogPage() {
                     }`}
                   >
                     {p.imageUrl ? (
-                      <img
-                        src={p.imageUrl}
-                        alt=""
+                      <Img
+                        src={p.imageUrl} w={96}
                         className="w-12 h-12 rounded-lg object-cover flex-none bg-canvas"
                       />
                     ) : (

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
+import { Img } from '@/components/Img';
 
 // Vaqt formatlash: bugun bo'lsa soat, aks holda sana
 function fmtTime(d) {
@@ -199,7 +200,7 @@ export function SupportPage() {
               <div className="flex items-start gap-3">
                 {/* Telegram rasmi yoki bosh harflar */}
                 {c.photoUrl ? (
-                  <img src={c.photoUrl} alt="" className="w-10 h-10 rounded-full object-cover flex-none" />
+                  <Img src={c.photoUrl} w={80} className="w-10 h-10 rounded-full object-cover flex-none" />
                 ) : (
                   <div className="w-10 h-10 rounded-full bg-brand-100 text-brand-text flex items-center justify-center text-xs font-bold flex-none">
                     {initials(c)}
@@ -246,7 +247,7 @@ export function SupportPage() {
               <i className="ti ti-arrow-left text-lg" />
             </button>
             {active.photoUrl ? (
-              <img src={active.photoUrl} alt="" className="w-11 h-11 rounded-full object-cover" />
+              <Img src={active.photoUrl} w={96} className="w-11 h-11 rounded-full object-cover" />
             ) : (
               <div className="w-11 h-11 rounded-full bg-brand-100 text-brand-text flex items-center justify-center text-sm font-bold">
                 {initials(active)}

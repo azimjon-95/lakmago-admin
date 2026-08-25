@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { MapPicker } from '@/components/MapPicker';
+import { useTempValue } from '@/hooks/useTempFlag';
 
 /**
  * Restoran o'z ma'lumotlarini tahrirlaydi.
@@ -12,7 +13,7 @@ import { MapPicker } from '@/components/MapPicker';
 export function RestaurantProfilePage() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [msg, flashMsg, setMsg] = useTempValue();
   const [mapOpen, setMapOpen] = useState(false);
 
   useEffect(() => {
@@ -87,8 +88,7 @@ export function RestaurantProfilePage() {
         if (payload[k] == null || payload[k] === '') payload[k] = 0;
       }
       await panelApi.updateProfile(payload);
-      setMsg({ type: 'ok', text: 'Saqlandi' });
-      setTimeout(() => setMsg(null), 2500);
+      flashMsg({ type: 'ok', text: 'Saqlandi' });
     } catch (e) {
       setMsg({ type: 'err', text: e.message });
     } finally {

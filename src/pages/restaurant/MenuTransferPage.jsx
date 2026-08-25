@@ -3,6 +3,7 @@ import { panelApi } from '@/api';
 import { getSocket } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm, confirmWithReason } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -404,7 +405,7 @@ function DetailModal({ id, box, onClose, onDone }) {
         {data.dishes?.map((d) => (
           <div key={d._id} className="flex items-center gap-3 px-3 py-2 border-b border-line last:border-0">
             {d.imageUrl ? (
-              <img src={d.imageUrl} alt="" className="w-9 h-9 rounded-lg object-cover flex-none" />
+              <Img src={d.imageUrl} w={72} className="w-9 h-9 rounded-lg object-cover flex-none" />
             ) : (
               <div className="w-9 h-9 rounded-lg bg-canvas flex-none" />
             )}

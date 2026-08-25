@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
+import { Img } from '@/components/Img';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU');
 
@@ -140,7 +141,7 @@ export function RestaurantDetailPage() {
                         style={{ background: d.tint || '#FAEEDA' }}
                       >
                         {d.imageUrl ? (
-                          <img src={d.imageUrl} alt="" className="w-full h-full object-cover" />
+                          <Img src={d.imageUrl} w={300} className="w-full h-full object-cover" />
                         ) : (
                           <i className={`ti ${d.icon || 'ti-bowl'} text-brand-600`} />
                         )}

@@ -4,6 +4,7 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
@@ -161,7 +162,7 @@ export function RestaurantMenuPage() {
                     style={{ background: d.tint || '#FAEEDA' }}
                   >
                     {d.imageUrl ? (
-                      <img src={d.imageUrl} alt="" className="w-full h-full object-cover" />
+                      <Img src={d.imageUrl} w={300} className="w-full h-full object-cover" />
                     ) : (
                       <i className={`ti ${d.icon || 'ti-bowl'} text-lg text-brand-600`} />
                     )}
@@ -624,7 +625,7 @@ function CatalogPicker({ onClose, onAdded }) {
           <div className="p-5">
             <div className="flex items-center gap-3 bg-canvas rounded-xl p-3 mb-4">
               {picked.imageUrl ? (
-                <img src={picked.imageUrl} alt="" className="w-14 h-14 rounded-lg object-cover flex-none" />
+                <Img src={picked.imageUrl} w={112} className="w-14 h-14 rounded-lg object-cover flex-none" />
               ) : (
                 <div className="w-14 h-14 rounded-lg bg-surface flex items-center justify-center flex-none">
                   <i className="ti ti-cup text-muted text-xl" />
@@ -713,7 +714,7 @@ function CatalogPicker({ onClose, onAdded }) {
                             }`}
                           >
                             {p.imageUrl ? (
-                              <img src={p.imageUrl} alt="" className="w-11 h-11 rounded-lg object-cover flex-none" />
+                              <Img src={p.imageUrl} w={96} className="w-11 h-11 rounded-lg object-cover flex-none" />
                             ) : (
                               <div className="w-11 h-11 rounded-lg bg-canvas flex items-center justify-center flex-none">
                                 <i className="ti ti-cup text-muted" />

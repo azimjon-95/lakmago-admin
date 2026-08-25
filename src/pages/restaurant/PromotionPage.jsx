@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -98,7 +99,7 @@ export function PromotionPage() {
         <div className="space-y-2.5">
           {ads.map((ad) => (
             <div key={ad._id} className="flex gap-3 rounded-xl border border-line bg-surface p-3">
-              <img src={ad.imageUrl} alt="" className="h-16 w-16 flex-none rounded-lg object-cover bg-canvas" />
+              <Img src={ad.imageUrl} w={128} className="h-16 w-16 flex-none rounded-lg object-cover bg-canvas" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
@@ -332,7 +333,7 @@ function AdForm({ pricePerDay, onClose, onCreated }) {
                     selectedImage === url ? 'border-brand-400' : 'border-transparent'
                   }`}
                 >
-                  <img src={url} alt="" className="h-full w-full object-cover" />
+                  <Img src={url} w={600} className="h-full w-full object-cover" />
                 </button>
               ))}
             </div>

@@ -5,6 +5,8 @@ import { getSocket, joinRestaurant } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { confirm } from '@/components/ui/confirm';
 import { resolveNotification } from '@/lib/notificationCenter';
+import { Img } from '@/components/Img';
+import { useTempFlag, useTempValue } from '@/hooks/useTempFlag';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -41,7 +43,7 @@ const ORDERS_KEY = ['panel', 'orders'];
 
 export function RestaurantOrdersPage() {
   const restaurant = useAuth((s) => s.restaurant);
-  const [flashId, setFlashId] = useState(null);
+  const [flashId, flashOrder] = useTempValue(5000);
   const knownIds = useRef(new Set());
   const qc = useQueryClient();
 
@@ -106,8 +108,7 @@ export function RestaurantOrdersPage() {
       // Bu yerda faqat kartani yoritamiz.
       if (!knownIds.current.has(order._id)) {
         knownIds.current.add(order._id);
-        setFlashId(order._id);
-        setTimeout(() => setFlashId(null), 5000);
+        flashOrder(order._id);
       }
     };
     const onUpdate = (order) => {
@@ -391,9 +392,8 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
           {/* Ism va aloqa */}
           <div className="flex items-center gap-2.5 mb-2">
             {o.customer?.photoUrl ? (
-              <img
-                src={o.customer.photoUrl}
-                alt=""
+              <Img
+                src={o.customer.photoUrl} w={64}
                 className="w-8 h-8 rounded-full object-cover flex-none"
                 onError={(e) => { e.currentTarget.style.display = 'none'; }}
               />
@@ -539,7 +539,7 @@ function CourierDispatchModal({ order, onClose, onSent }) {
   const [loading, setLoading] = useState(true);
   const [urls, setUrls] = useState(null);   // { link, telegram, whatsapp }
   const [err, setErr] = useState(null);
-  const [copied, setCopied] = useState(false);
+  const [copied, flashCopied] = useTempFlag(2000);
 
   useEffect(() => {
     panelApi.createDeliveryLink(order._id)
@@ -550,8 +550,7 @@ function CourierDispatchModal({ order, onClose, onSent }) {
   const copyLink = async () => {
     try {
       await navigator.clipboard.writeText(urls.link);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
+      flashCopied();
     } catch {
       // Clipboard ruxsati yo'q bo'lsa — jim, foydalanuvchi qo'lda nusxalaydi
     }

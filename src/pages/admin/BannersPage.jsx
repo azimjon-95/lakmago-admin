@@ -4,6 +4,7 @@ import { adminApi } from '@/api';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '' };
 const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1E2E'];
@@ -103,7 +104,7 @@ export function BannersPage() {
         <div className="grid gap-3">
           {withImage.map((r) => (
             <div key={r._id} className="bg-surface border border-line rounded-xl p-3 flex items-center gap-3 min-w-0">
-              <img src={r.imageUrl} alt="" className="w-24 h-16 rounded-lg object-cover flex-none" />
+              <Img src={r.imageUrl} w={200} className="w-24 h-16 rounded-lg object-cover flex-none" />
               <div className="flex-1 min-w-0">
                 <div className="font-medium text-ink truncate">{r.name}</div>
                 <div className="text-xs text-muted truncate">{r.cuisine}</div>

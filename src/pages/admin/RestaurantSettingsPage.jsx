@@ -4,6 +4,7 @@ import { adminApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { MapPicker } from '@/components/MapPicker';
 import { ImageUpload } from '@/components/ImageUpload';
+import { useTempValue } from '@/hooks/useTempFlag';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
@@ -30,7 +31,7 @@ export function RestaurantSettingsPage() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [mapOpen, setMapOpen] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [msg, flashMsg, setMsg] = useTempValue();
 
   useEffect(() => {
     adminApi.getRestaurants()
@@ -72,8 +73,7 @@ export function RestaurantSettingsPage() {
       const { name, ...rest } = form;
       const payload = { ...rest, images: rest.imageUrl ? [rest.imageUrl] : [] };
       await adminApi.updateRestaurant(id, payload);
-      setMsg({ type: 'ok', text: 'Saqlandi' });
-      setTimeout(() => setMsg(null), 2500);
+      flashMsg({ type: 'ok', text: 'Saqlandi' });
     } catch (e) {
       setMsg({ type: 'err', text: e.message });
     } finally {

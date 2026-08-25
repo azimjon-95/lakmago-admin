@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { panelApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
+import { useTempFlag, useTempValue } from '@/hooks/useTempFlag';
 
 /* ═══════════════════════════════════════════════════
    Kiosk linklar — zaldagi planshet uchun.
@@ -218,13 +219,12 @@ function Empty({ onCreate }) {
 function LinkCard({
   item, onToggle, onEdit, onRotate, onResetDevices, onRemove, onQr, onCopy,
 }) {
-  const [copied, setCopied] = useState(false);
+  const [copied, flashCopied] = useTempFlag(1800);
   const st = STATUS[item.status] || STATUS.disabled;
 
   const copy = async () => {
     if (await onCopy()) {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1800);
+      flashCopied();
     }
   };
 
@@ -492,13 +492,12 @@ function EditModal({ item, onClose, onSaved }) {
 
 /* ═══ Yaratilgandan keyin — link va PIN ═══ */
 function CreatedModal({ data, onClose }) {
-  const [copied, setCopied] = useState('');
+  const [copied, flashCopied] = useTempValue(1800);
 
   const copy = async (text, what) => {
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(what);
-      setTimeout(() => setCopied(''), 1800);
+      flashCopied(what);
     } catch { /* clipboard yopiq */ }
   };
 

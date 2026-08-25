@@ -294,6 +294,42 @@ isAdmin
 // =======================
 
 
+/*
+ * Yo'l -> chunk yuklovchi.
+ *
+ * Sahifalar App.jsx da lazy() bilan bo'lingan, ya'ni chunk
+ * faqat BOSILGANDAN keyin yuklana boshlaydi va foydalanuvchi
+ * spinner ko'radi. Sichqoncha bandga TEKKANDA yuklashni
+ * boshlasak, bosilgunga qadar (odatda 200-400 ms) chunk
+ * allaqachon keshda bo'ladi va o'tish bir zumda ko'rinadi.
+ *
+ * Faqat TEZ-TEZ ishlatiladigan sahifalar: hammasini oldindan
+ * yuklash lazy bo'linishning ma'nosini yo'qotardi.
+ *
+ * import() ni brauzer o'zi keshlaydi, shuning uchun takror
+ * hover qo'shimcha so'rov yubormaydi.
+ */
+const PREFETCH = {
+  '/': () => import('@/pages/restaurant/OrdersPage'),
+  '/menu': () => import('@/pages/restaurant/MenuPage'),
+  '/dine-in': () => import('@/pages/restaurant/DineInPage'),
+  '/stop-list': () => import('@/pages/restaurant/StopListPage'),
+  '/orders': () => import('@/pages/admin/OrdersMonitorPage'),
+  '/restaurants': () => import('@/pages/admin/RestaurantsPage'),
+};
+
+const prefetched = new Set();
+
+const prefetch = (to) => {
+  if (prefetched.has(to)) return;
+  const load = PREFETCH[to];
+  if (!load) return;
+  prefetched.add(to);
+  // Xato bo'lsa jim o'tamiz — bu shunchaki optimallashtirish,
+  // haqiqiy yuklash baribir bosilganda amalga oshadi
+  load().catch(() => prefetched.delete(to));
+};
+
 const NavItem=({item,onClick})=>(
 
 <NavLink
@@ -303,6 +339,10 @@ to={item.to}
 end={item.end}
 
 onClick={onClick}
+
+onMouseEnter={()=>prefetch(item.to)}
+
+onTouchStart={()=>prefetch(item.to)}
 
 className={({isActive})=>
 

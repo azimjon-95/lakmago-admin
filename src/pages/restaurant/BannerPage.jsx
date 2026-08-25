@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
+import { useTempFlag } from '@/hooks/useTempFlag';
 
 export function RestaurantBannerPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [hasBanner, setHasBanner] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, flashSaved] = useTempFlag();
 
   useEffect(() => {
     panelApi.getBanner()
@@ -29,8 +30,7 @@ export function RestaurantBannerPage() {
       // Restoran banneri — faqat rasm, matn va tugma yo'q
       await panelApi.setBanner({ imageUrl });
       setHasBanner(true);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      flashSaved();
     } catch (e) {
       alert(e.message);
     } finally {

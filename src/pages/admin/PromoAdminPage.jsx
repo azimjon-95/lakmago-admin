@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
+import { Img } from '@/components/Img';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -99,9 +100,8 @@ export function PromoAdminPage() {
         <div className="space-y-3">
           {ads.map((ad) => (
             <div key={ad._id} className="rounded-xl border border-line bg-surface p-3.5 sm:flex sm:gap-4">
-              <img
-                src={ad.imageUrl}
-                alt=""
+              <Img
+                src={ad.imageUrl} w={400}
                 className="mb-3 h-40 w-full flex-none rounded-lg object-cover bg-canvas sm:mb-0 sm:h-28 sm:w-40"
               />
               <div className="min-w-0 flex-1">

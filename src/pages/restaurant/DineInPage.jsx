@@ -6,6 +6,8 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { getSocket } from '@/lib/socket';
 import { confirm } from '@/components/ui/confirm';
 import { useAuth } from '@/store/auth';
+import { Img } from '@/components/Img';
+import { useTempValue } from '@/hooks/useTempFlag';
 
 /* ═══════════════════════════════════════════════════
    Dine-in — iOS 26 (Liquid Glass)
@@ -1010,7 +1012,7 @@ const MenuRow = memo(function MenuRow({ dish: d, qty, onAdd, onRemove }) {
 
       {/* Rasm — bo'lmasa taom nomining birinchi harfi bilan chiroyli placeholder */}
       {d.imageUrl ? (
-        <img src={d.imageUrl} alt="" loading="lazy"
+        <Img src={d.imageUrl} w={96}
           className="h-12 w-12 flex-none rounded-[11px] object-cover" />
       ) : (
         <div className="flex h-12 w-12 flex-none items-center justify-center rounded-[11px] text-[17px] font-bold"
@@ -1323,7 +1325,7 @@ function QrPreview({ form }) {
           {/* Yuqori foto */}
           <div className="absolute inset-x-0 top-0 h-[40%] overflow-hidden bg-[#201915]">
             {form.backgroundImage && (
-              <img src={form.backgroundImage} alt=""
+              <Img src={form.backgroundImage} w={800}
                 className="h-full w-full object-cover" />
             )}
             <div className="absolute inset-0"
@@ -1730,7 +1732,7 @@ function ServiceFee({ cfg, onSaved }) {
     useGlobalStopList: cfg?.useGlobalStopList !== false,
   });
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [msg, flashMsg, setMsg] = useTempValue();
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -1738,9 +1740,8 @@ function ServiceFee({ cfg, onSaved }) {
     setSaving(true); setMsg(null);
     try {
       await panelApi.updateDineInSettings(form);
-      setMsg({ ok: true, text: 'Saqlandi' });
+      flashMsg({ ok: true, text: 'Saqlandi' });
       onSaved?.();
-      setTimeout(() => setMsg(null), 2500);
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     } finally {

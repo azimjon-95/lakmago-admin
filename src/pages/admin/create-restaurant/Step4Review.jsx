@@ -1,6 +1,7 @@
 import { useCreateForm } from './context';
 import { CATEGORIES, KINDS } from '../restaurantMeta';
 import { Review } from './fields';
+import { Img } from '@/components/Img';
 
 export function Step4Review() {
   const { form } = useCreateForm();
@@ -18,7 +19,7 @@ export function Step4Review() {
       </p>
 
       {form.imageUrl && (
-        <img src={form.imageUrl} alt="" className="w-full h-36 object-cover rounded-xl mb-4" />
+        <Img src={form.imageUrl} w={800} className="w-full h-36 object-cover rounded-xl mb-4" />
       )}
 
       <Review label="Nomi" value={form.name} />

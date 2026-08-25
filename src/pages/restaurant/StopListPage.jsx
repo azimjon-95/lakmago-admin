@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { panelApi } from '@/api';
 import { getSocket } from '@/lib/socket';
+import { Img } from '@/components/Img';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -102,9 +103,8 @@ export function StopListPage() {
               >
                 {/* Rasm */}
                 {d.imageUrl || d.images?.[0] ? (
-                  <img
-                    src={d.imageUrl || d.images[0]}
-                    alt=""
+                  <Img
+                    src={d.imageUrl || d.images[0]} w={112}
                     className="w-14 h-14 rounded-lg object-cover flex-none bg-canvas grayscale"
                   />
                 ) : (

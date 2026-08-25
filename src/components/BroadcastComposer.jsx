@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { Img } from '@/components/Img';
 
 // Telegram reklama yaratish — rasm/matn/tugma har xil kombinatsiyada.
 // target: { chatId, title } (bitta guruh) yoki { all: true } (barcha guruhlar)
@@ -110,7 +111,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
               {/* Telegram xabar puffagi */}
               <div className="bg-white rounded-xl rounded-tl-sm shadow-sm overflow-hidden max-w-[85%]">
                 {imageUrl && (
-                  <img src={imageUrl} alt="" className="w-full object-cover" style={{ maxHeight: 180 }} />
+                  <Img src={imageUrl} w={800} className="w-full object-cover" style={{ maxHeight: 180 }} />
                 )}
                 {(text || (!imageUrl && !text)) && (
                   <div className="px-3 py-2">

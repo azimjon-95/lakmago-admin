@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
+import { useTempValue } from '@/hooks/useTempFlag';
 
 /* ═══════════════════════════════════════════════════
    Boshqaruv paneli — platforma nazorati
@@ -61,7 +62,9 @@ function delta(now, before) {
 
 export function DashboardPage() {
   const [filter, setFilter] = useState('open');
-  const [flash, setFlash] = useState(null);
+  // 3 soniya yonib turadi; ketma-ket buyurtma kelsa avvalgi
+  // taymer bekor bo'ladi va ikkinchi karta to'liq yonadi
+  const [flash, flashOrder] = useTempValue(3000);
   const qc = useQueryClient();
 
   /*
@@ -124,8 +127,7 @@ export function DashboardPage() {
       // buyurtma DARHOL ekranda paydo bo'ladi
       qc.setQueryData(['admin', 'orders'], (prev = []) =>
         [order, ...prev.filter((o) => o._id !== order._id)]);
-      setFlash(order._id);
-      setTimeout(() => setFlash(null), 3000);
+      flashOrder(order._id);
       // Statistika o'zgardi — uni qayta so'raymiz
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     };

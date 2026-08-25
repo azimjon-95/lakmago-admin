@@ -3,6 +3,7 @@ import { adminApi } from '@/api';
 import { getSocket } from '@/lib/socket';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { confirm, confirmWithReason } from '@/components/ui/confirm';
+import { useTempValue } from '@/hooks/useTempFlag';
 
 const fmtDT = (d) => d ? new Date(d).toLocaleString('ru-RU', {
   day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
@@ -188,7 +189,7 @@ export function DineInAdminPage() {
 function Tariff() {
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState(null);
+  const [msg, flashMsg, setMsg] = useTempValue();
 
   useEffect(() => {
     adminApi.getDineInTariff().then(setForm).catch(() => {});
@@ -207,8 +208,7 @@ function Tariff() {
         commissionPercent: Number(form.commissionPercent) || 0,
         deductFromSettlement: Boolean(form.deductFromSettlement),
       });
-      setMsg({ ok: true, text: 'Saqlandi' });
-      setTimeout(() => setMsg(null), 2500);
+      flashMsg({ ok: true, text: 'Saqlandi' });
     } catch (e) {
       setMsg({ ok: false, text: e.message });
     } finally {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
+import { useTempFlag } from '@/hooks/useTempFlag';
 
 // Komissiya rejimlari — mijoz/restoranга ta'sirini tushuntiradi
 const MODES = [
@@ -29,7 +30,7 @@ export function SettingsPage() {
   const [referralEnabled, setReferralEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
+  const [saved, flashSaved] = useTempFlag();
 
   useEffect(() => {
     adminApi.getSettings()
@@ -50,8 +51,7 @@ export function SettingsPage() {
         commissionMode: mode,
         referralEnabled,
       });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2500);
+      flashSaved();
     } catch (e) {
       alert(e.message);
     } finally {
