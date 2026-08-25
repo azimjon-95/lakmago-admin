@@ -106,6 +106,22 @@ export function DineInLivePage() {
     };
   }, [load]);
 
+  /*
+   * Keyingi kursni oshxonaga yuborish.
+   *
+   * Kurs 1 buyurtma bilan birga ketadi. 2, 3... esa oshxonada
+   * "keyinroq tayyorlash" bo'lib turadi va mijoz tayyor
+   * bo'lganda shu tugma bilan otiladi — taom sovib qolmaydi.
+   */
+  const fireCourse = async (order, course) => {
+    try {
+      await panelApi.fireDineInCourse(order._id, course);
+      loadDebounced();
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
   const setStatus = async (order, status) => {
     // Bildirishnoma panelida alohida bosish shart emas — bu
     // yerda haqiqiy amal bajarilishi bilan u ham yopiladi
@@ -252,14 +268,9 @@ export function DineInLivePage() {
                   </span>
                 </div>
 
-                <div className="text-sm text-muted mb-2 space-y-0.5">
-                  {o.items?.map((it, i) => (
-                    <div key={i} className="flex justify-between gap-3">
-                      <span>{it.name} ×{it.quantity}</span>
-                      <span className="flex-none">{som(it.unitPrice * it.quantity)}</span>
-                    </div>
-                  ))}
-                </div>
+                <SourceBadge order={o} />
+
+                <OrderItems order={o} onFire={fireCourse} />
 
                 {o.serviceFee > 0 && (
                   <div className="flex justify-between text-xs text-muted pt-1.5 border-t border-line">
@@ -280,6 +291,19 @@ export function DineInLivePage() {
                 )}
 
                 <div className="flex gap-2">
+                  {/*
+                    Tasdiqlash tugmasi FAQAT QR buyurtmasida.
+
+                    Ofitsiant, kiosk va admin buyurtmalari serverda
+                    darhol 'accepted' bo'ladi va to'g'ridan-to'g'ri
+                    oshxonaga ketadi — ular yuzma-yuz kiritilgan va
+                    allaqachon tekshirilgan. Bu yerda ular faqat
+                    MA'LUMOT uchun turadi.
+
+                    QR buyurtmasi esa mijoz o'zi kiritgan: xato
+                    bosish, hazil buyurtma yoki stop-listdagi taom
+                    bo'lishi mumkin, shuning uchun tasdiq kerak.
+                  */}
                   {st.next && (
                     <button onClick={() => setStatus(o, st.next)}
                       className="flex-1 bg-brand-400 text-brand-text font-medium py-2 rounded-lg text-sm">
@@ -431,6 +455,93 @@ function DineInLocked() {
         className="inline-block mt-5 border border-line text-muted px-4 py-2 rounded-xl text-sm">
         Dine-in bo'limiga
       </a>
+    </div>
+  );
+}
+
+/* ═══ Buyurtma manbasi ═══
+   Ofitsiant/kiosk/admin buyurtmasi allaqachon qabul qilingan —
+   bu sahifada ular faqat ma'lumot uchun turadi. QR buyurtmasi
+   esa tasdiq kutadi. Farqni bir qarashda ko'rsatish kerak. */
+function SourceBadge({ order: o }) {
+  const src = o.orderSource === 'qr'
+    ? { label: 'QR — mijoz', icon: 'ti-qrcode', cls: 'bg-blue-50 text-blue-700' }
+    : o.waiterName
+      ? { label: o.waiterName, icon: 'ti-user', cls: 'bg-brand-50 text-brand-600' }
+      : { label: 'Panel', icon: 'ti-device-desktop', cls: 'bg-slate-100 text-slate-600' };
+
+  return (
+    <div className="flex items-center gap-1.5 mb-2">
+      <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${src.cls}`}>
+        <i className={`ti ${src.icon} mr-1`} />{src.label}
+      </span>
+      {o.orderSource !== 'qr' && (
+        <span className="text-[11px] text-muted">oshxonaga yuborilgan</span>
+      )}
+    </div>
+  );
+}
+
+/* ═══ Taomlar — kurslar bo'yicha ═══ */
+function OrderItems({ order: o, onFire }) {
+  const fired = o.firedCourses || [1];
+
+  // Kurs bo'yicha guruhlash. Eski buyurtmalarda course
+  // bo'lmasligi mumkin — ular 1-kursga tushadi.
+  const groups = new Map();
+  for (const it of o.items || []) {
+    const c = it.course || 1;
+    if (!groups.has(c)) groups.set(c, []);
+    groups.get(c).push(it);
+  }
+  const courses = [...groups.keys()].sort((a, b) => a - b);
+  const multi = courses.length > 1;
+
+  return (
+    <div className="text-sm text-muted mb-2 space-y-2">
+      {courses.map((c) => {
+        const isFired = fired.includes(c);
+        return (
+          <div key={c}>
+            {multi && (
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <span className={`text-[11px] font-semibold ${isFired ? 'text-brand-600' : 'text-muted'}`}>
+                  {c}-kurs {isFired ? '' : '· keyinroq'}
+                </span>
+                {!isFired && !['cancelled', 'completed'].includes(o.status) && (
+                  <button
+                    onClick={() => onFire(o, c)}
+                    className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-brand-400 text-brand-text"
+                  >
+                    Oshxonaga yuborish
+                  </button>
+                )}
+              </div>
+            )}
+
+            <div className={`space-y-0.5 ${!isFired && multi ? 'opacity-55' : ''}`}>
+              {groups.get(c).map((it, i) => (
+                <div key={i}>
+                  <div className="flex justify-between gap-3">
+                    <span>
+                      {it.name} ×{it.quantity}
+                      {it.takeaway && (
+                        <span className="ml-1.5 text-[10px] font-semibold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">
+                          olib ketish
+                        </span>
+                      )}
+                    </span>
+                    <span className="flex-none">{som(it.unitPrice * it.quantity)}</span>
+                  </div>
+                  {it.note && (
+                    <div className="text-[11px] text-brand-600 pl-2">✎ {it.note}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }

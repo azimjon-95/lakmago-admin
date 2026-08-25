@@ -84,6 +84,13 @@ export const panelApi = {
 
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
+  /** Keyingi kursni (podacha) oshxonaga yuborish. */
+  fireDineInCourse: (orderId, course) =>
+    apiFetch(`/panel/dinein/orders/${orderId}/fire`, {
+      method: 'PATCH',
+      body: JSON.stringify({ course }),
+    }),
+
   /*
    * Kiosk linklar — zaldagi planshet uchun.
    *
