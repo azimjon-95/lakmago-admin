@@ -51,8 +51,12 @@ const flow = {
  */
 const PICKUP_FLOW = {
   ready: { nextLabel: 'Mijoz olib ketdi' },
-  delivering: { label: 'Olib ketildi' },
-  delivered: { label: 'Olib ketildi' },
+  // nextLabel ATAYLAB tozalanadi: next=null bo'lgani uchun
+  // tugma chizilmaydi, lekin qoldiq matn boshqa joyda
+  // ishlatilib qolmasin ("mijoz qabul qilishini kuting" —
+  // olib ketishda mijoz allaqachon qabul qilgan)
+  delivering: { label: 'Olib ketildi', nextLabel: null },
+  delivered: { label: 'Olib ketildi', nextLabel: null },
 };
 
 const isPickup = (o) => o.fulfillment === 'pickup';
@@ -343,7 +347,17 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
                 {o.fulfillment === 'pickup' ? ' ga mijoz keladi' : ' ga yetkazish'}
               </>
             ) : (
-              <>Imkon qadar tez {o.fulfillment === 'pickup' ? '— mijoz kutmoqda' : ''}</>
+              /*
+                "mijoz kutmoqda" faqat taom hali berilmagan
+                bo'lsa o'rinli. Mijoz olib ketgandan keyin
+                (delivering/delivered) u hech kimni kutmayapti.
+              */
+              <>
+                Imkon qadar tez
+                {isPickup(o) && !['delivering', 'delivered', 'cancelled'].includes(o.status)
+                  ? ' — mijoz kutmoqda'
+                  : ''}
+              </>
             )}
           </div>
         </div>
@@ -566,11 +580,27 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
           )}
         </div>
       )}
+      {/*
+        'delivering' holati ikki xil ma'noni bildiradi:
+
+          yetkazish   — kuryer yo'lda, mijoz hali olmagan
+          olib ketish — mijoz taomni QO'LGA OLDI, jarayon tugadi
+
+        Ilgari ikkalasiga bir xil matn chiqardi va olib ketishda
+        "kuryer yo'lda, mijoz qabul qilishini kuting" deb turardi —
+        hech qanday kuryer yo'q, mijoz esa allaqachon ketgan.
+      */}
       {!meta.next && o.status === 'delivering' && (
         <div className="px-4 pb-4">
-          <div className="text-center text-sm text-purple-600 bg-purple-50 py-2.5 rounded-lg">
-            🛵 {o.courierName} yo'lda — mijoz qabul qilishini kuting
-          </div>
+          {isPickup(o) ? (
+            <div className="text-center text-sm text-green-700 bg-green-50 py-2.5 rounded-lg">
+              ✓ Mijoz olib ketdi — buyurtma yakunlandi
+            </div>
+          ) : (
+            <div className="text-center text-sm text-purple-600 bg-purple-50 py-2.5 rounded-lg">
+              🛵 {o.courierName} yo'lda — mijoz qabul qilishini kuting
+            </div>
+          )}
         </div>
       )}
     </div>
