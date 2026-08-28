@@ -4,6 +4,7 @@ import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { KIND_LABEL } from './restaurantMeta';
 import { confirm, confirmWithReason } from '@/components/ui/confirm';
+import { Expandable } from '@/components/Expandable';
 
 
 export function RestaurantsPage() {
@@ -161,7 +162,10 @@ export function RestaurantsPage() {
                       <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-none">Yopiq</span>
                     )}
                   </div>
-                  <div className="text-sm text-muted mt-0.5 break-words">{r.cuisine}</div>
+                  <Expandable
+                    text={r.cuisine}
+                    className="text-sm text-muted mt-0.5 break-words"
+                  />
                   {r.ownerLogin && (
                     <div className="text-xs text-muted mt-1 break-all">
                       <i className="ti ti-user text-[11px]" /> login: <span className="font-mono text-ink">{r.ownerLogin}</span>

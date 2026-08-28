@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { panelApi } from '@/api';
+import { DRINK_TYPES, DRINK_LABEL, isDrink, amountField, showNutrition } from '@/lib/dishMeta';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
@@ -96,7 +97,32 @@ export function RestaurantMenuPage() {
     // tartib bilan bir xil bo'lishi kerak
     const out = DISH_CATEGORIES
       .filter((cat) => buckets.has(cat.value))
-      .map((cat) => ({ ...cat, items: buckets.get(cat.value) }));
+      .map((cat) => {
+        const items = buckets.get(cat.value);
+
+        /*
+         * ICHIMLIKLAR TUR BO'YICHA TARTIBLANADI.
+         *
+         * Alohida guruh sifatida ajratilmaydi — bitta
+         * "Ichimlik" sarlavhasi ostida qoladi, lekin ichida
+         * sok sokka, choy choyga yaqin turadi. Restoranda 30
+         * ta ichimlik bo'lsa, aralash ro'yxatda kerakligini
+         * topish qiyin.
+         *
+         * DRINK_TYPES tartibi ishlatiladi, alifbo emas:
+         * salqin ichimliklar eng ko'p buyurtma qilinadi va
+         * yuqorida turishi kerak.
+         */
+        if (!isDrink(cat.value)) return { ...cat, items };
+
+        const order = new Map(DRINK_TYPES.map((d, i) => [d.value, i]));
+        const sorted = [...items].sort((a, b) => {
+          const ai = order.has(a.drinkType) ? order.get(a.drinkType) : 99;
+          const bi = order.has(b.drinkType) ? order.get(b.drinkType) : 99;
+          return ai - bi || String(a.name).localeCompare(String(b.name));
+        });
+        return { ...cat, items: sorted, byDrinkType: true };
+      });
 
     // Kategoriyasi noma'lum taomlar (eski ma'lumot)
     if (orphans.length) out.push({ value: '_', label: 'Boshqalar', items: orphans });
@@ -136,7 +162,7 @@ export function RestaurantMenuPage() {
           Menyu bo'sh. "Taom qo'shish" tugmasini bosing.
         </div>
       ) : (
-        grouped.map(({ value, label, items }) => (
+        grouped.map(({ value, label, items, byDrinkType }) => (
           <div key={value} className="mb-6">
             <h2 className="text-sm font-medium text-muted mb-2 uppercase tracking-wide flex items-center gap-2">
               {label}
@@ -145,9 +171,21 @@ export function RestaurantMenuPage() {
               </span>
             </h2>
             <div className="grid gap-2">
-              {items.map((d) => (
+              {items.map((d, i) => (
+                <Fragment key={d._id}>
+                {/*
+                  Ichimlik turi o'zgarganda kichik sarlavha.
+                  Alohida bo'lim emas — shu ro'yxat ichida
+                  ajratgich, ya'ni "Ichimlik" bittaligicha
+                  qoladi va mijoz uni bosh sahifadan topadi.
+                */}
+                {byDrinkType && d.drinkType !== items[i - 1]?.drinkType && (
+                  <div className="text-[11px] font-semibold text-brand-600
+                                  uppercase tracking-wide mt-2 first:mt-0">
+                    {DRINK_LABEL[d.drinkType] || 'Boshqa ichimliklar'}
+                  </div>
+                )}
                 <div
-                  key={d._id}
                   className={`bg-surface border rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 ${
                     d.isAvailable ? 'border-line' : 'border-red-200 bg-red-50/40'
                   }`}
@@ -218,6 +256,7 @@ export function RestaurantMenuPage() {
                     </button>
                   </div>
                 </div>
+                </Fragment>
               ))}
             </div>
           </div>
@@ -262,6 +301,8 @@ function DishForm({ dish, onClose, onSaved }) {
     prepMinutes: dish?.prepMinutes ?? 15,
     weight: dish?.weight || '',
     volume: dish?.volume || '',
+    drinkType: dish?.drinkType || '',
+    volume: dish?.volume || '',
     calories: dish?.calories ?? null,
     protein: dish?.protein ?? null,
     fat: dish?.fat ?? null,
@@ -271,6 +312,9 @@ function DishForm({ dish, onClose, onSaved }) {
     dineInPrice: dish?.dineInPrice ?? null,
   });
   const [err, setErr] = useState(null);
+
+  // Kategoriyaga qarab miqdor maydoni (gramm yoki litr)
+  const amount = amountField(form.category);
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
@@ -290,6 +334,8 @@ function DishForm({ dish, onClose, onSaved }) {
         prepMinutes: Number(form.prepMinutes) || 15,
         // Qo'shimcha ma'lumot — faqat to'ldirilganlari yuboriladi
         ...(form.weight.trim() ? { weight: form.weight.trim() } : {}),
+        ...(form.volume.trim() ? { volume: form.volume.trim() } : {}),
+        ...(form.drinkType ? { drinkType: form.drinkType } : {}),
         ...(form.calories ? { calories: Number(form.calories) } : {}),
         ...(form.protein ? { protein: Number(form.protein) } : {}),
         ...(form.fat ? { fat: Number(form.fat) } : {}),
@@ -372,6 +418,32 @@ function DishForm({ dish, onClose, onSaved }) {
           </select>
         </Field>
 
+        {/*
+          ICHIMLIK TURI — faqat ichimlik tanlanganda.
+
+          Bu asosiy kategoriya EMAS: mijoz bosh sahifada
+          "Ichimlik" ni bosganda hammasi chiqadi. Tur esa
+          menyu ichida guruhlash uchun — sok sokka, choy
+          choyga yaqin tursin.
+        */}
+        {isDrink(form.category) && (
+          <Field
+            label="Ichimlik turi"
+            hint="Menyuda shu sarlavha ostida guruhlanadi"
+          >
+            <select
+              value={form.drinkType}
+              onChange={(e) => set('drinkType', e.target.value)}
+              className="inp"
+            >
+              <option value="">Tanlanmagan</option>
+              {DRINK_TYPES.map((d) => (
+                <option key={d.value} value={d.value}>{d.label}</option>
+              ))}
+            </select>
+          </Field>
+        )}
+
         {/* 4. Narx */}
         <div className="grid grid-cols-2 gap-3">
           <Field label="Narx *">
@@ -408,18 +480,23 @@ function DishForm({ dish, onClose, onSaved }) {
           </summary>
 
           <div className="p-3 pt-1">
-            <Field
-              label="Og'irlik"
-              hint="Bitta taom: 150 г · Assorti: 150/30/30/20 г"
-            >
+            {/*
+              Miqdor maydoni kategoriyaga qarab almashadi.
+              Ichimlikda gramm so'rash xato: mijoz 0.5 l ni
+              kutadi, "500 г" esa g'alati ko'rinadi va litrga
+              aylantirib o'ylashga majbur qiladi.
+            */}
+            <Field label={amount.label} hint={amount.hint}>
               <input
-                value={form.weight}
-                onChange={(e) => set('weight', e.target.value)}
-                placeholder="150 г"
+                value={form[amount.field]}
+                onChange={(e) => set(amount.field, e.target.value)}
+                placeholder={amount.placeholder}
                 className="inp"
               />
             </Field>
 
+            {showNutrition(form.category) && (
+              <>
             <Field label="Kaloriya (ккал)">
               <NumberInput
                 value={form.calories}
@@ -455,6 +532,8 @@ function DishForm({ dish, onClose, onSaved }) {
                 />
               </Field>
             </div>
+              </>
+            )}
           </div>
         </details>
 
