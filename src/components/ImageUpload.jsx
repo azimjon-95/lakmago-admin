@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { uploadImage, optimizeUrl } from '@/lib/cloudinary';
+import { ImageCropper } from './ImageCropper';
 
 // Bitta rasm yuklash komponenti (taom yoki banner uchun).
 // value = rasm URL (bor bo'lsa preview), onChange(url) — yuklangач chaqiriladi.
@@ -8,19 +9,44 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [err, setErr] = useState(null);
+  // Qirqish oynasiga tushadigan tanlangan fayl
+  const [cropping, setCropping] = useState(null);
   const inputRef = useRef(null);
 
   const pick = () => inputRef.current?.click();
 
-  const handleFile = async (e) => {
+  // 'aspect' propi "4/3" ko'rinishida keladi — songa aylantiramiz
+  const ratio = (() => {
+    const [w, h] = String(aspect).split('/').map(Number);
+    return h ? w / h : 4 / 3;
+  })();
+
+  /*
+   * Fayl tanlangach DARHOL yuklanmaydi — avval qirqish oynasi.
+   *
+   * Sabab: telefondan olingan rasm odatda vertikal (9:16), menyu
+   * kartochkasi esa gorizontal (4:3). Avtomatik `object-fit: cover`
+   * markazni oladi va taomning yarmi kesilib qolardi. Endi
+   * qaysi joyni ko'rsatishni foydalanuvchi hal qiladi.
+   *
+   * Qo'shimcha foyda: qirqilgan rasm asl fayldan kichik bo'ladi,
+   * ya'ni yuklash tezroq va Cloudinary'da kam joy egallaydi.
+   */
+  const handleFile = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Tekshiruv — faqat rasm, 5MB gacha
     if (!file.type.startsWith('image/')) { setErr('Faqat rasm fayli'); return; }
     if (file.size > 5 * 1024 * 1024) { setErr('Rasm 5MB dan katta bo‘lmasin'); return; }
 
     setErr(null);
+    setCropping(file);
+    // Bir xil faylni qayta tanlash ham ishlasin
+    if (inputRef.current) inputRef.current.value = '';
+  };
+
+  const upload = async (file) => {
+    setCropping(null);
     setUploading(true);
     setProgress(0);
     try {
@@ -30,7 +56,6 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
       setErr(e2.message || 'Yuklashda xato');
     } finally {
       setUploading(false);
-      if (inputRef.current) inputRef.current.value = '';
     }
   };
 
@@ -81,6 +106,15 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
       )}
 
       <input ref={inputRef} type="file" accept="image/*" onChange={handleFile} className="hidden" />
+
+      {cropping && (
+        <ImageCropper
+          file={cropping}
+          aspect={ratio}
+          onCancel={() => setCropping(null)}
+          onDone={upload}
+        />
+      )}
     </div>
   );
 }
