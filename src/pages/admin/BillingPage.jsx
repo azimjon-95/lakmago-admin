@@ -9,10 +9,10 @@ const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const somT = (tiyin) => som(Math.round((tiyin ?? 0) / 100));
 
 const TYPE_LABEL = {
-  payment_in: { text: 'Mijoz to\u2018lovi', color: 'text-green-600' },
+  payment_in: { text: 'Mijoz to‘lovi', color: 'text-green-600' },
   commission: { text: 'Komissiya', color: 'text-brand-600' },
   restaurant_due: { text: 'Restoranga', color: 'text-blue-600' },
-  payout: { text: 'To\u2018landi', color: 'text-violet-600' },
+  payout: { text: 'To‘landi', color: 'text-violet-600' },
   refund: { text: 'Qaytarildi', color: 'text-red-600' },
   adjustment: { text: 'Tuzatish', color: 'text-muted' },
 };

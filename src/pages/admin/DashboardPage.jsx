@@ -466,7 +466,7 @@ function OrderFeed({ orders, flash, filter }) {
       <div className="g rounded-[20px] px-6 py-10 text-center">
         <i className="ti ti-receipt-off mb-2 block text-2xl text-muted" />
         <div className="text-[14px] font-semibold text-ink">
-          {filter === 'open' ? 'Jarayondagi buyurtma yo\u2018q' : 'Buyurtma yo\u2018q'}
+          {filter === 'open' ? 'Jarayondagi buyurtma yo‘q' : 'Buyurtma yo‘q'}
         </div>
         <p className="mt-1 text-[12.5px] text-muted">
           Yangi buyurtma kelganda shu yerda jonli ko'rinadi

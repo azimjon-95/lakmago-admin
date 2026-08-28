@@ -8,9 +8,9 @@ const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
 
 const STATUS_LABELS = {
-  pending: { text: 'Ko\u2018rib chiqilmoqda', cls: 'bg-amber-50 text-amber-700' },
+  pending: { text: 'Ko‘rib chiqilmoqda', cls: 'bg-amber-50 text-amber-700' },
   approved: { text: 'Tasdiqlangan', cls: 'bg-green-50 text-green-700' },
-  active: { text: 'Hozir ko\u2018rinmoqda', cls: 'bg-green-50 text-green-700' },
+  active: { text: 'Hozir ko‘rinmoqda', cls: 'bg-green-50 text-green-700' },
   rejected: { text: 'Rad etilgan', cls: 'bg-red-50 text-red-600' },
   expired: { text: 'Muddati tugagan', cls: 'bg-gray-100 text-gray-500' },
   cancelled: { text: 'Bekor qilingan', cls: 'bg-gray-100 text-gray-500' },
@@ -47,8 +47,8 @@ export function PromotionPage() {
 
   const cancelAd = async (ad) => {
     const ok = await confirm({
-      title: 'So\u2018rov bekor qilinsinmi?',
-      content: 'Bu reklama so\u2018rovi butunlay bekor qilinadi.',
+      title: 'So‘rov bekor qilinsinmi?',
+      content: 'Bu reklama so‘rovi butunlay bekor qilinadi.',
       tone: 'danger',
       okText: 'Bekor qilish',
     });

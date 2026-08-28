@@ -90,7 +90,7 @@ export function RestaurantsPage() {
 
   const toggleBlock = async (r) => {
     const action = r.isBlocked ? 'blokdan chiqarish' : 'BLOKLASH';
-    const warn = r.isBlocked ? '' : ' Bloklansa mijozlarga taomlari bilan ko\u2018rinmaydi.';
+    const warn = r.isBlocked ? '' : ' Bloklansa mijozlarga taomlari bilan ko‘rinmaydi.';
     if (!await confirm({ title: `"${r.name}" ${action}?${warn}` })) return;
     await adminApi.toggleBlock(r._id, !r.isBlocked);
     load();

@@ -665,7 +665,7 @@ function CatalogPicker({ onClose, onAdded }) {
                 disabled={saving}
                 className="flex-[1.5] bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl disabled:opacity-50"
               >
-                {saving ? 'Qo\u2018shilmoqda...' : 'Menyuga qo\u2018shish'}
+                {saving ? 'Qo‘shilmoqda...' : 'Menyuga qo‘shish'}
               </button>
             </div>
           </div>
@@ -685,11 +685,19 @@ function CatalogPicker({ onClose, onAdded }) {
               {loading ? (
                 <div className="text-muted text-sm py-6 text-center">Yuklanmoqda...</div>
               ) : items.length === 0 ? (
-                <div className="text-center py-10">
-                  <i className="ti ti-package-off text-3xl text-muted mb-2 block" />
-                  <div className="text-sm text-ink font-medium">Katalog bo'sh</div>
-                  <p className="text-xs text-muted mt-1">
-                    Administrator hali mahsulot qo'shmagan
+                <div className="text-center py-12 px-4">
+                  <div className="mx-auto mb-3 flex h-14 w-14 items-center
+                                  justify-center rounded-full bg-canvas">
+                    <i className="ti ti-package-off text-2xl text-muted" />
+                  </div>
+                  <div className="text-sm text-ink font-semibold">
+                    {q ? 'Topilmadi' : 'Katalog hali to‘ldirilmagan'}
+                  </div>
+                  <p className="mx-auto mt-1.5 max-w-xs text-xs leading-relaxed text-muted">
+                    {q
+                      ? 'Boshqa nom bilan qidirib ko‘ring yoki taomni qo‘lda qo‘shing.'
+                      : 'Katalogni LokmaGo administratori to‘ldiradi. '
+                        + 'Hozircha taomni qo‘lda qo‘shishingiz mumkin.'}
                   </p>
                 </div>
               ) : (

@@ -187,7 +187,7 @@ export function SupportPage() {
         <div className="flex-1 overflow-y-auto">
           {chats.length === 0 ? (
             <div className="text-center text-muted text-sm py-10 px-4">
-              {showResolved ? 'Yopilgan suhbat yo\u2018q' : 'Yangi xabar yo\u2018q'}
+              {showResolved ? 'Yopilgan suhbat yo‘q' : 'Yangi xabar yo‘q'}
             </div>
           ) : chats.map((c) => (
             <button

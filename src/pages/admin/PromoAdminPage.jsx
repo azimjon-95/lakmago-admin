@@ -56,7 +56,7 @@ export function PromoAdminPage() {
   const reject = async (ad) => {
     const reason = await confirm({
       title: 'Rad etish sababi',
-      content: 'Restoran shu sababni ko\u2018radi.',
+      content: 'Restoran shu sababni ko‘radi.',
       input: true,
       inputPlaceholder: 'Masalan: rasm sifati past',
       tone: 'danger',
@@ -109,7 +109,7 @@ export function PromoAdminPage() {
                   <span className="font-semibold text-ink">{ad.restaurantId?.name}</span>
                   <span className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-muted">
                     {ad.targetType === 'dish'
-                      ? `Taom: ${ad.dishId?.name || ad.customTitle || '\u2014'}`
+                      ? `Taom: ${ad.dishId?.name || ad.customTitle || '—'}`
                       : (ad.customTitle || 'Restoran reklamasi')}
                   </span>
                 </div>

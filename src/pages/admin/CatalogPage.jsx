@@ -113,12 +113,31 @@ export function CatalogPage() {
       {loading ? (
         <div className="text-muted text-sm">Yuklanmoqda...</div>
       ) : items.length === 0 ? (
-        <div className="text-center py-12">
-          <i className="ti ti-package text-4xl text-muted mb-2 block" />
-          <div className="text-ink font-medium">Katalog bo'sh</div>
-          <p className="text-sm text-muted mt-1">
-            Terminal orqali to'ldiring: <code>npm run seed:catalog</code>
+        <div className="text-center py-14 px-6">
+          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center
+                          rounded-full bg-brand-50">
+            <i className="ti ti-package text-3xl text-brand-600" />
+          </div>
+          <div className="text-ink font-semibold">Katalog bo'sh</div>
+          {/*
+            Ilgari bu yerda "npm run seed:catalog" yozilardi.
+            Bu sahifani biznes administratori ochadi — terminal
+            buyrug'i unga hech narsa aytmaydi va ish to'xtaydi.
+            Endi tugma ko'rsatiladi.
+          */}
+          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
+            Bu yerga bir marta kiritilgan mahsulot barcha restoranlarda
+            bir xil nom va rasm bilan ko'rinadi. Restoran faqat
+            o'z narxini qo'yadi.
           </p>
+          <button
+            onClick={() => setEditing('new')}
+            className="mt-5 rounded-xl bg-brand-400 px-5 py-2.5 text-sm font-medium
+                       text-brand-text transition hover:bg-brand-600 hover:text-white"
+          >
+            <i className="ti ti-plus mr-1.5" />
+            Birinchi mahsulotni qo'shish
+          </button>
         </div>
       ) : (
         <div className="space-y-5">
@@ -236,9 +255,20 @@ function ProductForm({ product, onClose, onSaved }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl p-5 overflow-y-auto max-h-[88dvh] pb-[calc(1.25rem+env(safe-area-inset-bottom))] sm:pb-5"
+        /*
+          FLEX USTUN: sarlavha va tugmalar qotib turadi, faqat
+          o'rtadagi forma suriladi.
+
+          Ilgari butun quti `overflow-y-auto` edi va tugmalar
+          `sticky bottom-0` bilan ushlab turilardi. Sticky element
+          O'Z KONTEYNERI ichida yopishadi — konteyner esa suriladi,
+          shuning uchun tugmalar formaning o'rtasida osilib
+          qolardi va ostidagi maydonlarni to'sardi.
+        */
+        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl
+                   flex flex-col max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden"
       >
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex-none flex items-center justify-between px-5 pt-5 pb-3">
           <h3 className="text-lg font-semibold text-ink">
             {product ? 'Tahrirlash' : 'Yangi mahsulot'}
           </h3>
@@ -246,6 +276,9 @@ function ProductForm({ product, onClose, onSaved }) {
             <i className="ti ti-x text-xl" />
           </button>
         </div>
+
+        {/* Faqat SHU qism suriladi */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-3">
 
         <ImageUpload
           label="Rasm"
@@ -334,7 +367,10 @@ function ProductForm({ product, onClose, onSaved }) {
           </div>
         )}
 
-        <div className="flex gap-2 mt-4 sticky bottom-0 bg-white pt-3 border-t border-line">
+        </div>
+
+        <div className="flex-none flex gap-2 px-5 pt-3 border-t border-line bg-white
+                        pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
           <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl">
             Bekor
           </button>

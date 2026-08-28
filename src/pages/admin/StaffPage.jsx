@@ -39,11 +39,11 @@ export function StaffPage() {
   const create = async () => {
     setError('');
     if (!form.login.trim() || !form.password || !form.fullName.trim() || !form.department) {
-      setError('Login, parol, ism va bo\u2018lim to\u2018ldirilishi shart');
+      setError('Login, parol, ism va bo‘lim to‘ldirilishi shart');
       return;
     }
     if (form.password.length < 6) {
-      setError('Parol kamida 6 ta belgidan iborat bo\u2018lishi kerak');
+      setError('Parol kamida 6 ta belgidan iborat bo‘lishi kerak');
       return;
     }
     setSaving(true);
@@ -76,21 +76,21 @@ export function StaffPage() {
       content: 'Kamida 6 ta belgi. Xodimga shu parolni siz aytasiz.',
       input: true,
       inputPlaceholder: 'Yangi parol',
-      okText: 'O\u2018rnatish',
+      okText: 'O‘rnatish',
       tone: 'warning',
     });
     if (!password) return;
-    if (password.length < 6) { alert('Parol kamida 6 ta belgi bo\u2018lishi kerak'); return; }
+    if (password.length < 6) { alert('Parol kamida 6 ta belgi bo‘lishi kerak'); return; }
     await adminApi.updateStaff(member._id, { password });
     alert('Parol yangilandi');
   };
 
   const remove = async (member) => {
     const ok = await confirm({
-      title: 'Ishdan bo\u2018shatilsinmi?',
-      content: `${member.fullName} (${member.login}) tizimga kira olmay qoladi. Bu amalni qaytarib bo\u2018lmaydi.`,
+      title: 'Ishdan bo‘shatilsinmi?',
+      content: `${member.fullName} (${member.login}) tizimga kira olmay qoladi. Bu amalni qaytarib bo‘lmaydi.`,
       tone: 'danger',
-      okText: 'Bo\u2018shatish',
+      okText: 'Bo‘shatish',
     });
     if (!ok) return;
     await adminApi.deleteStaff(member._id);

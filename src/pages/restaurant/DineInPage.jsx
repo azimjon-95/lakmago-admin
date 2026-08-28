@@ -150,7 +150,7 @@ export function DineInPage() {
       link.click();
       setTimeout(() => URL.revokeObjectURL(link.href), 1000);
     } catch (e) {
-      alert(e.message || 'Yuklab bo\u2018lmadi');
+      alert(e.message || 'Yuklab bo‘lmadi');
     }
   };
 
@@ -300,7 +300,7 @@ export function DineInPage() {
                 {tables.length === 0 ? (
                   <EmptyState icon="ti-armchair" title="Stol qo'shilmagan"
                     text="Stol qo'shing — har biriga QR kod avtomatik yaratiladi"
-                    action={{ label: 'Birinchi stolni qo\u2018shish', onClick: () => setEditing('new') }} />
+                    action={{ label: 'Birinchi stolni qo‘shish', onClick: () => setEditing('new') }} />
                 ) : (
                   <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
                     {/*
@@ -476,7 +476,7 @@ function TableActions({ onTheme, onPdf, onBulk, onAdd, layout }) {
     ['ti-palette', 'QR dizayni', onTheme, false],
     ['ti-file-download', 'PDF yuklash', onPdf, false],
     ['ti-stack-2', "Ko'p stol", onBulk, false],
-    ['ti-plus', 'Stol qo\u2018shish', onAdd, true],
+    ['ti-plus', 'Stol qo‘shish', onAdd, true],
   ].filter(([, , fn]) => fn);
 
   if (rail) {
@@ -667,7 +667,7 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
      * EMAS, `menu` hali eski qiymatda qoladi).
      */
     if (!restaurantId) {
-      setErr('Restoran ma\u2018lumoti hali yuklanmagan. Bir necha soniyadan so\u2018ng qayta urining.');
+      setErr('Restoran ma‘lumoti hali yuklanmagan. Bir necha soniyadan so‘ng qayta urining.');
       setMenu([]);
       return;
     }
@@ -736,7 +736,7 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
   const cancelOrder = async (order) => {
     const ok = await confirm({
       title: 'Buyurtma bekor qilinsinmi?',
-      content: `${order.dineInNumber || ''} — bu amalni qaytarib bo\u2018lmaydi.`,
+      content: `${order.dineInNumber || ''} — bu amalni qaytarib bo‘lmaydi.`,
       tone: 'danger', okText: 'Bekor qilish',
     });
     if (!ok) return;
@@ -757,7 +757,7 @@ function TableManageModal({ table, restaurantId, onClose, onChanged }) {
       title: 'Chek yopilsinmi?',
       content: openOrders > 0
         ? `${openOrders} ta buyurtma hali yakunlanmagan — baribir yopish uchun tugallanadi deb belgilanadi.`
-        : `${table.tableName || `Stol ${table.tableNumber}`} bo\u2018shatiladi.`,
+        : `${table.tableName || `Stol ${table.tableNumber}`} bo‘shatiladi.`,
       tone: openOrders > 0 ? 'warning' : 'default',
       okText: 'Yopish',
     });
@@ -2084,7 +2084,7 @@ function DineInIntro({ onRequest }) {
                   </span>
                 </div>
 
-                {[['Osh', '32 000'], ['Lag\u2018mon', '28 000']].map(([name, price]) => (
+                {[['Osh', '32 000'], ['Lag‘mon', '28 000']].map(([name, price]) => (
                   <div key={name} className="flex items-center gap-2 px-2 py-1.5">
                     <div className="h-8 w-8 flex-none rounded-lg bg-white/10" />
                     <div className="min-w-0">
@@ -2104,7 +2104,7 @@ function DineInIntro({ onRequest }) {
                   'Menyu zal narxlari bilan',
                   'Bir sessiyada bir necha buyurtma',
                   'Ofitsiant chaqirish tugmasi',
-                  'Hisobni so\u2018rash',
+                  'Hisobni so‘rash',
                   'Buyurtma holatini kuzatish',
                 ].map((t) => (
                   <li key={t} className="flex items-start gap-2.5">
@@ -2121,8 +2121,8 @@ function DineInIntro({ onRequest }) {
         <div className="my-4 grid grid-cols-3 gap-2.5">
           {[
             ['ti-clock-hour-3', 'Tezroq', 'Ofitsiant kutilmaydi'],
-            ['ti-users', 'Kamroq xodim', 'Bir ofitsiant ko\u2018p stolga'],
-            ['ti-receipt-off', 'Xatosiz', 'Buyurtma to\u2018g\u2018ridan tizimga'],
+            ['ti-users', 'Kamroq xodim', 'Bir ofitsiant ko‘p stolga'],
+            ['ti-receipt-off', 'Xatosiz', 'Buyurtma to‘g‘ridan tizimga'],
           ].map(([icon, title, text]) => (
             <div key={title} className="g rounded-[18px] p-3.5 text-center">
               <i className={`ti ${icon} mb-1.5 block text-xl`} style={{ color: '#BA7517' }} />

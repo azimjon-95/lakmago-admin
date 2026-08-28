@@ -18,7 +18,7 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
 
     // Tekshiruv — faqat rasm, 5MB gacha
     if (!file.type.startsWith('image/')) { setErr('Faqat rasm fayli'); return; }
-    if (file.size > 5 * 1024 * 1024) { setErr('Rasm 5MB dan katta bo\u2018lmasin'); return; }
+    if (file.size > 5 * 1024 * 1024) { setErr('Rasm 5MB dan katta bo‘lmasin'); return; }
 
     setErr(null);
     setUploading(true);

@@ -55,7 +55,7 @@ export function RestaurantProfilePage() {
         reservationEnabled: r.reservationEnabled ?? false,
         reservationNote: r.reservationNote || '',
       }))
-      .catch(() => setMsg({ type: 'err', text: 'Ma\u2018lumot yuklanmadi' }));
+      .catch(() => setMsg({ type: 'err', text: 'Ma‘lumot yuklanmadi' }));
   }, []);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));

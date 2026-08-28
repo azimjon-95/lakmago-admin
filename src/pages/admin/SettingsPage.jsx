@@ -12,15 +12,15 @@ const MODES = [
   },
   {
     value: 'markup',
-    label: 'Narx ustiga qo\u2018shish',
+    label: 'Narx ustiga qo‘shish',
     icon: 'ti-arrow-up-circle',
-    desc: 'Mijoz taom narxi ustiga komissiya qo\u2018shib to\u2018laydi. Restoran to\u2018liq narxni oladi, foyda platformaga.',
+    desc: 'Mijoz taom narxi ustiga komissiya qo‘shib to‘laydi. Restoran to‘liq narxni oladi, foyda platformaga.',
   },
   {
     value: 'deduct',
     label: 'Narxdan olish',
     icon: 'ti-arrow-down-circle',
-    desc: 'Restoran taom narxidan komissiya ushlab qolinadi. Mijoz oddiy narx to\u2018laydi, foyda restoran hisobidan.',
+    desc: 'Restoran taom narxidan komissiya ushlab qolinadi. Mijoz oddiy narx to‘laydi, foyda restoran hisobidan.',
   },
 ];
 

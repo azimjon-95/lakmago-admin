@@ -80,7 +80,7 @@ export function KioskLinksPage() {
     const ok = await confirm({
       title: 'Token yangilansinmi?',
       content: 'Eski havola DARHOL ishlamay qoladi. '
-        + 'Barcha planshetlarga yangi link kiritish kerak bo\u2018ladi.',
+        + 'Barcha planshetlarga yangi link kiritish kerak bo‘ladi.',
       tone: 'warning',
       okText: 'Yangilash',
     });
@@ -96,7 +96,7 @@ export function KioskLinksPage() {
   const resetDevices = async (item) => {
     const ok = await confirm({
       title: 'Qurilmalar uzilsinmi?',
-      content: 'Bog\u2018langan planshetlar sahifani yangilagach qayta ulanadi.',
+      content: 'Bog‘langan planshetlar sahifani yangilagach qayta ulanadi.',
       tone: 'warning',
       okText: 'Uzish',
     });
@@ -107,8 +107,8 @@ export function KioskLinksPage() {
 
   const remove = async (item) => {
     const ok = await confirm({
-      title: 'Link o\u2018chirilsinmi?',
-      content: 'Bu amalni qaytarib bo\u2018lmaydi.',
+      title: 'Link o‘chirilsinmi?',
+      content: 'Bu amalni qaytarib bo‘lmaydi.',
       tone: 'danger',
       okText: "O'chirish",
     });
@@ -337,11 +337,11 @@ function EditModal({ item, onClose, onSaved }) {
 
   const save = async () => {
     if (sections.length === 0) {
-      setErr('Kamida bitta bo\u2018lim tanlang');
+      setErr('Kamida bitta bo‘lim tanlang');
       return;
     }
     if (pin && !/^\d{4}$/.test(pin)) {
-      setErr('PIN 4 ta raqamdan iborat bo\u2018lishi kerak');
+      setErr('PIN 4 ta raqamdan iborat bo‘lishi kerak');
       return;
     }
 

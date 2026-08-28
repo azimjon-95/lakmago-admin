@@ -28,7 +28,7 @@ function loadYmaps(apiKey) {
     };
     script.onerror = () => {
       loadPromise = null;
-      reject(new Error('Xaritaga ulanib bo\u2018lmadi'));
+      reject(new Error('Xaritaga ulanib bo‘lmadi'));
     };
     document.head.appendChild(script);
   });
@@ -186,7 +186,7 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
         mapRef.current?.setCenter([latitude, longitude], 17);
         selectPoint(latitude, longitude);
       },
-      () => alert('Joylashuvni aniqlab bo\u2018lmadi'),
+      () => alert('Joylashuvni aniqlab bo‘lmadi'),
       { enableHighAccuracy: true, timeout: 10000 },
     );
   };

@@ -198,7 +198,7 @@ export function confirm(options = {}) {
 export function confirmDelete(name, extra) {
   return confirm({
     title: name ? `"${name}" o'chirilsinmi?` : "O'chirilsinmi?",
-    content: extra || 'Bu amalni qaytarib bo\u2018lmaydi.',
+    content: extra || 'Bu amalni qaytarib bo‘lmaydi.',
     okText: "O'chirish",
     tone: 'danger',
   });

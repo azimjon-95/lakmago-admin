@@ -62,7 +62,7 @@ export function RestaurantSettingsPage() {
           });
         }
       })
-      .catch(() => setMsg({ type: 'err', text: 'Ma\u2018lumot yuklanmadi' }));
+      .catch(() => setMsg({ type: 'err', text: 'Ma‘lumot yuklanmadi' }));
   }, [id]);
 
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));

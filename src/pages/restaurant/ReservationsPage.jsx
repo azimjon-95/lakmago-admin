@@ -13,7 +13,7 @@ const STATUS = {
   cancelled: { label: 'Bekor qilindi', color: '#6B7280', bg: '#F3F4F6' },
   coming: { label: '✅ Boramiz', color: '#059669', bg: '#D1FAE5' },
   not_coming: { label: '❌ Bora olmaymiz', color: '#DC2626', bg: '#FEE2E2' },
-  on_way: { label: '🚗 Yo\u2018ldamiz', color: '#7C3AED', bg: '#EDE9FE' },
+  on_way: { label: '🚗 Yo‘ldamiz', color: '#7C3AED', bg: '#EDE9FE' },
   arrived: { label: '🎉 Keldik', color: '#059669', bg: '#D1FAE5' },
   completed: { label: 'Yakunlandi', color: '#6B7280', bg: '#F3F4F6' },
 };
@@ -98,7 +98,7 @@ export function ReservationsPage() {
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
       ) : shown.length === 0 ? (
         <div className="text-center text-muted text-sm py-12 border border-dashed border-line rounded-xl">
-          {filter === 'active' ? 'Faol bron yo\u2018q' : 'Bronlar yo\u2018q'}
+          {filter === 'active' ? 'Faol bron yo‘q' : 'Bronlar yo‘q'}
         </div>
       ) : (
         <div className="grid gap-3">

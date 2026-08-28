@@ -44,7 +44,7 @@ export async function registerServiceWorker() {
     registration = await navigator.serviceWorker.register('/sw.js');
     return registration;
   } catch (e) {
-    console.warn('[push] SW ro\u2018yxatdan o\u2018tmadi:', e.message);
+    console.warn('[push] SW ro‘yxatdan o‘tmadi:', e.message);
     return null;
   }
 }
@@ -90,7 +90,7 @@ export async function subscribePush() {
 
     return 'ok';
   } catch (e) {
-    console.warn('[push] obuna bo\u2018lmadi:', e.message);
+    console.warn('[push] obuna bo‘lmadi:', e.message);
     return 'error';
   }
 }

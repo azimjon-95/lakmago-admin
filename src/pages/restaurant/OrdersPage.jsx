@@ -34,7 +34,7 @@ const flow = {
   // to'g'ridan-to'g'ri 'ready'ga o'tadi)
   preparing: { label: 'Tayyorlanmoqda', color: '#6BA8F0', next: 'ready', nextLabel: 'Taom tayyor' },
   ready: { label: 'Tayyor', color: '#5DCAA5', next: 'delivering', nextLabel: 'Kuryer olib ketdi' },
-  delivering: { label: 'Kuryer yo\u2018lda', color: '#9B8FE0', next: null, nextLabel: 'Mijoz qabul qilishini kuting' },
+  delivering: { label: 'Kuryer yo‘lda', color: '#9B8FE0', next: null, nextLabel: 'Mijoz qabul qilishini kuting' },
   delivered: { label: 'Yetkazildi', color: '#5DCAA5', next: null },
   cancelled: { label: 'Bekor qilindi', color: '#9A9A96', next: null },
 };
@@ -555,10 +555,10 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
                  */
                 if (isPickup(o) && o.status === 'ready' && !o.isPaid) {
                   const ok = await confirm({
-                    title: 'To\u2018lov belgilanmagan',
-                    content: `${som(o.total)} so'm \u00b7 naqd. `
+                    title: 'To‘lov belgilanmagan',
+                    content: `${som(o.total)} so'm · naqd. `
                       + 'Mijozdan pul olganingizga ishonchingiz komilmi? '
-                      + 'Yopilgandan keyin buyurtma ro\u2018yxatdan chiqadi.',
+                      + 'Yopilgandan keyin buyurtma ro‘yxatdan chiqadi.',
                     tone: 'warning',
                     okText: 'Ha, pul olindi',
                   });

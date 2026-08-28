@@ -101,7 +101,7 @@ export function NotificationCenter() {
           className={`absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full border-2 border-sidebar ${
             connected ? 'bg-green-500' : 'bg-red-500'
           }`}
-          title={connected ? 'Ulangan' : 'Ulanish yo\u2018q'}
+          title={connected ? 'Ulangan' : 'Ulanish yo‘q'}
         />
       </button>
 
@@ -137,7 +137,7 @@ export function NotificationCenter() {
                 className={`flex h-8 w-8 items-center justify-center rounded-lg ${
                   muted ? 'bg-red-500/15 text-red-500' : 'bg-black/5 text-muted'
                 }`}
-                title={muted ? 'Ovoz o\u2018chirilgan' : 'Ovozni o\u2018chirish'}
+                title={muted ? 'Ovoz o‘chirilgan' : 'Ovozni o‘chirish'}
               >
                 <i className={`ti ${muted ? 'ti-volume-off' : 'ti-volume'} text-base`} />
               </button>
@@ -284,7 +284,7 @@ function SettingsPanel() {
       setPushState(
         r === 'ok' ? 'Yoqildi'
           : r === 'denied' ? 'Brauzer ruxsat bermadi'
-            : r === 'unsupported' ? 'Bu brauzer qo\u2018llamaydi'
+            : r === 'unsupported' ? 'Bu brauzer qo‘llamaydi'
               : 'Xatolik',
       );
     } else {
@@ -298,7 +298,7 @@ function SettingsPanel() {
     ['soundHallOrders', 'Zal buyurtmasi ovozi'],
     ['soundReservations', 'Bron ovozi'],
     ['soundWaiterCall', 'Ofitsiant chaqiruvi ovozi'],
-    ['soundShot', 'Yordam so\u2018rovi ovozi'],
+    ['soundShot', 'Yordam so‘rovi ovozi'],
   ];
 
   return (
@@ -333,7 +333,7 @@ function SettingsPanel() {
         small
       />
       <Toggle
-        label={`Push (ilova yopiq bo\u2018lganda)${pushState ? ` — ${pushState}` : ''}`}
+        label={`Push (ilova yopiq bo‘lganda)${pushState ? ` — ${pushState}` : ''}`}
         on={s.pushNotifications}
         onClick={onPushToggle}
         small

@@ -52,7 +52,7 @@ export function StopListPage() {
     } catch (e) {
       // Xato bo'lsa qaytaramiz
       setDishes((prev) => [dish, ...prev]);
-      alert(e.message || 'Qaytarib bo\u2018lmadi');
+      alert(e.message || 'Qaytarib bo‘lmadi');
     } finally {
       setBusyId(null);
     }

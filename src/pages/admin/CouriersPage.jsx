@@ -31,9 +31,9 @@ export function CouriersPage() {
 
   const remove = async (c) => {
     const ok = await confirm({
-      title: 'Kuryer o\u2018chirilsinmi?',
-      content: `${c.name} ro\u2018yxatdan butunlay olib tashlanadi.`,
-      tone: 'danger', okText: 'O\u2018chirish',
+      title: 'Kuryer o‘chirilsinmi?',
+      content: `${c.name} ro‘yxatdan butunlay olib tashlanadi.`,
+      tone: 'danger', okText: 'O‘chirish',
     });
     if (!ok) return;
     await adminApi.deleteCourier(c._id);
@@ -69,8 +69,8 @@ export function CouriersPage() {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-medium text-ink">{c.name}</div>
                 <div className="truncate text-xs text-muted">
-                  {c.phone || 'Telefon yo\u2018q'} {'\u00b7'} chat ID: {c.telegramChatId}
-                  {c.totalDeliveries > 0 && ` \u00b7 ${c.totalDeliveries} ta yetkazgan`}
+                  {c.phone || 'Telefon yo‘q'} {'·'} chat ID: {c.telegramChatId}
+                  {c.totalDeliveries > 0 && ` · ${c.totalDeliveries} ta yetkazgan`}
                 </div>
               </div>
               <button

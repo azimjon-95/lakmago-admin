@@ -9,7 +9,7 @@ const STATUS = {
   accepted: { label: 'Qabul qilindi', color: '#EF9F27' },
   preparing: { label: 'Tayyorlanmoqda', color: '#6BA8F0' },
   ready: { label: 'Tayyor', color: '#5DCAA5' },
-  delivering: { label: 'Yo\u2018lda', color: '#9B8FE0' },
+  delivering: { label: 'Yo‘lda', color: '#9B8FE0' },
   delivered: { label: 'Yetkazildi', color: '#5DCAA5' },
   cancelled: { label: 'Bekor', color: '#9A9A96' },
 };
@@ -97,7 +97,7 @@ export function OrdersMonitorPage() {
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
       ) : Object.keys(groups).length === 0 ? (
         <div className="text-center text-muted text-sm py-12 border border-dashed border-line rounded-xl">
-          {filter === 'live' ? 'Faol buyurtma yo\u2018q' : 'Buyurtmalar yo\u2018q'}
+          {filter === 'live' ? 'Faol buyurtma yo‘q' : 'Buyurtmalar yo‘q'}
         </div>
       ) : (
         <div className="grid gap-4">

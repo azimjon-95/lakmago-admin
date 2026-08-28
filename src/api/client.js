@@ -55,7 +55,7 @@ export async function downloadFile(path) {
   });
 
   if (!res.ok) {
-    let msg = 'Yuklab bo\u2018lmadi';
+    let msg = 'Yuklab bo‘lmadi';
     try {
       const data = await res.json();
       msg = data.error || msg;

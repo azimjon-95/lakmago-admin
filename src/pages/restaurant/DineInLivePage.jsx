@@ -209,7 +209,7 @@ export function DineInLivePage() {
                 <i className={`ti ${r.type === 'bill' ? 'ti-receipt' : 'ti-bell-ringing'} text-lg`} />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm font-medium text-ink">
-                    {r.type === 'bill' ? 'Hisob so\u2018ralmoqda' : 'Ofitsiant chaqirilmoqda'}
+                    {r.type === 'bill' ? 'Hisob so‘ralmoqda' : 'Ofitsiant chaqirilmoqda'}
                   </div>
                   <div className="text-xs text-muted">
                     Stol {r.tableId?.tableNumber} · {fmtTime(r.createdAt)}
