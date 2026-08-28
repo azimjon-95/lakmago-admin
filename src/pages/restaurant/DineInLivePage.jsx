@@ -70,6 +70,21 @@ export function DineInLivePage() {
       debounceTimer = setTimeout(load, 250);
     };
 
+    /*
+     * KURS OTILDI — oshxona buni DARHOL ko'rishi kerak.
+     *
+     * Bu hodisa TINGLANMAGAN edi: ofitsiant "Tayyorlash"
+     * bosgach oshxona ekranida hech narsa o'zgarmasdi va
+     * 45 soniyalik zaxira so'rov kelguncha kutilardi. Zalda
+     * bu juda uzoq — mijoz keyingi taomni kutib o'tiradi.
+     *
+     * Ovoz bu yerda chalinmaydi — u markaziy tizimda
+     * (lib/notificationCenter) yuritiladi, xuddi 'dinein:new'
+     * kabi. Ikki joyda chalinsa ovoz ikki marta eshitilardi.
+     */
+    const onCourseFired = () => loadDebounced();
+
+    socket.on('dinein:course-fired', onCourseFired);
     socket.on('dinein:new', onNew);
     socket.on('dinein:order', loadDebounced);
     socket.on('dinein:request', loadDebounced);
@@ -96,6 +111,7 @@ export function DineInLivePage() {
 
     return () => {
       document.removeEventListener('visibilitychange', onVisible);
+      socket.off('dinein:course-fired', onCourseFired);
       socket.off('dinein:new', onNew);
       clearTimeout(debounceTimer);
       socket.off('dinein:order', loadDebounced);
@@ -503,17 +519,43 @@ function OrderItems({ order: o, onFire }) {
         const isFired = fired.includes(c);
         return (
           <div key={c}>
+            {/*
+              OSHXONA HAMMA KURSNI KO'RADI.
+
+              Otilmagan kurs "tayyorgarlik" holatida: oshxona
+              nima kelishini biladi va mahsulotni oldindan
+              tayyorlab qo'yadi. Ruxsat berilgach taom deyarli
+              darhol chiqadi — mijoz kutmaydi.
+
+              Matn ATAYLAB ikki xil:
+                otilgan    -> "tayyorlanmoqda" (hozir pishyapti)
+                otilmagan  -> "tayyorgarlik"   (kutmoqda)
+              Ilgari "keyinroq" deyilardi va oshxona uni
+              "hozircha tegmaslik kerak" deb tushunardi.
+            */}
             {multi && (
-              <div className="flex items-center justify-between gap-2 mb-1">
-                <span className={`text-[11px] font-semibold ${isFired ? 'text-brand-600' : 'text-muted'}`}>
-                  {c}-kurs {isFired ? '' : '· keyinroq'}
+              <div className="flex items-center justify-between gap-2 mb-1.5">
+                <span className={`text-[11px] font-semibold flex items-center gap-1.5 ${
+                  isFired ? 'text-brand-600' : 'text-muted'
+                }`}
+                >
+                  <span className={`inline-block w-1.5 h-1.5 rounded-full ${
+                    isFired ? 'bg-brand-500' : 'bg-slate-300'
+                  }`}
+                  />
+                  {c}-kurs
+                  <span className="font-normal">
+                    {isFired ? 'tayyorlanmoqda' : 'tayyorgarlik'}
+                  </span>
                 </span>
+
                 {!isFired && !['cancelled', 'completed'].includes(o.status) && (
                   <button
                     onClick={() => onFire(o, c)}
-                    className="text-[11px] font-semibold px-2 py-1 rounded-lg bg-brand-400 text-brand-text"
+                    className="flex-none text-[11px] font-semibold px-2.5 py-1.5
+                               rounded-lg bg-brand-400 text-brand-text"
                   >
-                    Oshxonaga yuborish
+                    Ruxsat berish
                   </button>
                 )}
               </div>
