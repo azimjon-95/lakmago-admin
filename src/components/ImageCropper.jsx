@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 
 /**
  * RASM QIRQISH — surib, kattalashtirib markazini tanlash.
@@ -161,11 +162,28 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
 
   const f = fit();
 
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-black">
+  /*
+   * PORTAL — document.body ga chiziladi.
+   *
+   * Ilgari qirqish oynasi "Yangi mahsulot" modali ICHIDA
+   * chizilardi. Modal o'z stacking context'ini yaratadi va
+   * `overflow-hidden` qo'yadi, shuning uchun z-index qanchalik
+   * katta bo'lmasin, bola undan CHIQA OLMAYDI — natijada modal
+   * qirqish oynasi ustidan ko'rinib turardi (skrinshotdagi holat).
+   *
+   * Portal DOM daraxtidan tashqariga chiqaradi, React holati esa
+   * o'z joyida qoladi.
+   */
+  return createPortal((
+    <div className="fixed inset-0 z-[100] flex items-center justify-center
+                    bg-black/80 backdrop-blur-sm p-4">
 
-      <div className="flex-none flex items-center justify-between px-4 py-3">
-        <button onClick={onCancel} className="text-white/80 text-sm font-medium">
+      <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-900
+                      shadow-2xl">
+
+      <div className="flex-none flex items-center justify-between px-4 py-3
+                      border-b border-white/10">
+        <button onClick={onCancel} className="text-white/70 text-sm font-medium">
           Bekor
         </button>
         <span className="text-white text-sm font-semibold">Rasmni joylashtiring</span>
@@ -178,7 +196,24 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
         </button>
       </div>
 
-      <div className="flex-1 flex items-center justify-center px-4 min-h-0">
+      {/* ═══ QO'LLANMA ═══
+          Ikkita ikonka va qisqa matn. Foydalanuvchi bu oynani
+          birinchi marta ko'rmoqda va nima qilish kerakligi
+          darhol tushunarli bo'lishi kerak. */}
+      {/*
+        Ikonkalar ATAYLAB loyihada allaqachon ishlatilganlaridan
+        tanlandi (ti-photo, ti-camera, ti-check). Tabler
+        to'plamida bo'lmagan nom yozilsa bo'sh kvadrat chiqadi
+        va qo'llanma teskari ta'sir beradi. Yangi nomni
+        tekshirmasdan ishlatmaslik kerak.
+      */}
+      <div className="grid grid-cols-3 gap-1 px-3 py-3 bg-white/[0.04]">
+        <Hint icon="ti-camera" text="Suring" />
+        <Hint icon="ti-photo" text="Kattalashtiring" />
+        <Hint icon="ti-check" text="Tayyor bosing" />
+      </div>
+
+      <div className="flex items-center justify-center p-4">
         <div
           ref={frameRef}
           onMouseDown={onStart}
@@ -188,8 +223,13 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
           onTouchStart={onStart}
           onTouchEnd={onEnd}
           onTouchCancel={onEnd}
-          className="relative w-full max-w-md overflow-hidden rounded-xl
-                     bg-neutral-900 cursor-grab active:cursor-grabbing select-none"
+          /*
+            `bg-black` — ramka ichi. Rasm hali yuklanmagan yoki
+            biror sabab bilan chizilmasa, ostidagi oq modal
+            ko'rinib qolmasin.
+          */
+          className="relative w-full overflow-hidden rounded-xl bg-black
+                     cursor-grab active:cursor-grabbing select-none"
           style={{ aspectRatio: aspect, touchAction: 'none' }}
         >
           {img && f && (
@@ -206,6 +246,13 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
             />
           )}
 
+          {!img && (
+            <div className="absolute inset-0 flex items-center justify-center">
+              <div className="h-6 w-6 animate-spin rounded-full border-2
+                              border-white/20 border-t-brand-400" />
+            </div>
+          )}
+
           {/* Uchdan bir chiziqlari — markazni topishga yordam beradi */}
           <div className="pointer-events-none absolute inset-0">
             <div className="absolute inset-y-0 left-1/3 w-px bg-white/25" />
@@ -216,9 +263,9 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
         </div>
       </div>
 
-      <div className="flex-none px-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] pt-4">
+      <div className="flex-none px-4 pb-4">
         <div className="flex items-center gap-3">
-          <i className="ti ti-photo text-white/50 text-sm" />
+          <i className="ti ti-photo text-white/40 text-sm" />
           <input
             type="range"
             min={MIN_ZOOM} max={MAX_ZOOM} step={0.01}
@@ -227,12 +274,27 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
             className="flex-1 accent-brand-400"
             aria-label="Kattalashtirish"
           />
-          <i className="ti ti-photo text-white/50 text-xl" />
+          <i className="ti ti-photo text-white/40 text-xl" />
         </div>
-        <p className="mt-2.5 text-center text-[12.5px] text-white/50">
-          Barmoq bilan suring · ikki barmoq bilan kattalashtiring
-        </p>
       </div>
+
+      </div>
+    </div>
+  ), document.body);
+}
+
+/**
+ * Qo'llanma bandi — ikonka + qisqa matn.
+ *
+ * Uchta qadam vertikal emas, YONMA-YON: ular ketma-ketlik
+ * emas, bir vaqtda mavjud imkoniyatlar. Matn qisqa, chunki
+ * foydalanuvchi buni o'qish uchun emas, ishlash uchun ochgan.
+ */
+function Hint({ icon, text }) {
+  return (
+    <div className="flex flex-col items-center gap-1 text-center">
+      <i className={`ti ${icon} text-[17px] text-brand-400`} />
+      <span className="text-[11px] leading-tight text-white/60">{text}</span>
     </div>
   );
 }
