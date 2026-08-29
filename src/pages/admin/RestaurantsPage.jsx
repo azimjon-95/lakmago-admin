@@ -12,6 +12,7 @@ export function RestaurantsPage() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
+  const [q, setQ] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -110,19 +111,68 @@ export function RestaurantsPage() {
     alert('Parol yangilandi');
   };
 
+  /*
+   * Nom bo'yicha qidiruv — mahalliy filtr, so'rov yubormaydi.
+   *
+   * Ro'yxat kam sonli (odatda o'nlab, yuzlab emas) va socket
+   * orqali jonli yangilanadi (yuqorida) — server bilan
+   * sinxronlashtirish uchun so'rov qilish bu yerda ortiqcha
+   * murakkablik bo'lardi.
+   *
+   * Login bo'yicha ham qidiriladi: admin ko'pincha "kim ega"
+   * degan savol bilan qidiradi, nomni emas.
+   */
+  const norm = (s) => String(s || '').toLowerCase().trim();
+  const query = norm(q);
+  const filtered = query
+    ? list.filter((r) => norm(r.name).includes(query) || norm(r.ownerLogin).includes(query))
+    : list;
+
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
-      <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-lg sm:text-xl font-semibold text-ink">Muassasalar</h1>
-          <p className="text-xs sm:text-sm text-muted mt-0.5">Restoran, kafe va magazinlarni boshqarish</p>
+      {/*
+        MOBIL: sarlavha va "Qo'shish" bir qatorda, qidiruv
+        pastda TO'LIQ kenglikda — bosh barmoq bilan urish uchun
+        qulay maydon, mayda tugmalar orasiga siqilmagan.
+
+        DESKTOP (sm:): uchtasi bitta qatorda. Qidiruv o'rtada,
+        cheklangan kenglikda (max-w-xs) — sichqonli ekranda
+        butun qatorni egallashi shart emas.
+      */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-5">
+        <div className="flex items-center justify-between gap-3 sm:contents">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-xl font-semibold text-ink">Muassasalar</h1>
+            <p className="text-xs sm:text-sm text-muted mt-0.5">Restoran, kafe va magazinlarni boshqarish</p>
+          </div>
+          <button
+            onClick={() => navigate('/restaurants/new')}
+            className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2 flex-none whitespace-nowrap sm:order-3"
+          >
+            <i className="ti ti-plus" /> Yangi qo'shish
+          </button>
         </div>
-        <button
-          onClick={() => navigate('/restaurants/new')}
-          className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2 flex-none whitespace-nowrap"
-        >
-          <i className="ti ti-plus" /> Yangi qo'shish
-        </button>
+
+        <label className="relative flex-1 sm:max-w-xs sm:order-2">
+          <i className="ti ti-search absolute left-3 top-1/2 -translate-y-1/2 text-muted text-base pointer-events-none" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Nomi yoki login bo'yicha qidirish"
+            className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-line bg-surface text-sm
+                       text-ink placeholder:text-muted focus:outline-none focus:border-brand-400"
+          />
+          {q && (
+            <button
+              onClick={() => setQ('')}
+              aria-label="Tozalash"
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full
+                         bg-canvas text-muted flex items-center justify-center hover:bg-line"
+            >
+              <i className="ti ti-x text-xs" />
+            </button>
+          )}
+        </label>
       </div>
 
       {err && <div className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
@@ -136,7 +186,13 @@ export function RestaurantsPage() {
               Hozircha muassasa yo'q. "Yangi qo'shish" tugmasini bosing.
             </div>
           )}
-          {list.map((r) => (
+          {list.length > 0 && filtered.length === 0 && (
+            <div className="text-center text-muted text-sm py-12 border border-dashed border-line rounded-xl">
+              <i className="ti ti-search-off text-2xl mb-2 block" />
+              "{q}" bo'yicha hech narsa topilmadi
+            </div>
+          )}
+          {filtered.map((r) => (
             <div key={r._id} className="bg-surface border border-line rounded-xl p-3 sm:p-4 flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0 overflow-hidden">
               {/* Yuqori qator: ikonka + ma'lumot */}
               <div className="flex items-start gap-3 min-w-0 flex-1">
