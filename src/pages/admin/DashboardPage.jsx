@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { useTempValue } from '@/hooks/useTempFlag';
+import { useAuth } from '@/store/auth';
 
 /* ═══════════════════════════════════════════════════
    Boshqaruv paneli — platforma nazorati
@@ -99,10 +100,36 @@ export function DashboardPage() {
     refetchInterval: 120_000,
   });
 
+  /*
+   * '/admin/orders' individual buyurtma tafsilotlarini
+   * qaytaradi (mijoz, manzil, telefon) — bu 'orders' sahifasiga
+   * tegishli ma'lumot, 'dashboard'ga emas. Faqat shu sahifaga
+   * ruxsati bor xodim (yoki admin) so'raydi.
+   *
+   * `enabled: false` bo'lganda so'rov UMUMAN yuborilmaydi —
+   * 403 kelib keshni "xato" holatida ushlab turishning
+   * o'rniga, so'rovning o'zi qilinmaydi.
+   */
+  const user = useAuth((s) => s.user);
+  /*
+   * Boolean() bilan ATAYLAB o'raladi.
+   *
+   * `user` hali yuklanmagan bo'lsa (sahifa birinchi ochilganda,
+   * useAuth qaytarayotgan holat) ifoda `undefined` bo'lib
+   * qolardi — aniq `false` emas. `enabled: undefined` esa
+   * React Query'da ishonchsiz: ba'zi versiyalarda "berilmagan"
+   * deb qabul qilinib, so'rov baribir yuborilib ketishi mumkin.
+   * Boolean() har doim aniq true/false qaytaradi.
+   */
+  const canSeeOrders = Boolean(
+    user?.role === 'admin' || user?.allowedPages?.includes('orders'),
+  );
+
   const { data: ordersRaw } = useQuery({
     queryKey: ['admin', 'orders'],
     queryFn: () => adminApi.getOrders(),
     refetchInterval: 120_000,
+    enabled: canSeeOrders,
   });
   /*
    * HIMOYA: server kutilmagan shakl qaytarsa ham sahifa
@@ -123,12 +150,16 @@ export function DashboardPage() {
     const socket = getSocket();
     joinAdmin();
     const onNewOrder = (order) => {
-      // Keshni to'g'ridan-to'g'ri yangilaymiz — qayta so'rovsiz,
-      // buyurtma DARHOL ekranda paydo bo'ladi
-      qc.setQueryData(['admin', 'orders'], (prev = []) =>
-        [order, ...prev.filter((o) => o._id !== order._id)]);
-      flashOrder(order._id);
-      // Statistika o'zgardi — uni qayta so'raymiz
+      // Ruxsati bo'lmagan xodim uchun buyurtma keshini
+      // umuman TO'LDIRMAYMIZ — u baribir ko'rsatilmaydi,
+      // lekin xotirada individual buyurtma (mijoz, manzil)
+      // saqlanib qolmasin
+      if (canSeeOrders) {
+        qc.setQueryData(['admin', 'orders'], (prev = []) =>
+          [order, ...prev.filter((o) => o._id !== order._id)]);
+        flashOrder(order._id);
+      }
+      // Statistika o'zgardi — uni qayta so'raymiz (bu hammaga tegishli)
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     };
     /*
@@ -140,7 +171,7 @@ export function DashboardPage() {
      * ehtiyoj qolmaydi.
      */
     const onUpdate = (patch) => {
-      if (!patch?._id) return;
+      if (!patch?._id || !canSeeOrders) return;
       qc.setQueryData(['admin', 'orders'], (prev = []) => {
         if (!Array.isArray(prev)) return prev;
         let found = false;
@@ -167,7 +198,7 @@ export function DashboardPage() {
       socket.off('order:new', onNewOrder);
       socket.off('order:update', onUpdate);
     };
-  }, [qc]);
+  }, [qc, canSeeOrders, flashOrder]);
 
   const today = stats?.today;
   const counts = useMemo(() => ({
@@ -264,28 +295,37 @@ export function DashboardPage() {
             <Leaderboard rows={stats?.todayByRestaurant} />
           </section>
 
-          <section className="min-w-0">
-            <SectionTitle hint="so'nggi 100">Buyurtmalar oqimi</SectionTitle>
+          {/*
+            Individual buyurtma ro'yxati faqat 'orders'
+            sahifasiga ruxsati bor xodimga ko'rinadi — u yerda
+            mijozning ismi, telefoni va manzili bor. Buxgalter
+            kabi umumiy statistikagagina ruxsati bor xodim bu
+            bo'limni butunlay ko'rmaydi, "403" yozuvi o'rniga.
+          */}
+          {canSeeOrders ? (
+            <section className="min-w-0">
+              <SectionTitle hint="so'nggi 100">Buyurtmalar oqimi</SectionTitle>
 
-            <div className="-mx-3 mb-2.5 flex gap-1.5 overflow-x-auto px-3 pb-0.5 sm:mx-0 sm:px-0">
-              {FILTERS.map(([k, label]) => {
-                const on = filter === k;
-                return (
-                  <button key={k} onClick={() => setFilter(k)}
-                    className={`tap flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ${
-                      on ? 'bg-brand-400 text-brand-text' : 'g text-muted'
-                    }`}>
-                    {label}
-                    <span className={`tabular-nums ${on ? 'opacity-70' : 'opacity-60'}`}>
-                      {counts[k]}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+              <div className="-mx-3 mb-2.5 flex gap-1.5 overflow-x-auto px-3 pb-0.5 sm:mx-0 sm:px-0">
+                {FILTERS.map(([k, label]) => {
+                  const on = filter === k;
+                  return (
+                    <button key={k} onClick={() => setFilter(k)}
+                      className={`tap flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ${
+                        on ? 'bg-brand-400 text-brand-text' : 'g text-muted'
+                      }`}>
+                      {label}
+                      <span className={`tabular-nums ${on ? 'opacity-70' : 'opacity-60'}`}>
+                        {counts[k]}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <OrderFeed orders={shown} flash={flash} filter={filter} />
-          </section>
+              <OrderFeed orders={shown} flash={flash} filter={filter} />
+            </section>
+          ) : null}
         </div>
       </div>
     </div>
