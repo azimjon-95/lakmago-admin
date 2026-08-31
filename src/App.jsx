@@ -39,6 +39,7 @@ const OrdersMonitorPage = lazy(() => import('@/pages/admin/OrdersMonitorPage').t
 const GroupsPage = lazy(() => import('@/pages/admin/GroupsPage').then((m) => ({ default: m.GroupsPage })));
 const SupportPage = lazy(() => import('@/pages/admin/SupportPage').then((m) => ({ default: m.SupportPage })));
 const RestaurantOrdersPage = lazy(() => import('@/pages/restaurant/OrdersPage').then((m) => ({ default: m.RestaurantOrdersPage })));
+const RestaurantBillingPage = lazy(() => import('@/pages/restaurant/RestaurantBillingPage').then((m) => ({ default: m.RestaurantBillingPage })));
 const RestaurantMenuPage = lazy(() => import('@/pages/restaurant/MenuPage').then((m) => ({ default: m.RestaurantMenuPage })));
 const RestaurantBannerPage = lazy(() => import('@/pages/restaurant/BannerPage').then((m) => ({ default: m.RestaurantBannerPage })));
 const RestaurantProfilePage = lazy(() => import('@/pages/restaurant/ProfilePage').then((m) => ({ default: m.RestaurantProfilePage })));
@@ -154,6 +155,7 @@ function RestaurantRoutes() {
     <Shell>
       <Routes>
         <Route path="/" element={<RestaurantOrdersPage />} />
+        <Route path="/billing" element={<RestaurantBillingPage />} />
         <Route path="/menu" element={<RestaurantMenuPage />} />
         <Route path="/banner" element={<RestaurantBannerPage />} />
         <Route path="/profile" element={<RestaurantProfilePage />} />

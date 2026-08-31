@@ -149,6 +149,33 @@ export const panelApi = {
   deleteDish: (id) => apiFetch(`/panel/dishes/${id}`, { method: 'DELETE' }),
 
   getOrders: (status) => apiFetch(`/panel/orders${status ? `?status=${status}` : ''}`),
+
+  /*
+   * Restoranning o'z moliyaviy hisoboti.
+   * from/to berilmasa server standart qiymat qo'yadi
+   * (summary -> bugun, daily -> shu oy).
+   */
+  getBillingSummary: (from, to) => {
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    const qs = q.toString();
+    return apiFetch(`/panel/billing/summary${qs ? `?${qs}` : ''}`);
+  },
+  getBillingDaily: (from, to) => {
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    const qs = q.toString();
+    return apiFetch(`/panel/billing/daily${qs ? `?${qs}` : ''}`);
+  },
+  getBillingLedger: (params = {}) => {
+    const q = new URLSearchParams(
+      Object.entries(params).filter(([, v]) => v != null && v !== ''),
+    );
+    const qs = q.toString();
+    return apiFetch(`/panel/billing/ledger${qs ? `?${qs}` : ''}`);
+  },
   updateOrderStatus: (id, status) =>
     apiFetch(`/panel/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
 

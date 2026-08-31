@@ -7,6 +7,7 @@ import { confirm } from '@/components/ui/confirm';
 import { resolveNotification } from '@/lib/notificationCenter';
 import { Img } from '@/components/Img';
 import { useTempFlag, useTempValue } from '@/hooks/useTempFlag';
+import { OrdersBillingTabs } from '@/components/restaurant/OrdersBillingTabs';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -237,6 +238,8 @@ export function RestaurantOrdersPage() {
           </span>
         </div>
       </div>
+
+      <OrdersBillingTabs />
 
       {loading ? (
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
