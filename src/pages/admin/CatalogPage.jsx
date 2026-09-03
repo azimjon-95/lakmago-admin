@@ -5,6 +5,7 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
 import { CATALOG_CATEGORIES as CATEGORIES, DRINKS_CATEGORY, catalogCategoryLabel } from '@/constants/catalogCategories';
+import { CatalogZipImportModal } from './CatalogZipImportModal';
 
 const catLabel = catalogCategoryLabel;
 
@@ -12,6 +13,7 @@ export function CatalogPage() {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(null);
+  const [zipImportOpen, setZipImportOpen] = useState(false);
   const [filter, setFilter] = useState('');
   const [q, setQ] = useState('');
 
@@ -51,20 +53,35 @@ export function CatalogPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <div className="flex items-start justify-between gap-3 mb-1">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-1">
         <div>
           <h1 className="text-xl font-semibold text-ink">Umumiy katalog</h1>
           <p className="text-sm text-muted mt-0.5">
             Restoranlar shu ro'yxatdan tanlab o'z narxini qo'yadi
           </p>
         </div>
-        <button
-          onClick={() => setEditing('new')}
-          className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white flex-none"
-        >
-          <i className="ti ti-plus" /> Qo'shish
-        </button>
+        <div className="flex gap-2 flex-none">
+          <button
+            onClick={() => setZipImportOpen(true)}
+            className="flex-1 sm:flex-none border border-line text-ink font-medium px-4 py-2 rounded-xl hover:bg-canvas"
+          >
+            <i className="ti ti-file-zip" /> ZIP orqali
+          </button>
+          <button
+            onClick={() => setEditing('new')}
+            className="flex-1 sm:flex-none bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white"
+          >
+            <i className="ti ti-plus" /> Qo'shish
+          </button>
+        </div>
       </div>
+
+      {zipImportOpen && (
+        <CatalogZipImportModal
+          onClose={() => setZipImportOpen(false)}
+          onImported={load}
+        />
+      )}
 
       {/* Filtr — mobilda ustma-ust (ikkalasi ham to'liq kenglikda,
           70 ta kategoriyaning eng uzuni ham qulay o'qiladi),
