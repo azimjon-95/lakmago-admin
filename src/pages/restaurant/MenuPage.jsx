@@ -6,6 +6,7 @@ import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
+import { catalogCategoryLabel } from '@/constants/catalogCategories';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
@@ -671,9 +672,9 @@ function CatalogPicker({ onClose, onAdded }) {
     }
   };
 
-  // Brend bo'yicha guruh
+  // Kategoriya bo'yicha guruh (brend endi to'ldirilmaydi)
   const grouped = items.reduce((acc, p) => {
-    const key = p.brand || 'Boshqa';
+    const key = catalogCategoryLabel(p.category);
     (acc[key] = acc[key] || []).push(p);
     return acc;
   }, {});
@@ -781,9 +782,9 @@ function CatalogPicker({ onClose, onAdded }) {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {Object.entries(grouped).map(([brand, list]) => (
-                    <div key={brand}>
-                      <div className="text-xs font-semibold text-muted mb-2">{brand}</div>
+                  {Object.entries(grouped).map(([category, list]) => (
+                    <div key={category}>
+                      <div className="text-xs font-semibold text-muted mb-2">{category}</div>
                       <div className="space-y-1.5">
                         {list.map((p) => (
                           <button

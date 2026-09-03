@@ -1,36 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
-import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
+import { CATALOG_CATEGORIES as CATEGORIES, DRINKS_CATEGORY, catalogCategoryLabel } from '@/constants/catalogCategories';
 
-const CATEGORIES = [
-  { value: 'salqin', label: 'Ichimliklar' },
-  { value: 'koffe', label: 'Qahva' },
-  { value: 'choyxona', label: 'Choy' },
-  { value: 'shirinlik', label: 'Shirinlik' },
-  { value: 'fastfood', label: 'Fast food' },
-  { value: 'milliy', label: 'Milliy taom' },
-  { value: 'osh', label: 'Osh' },
-  { value: 'shashlik', label: 'Shashlik' },
-  { value: 'sup', label: "Sho'rva" },
-  { value: 'salat', label: 'Salatlar' },
-  { value: 'lavash', label: 'Lavash' },
-  { value: 'burger', label: 'Burger' },
-  { value: 'tovuq', label: 'Tovuq' },
-  { value: 'pitsa', label: 'Pitsa' },
-  { value: 'sushi', label: 'Sushi' },
-  { value: 'evropa', label: 'Yevropa' },
-  { value: 'turetskaya', label: 'Turk taomlari' },
-  { value: 'zavtroki', label: 'Nonushta' },
-  { value: 'obed', label: 'Tushlik' },
-  { value: 'magazin_oziq', label: "Do'kon mahsuloti" },
-];
-
-const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
-const catLabel = (v) => CATEGORIES.find((c) => c.value === v)?.label || v;
+const catLabel = catalogCategoryLabel;
 
 export function CatalogPage() {
   const [items, setItems] = useState([]);
@@ -66,9 +42,9 @@ export function CatalogPage() {
     } catch (e) { alert(e.message); }
   };
 
-  // Brend bo'yicha guruhlaymiz
+  // Kategoriya bo'yicha guruhlaymiz (brend endi yig'ilmaydi)
   const grouped = items.reduce((acc, p) => {
-    const key = p.brand || catLabel(p.category);
+    const key = catLabel(p.category);
     (acc[key] = acc[key] || []).push(p);
     return acc;
   }, {});
@@ -95,7 +71,7 @@ export function CatalogPage() {
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          placeholder="Nom yoki brend..."
+          placeholder="Nom bo'yicha qidirish..."
           className="inp flex-1"
         />
         <select
@@ -170,10 +146,11 @@ export function CatalogPage() {
                           <span className="text-muted font-normal"> · {p.volume}</span>
                         )}
                       </div>
-                      <div className="text-xs text-muted">
-                        {som(p.suggestedPrice)} so'm
-                        {p.usageCount > 0 && ` · ${p.usageCount} restoranda`}
-                      </div>
+                      {p.usageCount > 0 && (
+                        <div className="text-xs text-muted">
+                          {p.usageCount} restoranda
+                        </div>
+                      )}
                     </div>
 
                     <div className="flex gap-1 flex-none">
@@ -214,13 +191,10 @@ function ProductForm({ product, onClose, onSaved }) {
 
   const [form, setForm] = useState({
     name: product?.name || '',
-    brand: product?.brand || '',
     volume: product?.volume || '',
-    category: product?.category || 'salqin',
+    category: product?.category || DRINKS_CATEGORY,
     description: product?.description || '',
     imageUrl: product?.imageUrl || '',
-    suggestedPrice: product?.suggestedPrice ?? null,
-    calories: product?.calories ?? null,
     isActive: product?.isActive ?? true,
   });
   const [saving, setSaving] = useState(false);
@@ -232,12 +206,7 @@ function ProductForm({ product, onClose, onSaved }) {
     if (form.name.trim().length < 2) { setErr('Nom kiriting'); return; }
     setSaving(true); setErr(null);
     try {
-      const payload = {
-        ...form,
-        name: form.name.trim(),
-        suggestedPrice: Number(form.suggestedPrice) || 0,
-        ...(form.calories ? { calories: Number(form.calories) } : {}),
-      };
+      const payload = { ...form, name: form.name.trim() };
       if (product) await adminApi.updateCatalogProduct(product._id, payload);
       else await adminApi.createCatalogProduct(payload);
       onSaved();
@@ -295,24 +264,14 @@ function ProductForm({ product, onClose, onSaved }) {
           />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Brend" hint="Guruhlash uchun">
-            <input
-              value={form.brand}
-              onChange={(e) => set('brand', e.target.value)}
-              placeholder="Coca-Cola"
-              className="inp"
-            />
-          </Field>
-          <Field label="Hajm">
-            <input
-              value={form.volume}
-              onChange={(e) => set('volume', e.target.value)}
-              placeholder="0.5 l"
-              className="inp"
-            />
-          </Field>
-        </div>
+        <Field label="Hajm" hint="Ixtiyoriy — 0.5 l, 1 kg va h.k.">
+          <input
+            value={form.volume}
+            onChange={(e) => set('volume', e.target.value)}
+            placeholder="0.5 l"
+            className="inp"
+          />
+        </Field>
 
         <Field label="Kategoriya *">
           <select
@@ -334,22 +293,6 @@ function ProductForm({ product, onClose, onSaved }) {
             className="inp resize-none"
           />
         </Field>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Tavsiya narx" hint="Restoran o'zgartiradi">
-            <MoneyInput
-              value={form.suggestedPrice}
-              onChange={(v) => set('suggestedPrice', v)}
-            />
-          </Field>
-          <Field label="Kaloriya">
-            <NumberInput
-              value={form.calories}
-              onChange={(v) => set('calories', v)}
-              suffix="ккал"
-            />
-          </Field>
-        </div>
 
         <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
           <span className="text-sm text-ink">Faol</span>
