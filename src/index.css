@@ -18,10 +18,24 @@ body {
 }
 .animate-fade { animation: fade-in 0.25s ease-out; }
 
-/* Forma maydoni — bir xil uslub */
-.inp {
-  @apply w-full border border-line rounded-lg px-3 py-2 text-ink outline-none
-         focus:border-brand-400 transition-colors bg-white;
+/* Forma maydoni — bir xil uslub.
+ *
+ * @layer components ICHIDA, chunki bu klass utility'lar bilan
+ * birga ishlatiladi (masalan `inp w-44`, `inp flex-1`). @layer
+ * bo'lmasa, PostCSS bu bloqni faylda YOZILGAN JOYIDA — ya'ni
+ * @tailwind utilities'DAN KEYIN — chiqaradi, va CSS mos
+ * specifiklikda OXIRGI qoida g'olib chiqqani uchun .inp'ning
+ * w-full'i har doim w-44/flex-none kabi utility'larni BOSIB
+ * KETADI. Aynan shu sabab CatalogPage'dagi kategoriya select
+ * to'liq kenglikka cho'zilib, qidiruv maydonini siqib qo'ygan
+ * edi. @layer components utility'lardan OLDIN joylashtiradi —
+ * endi utility klasslar kutilganidek ustunlik qiladi.
+ */
+@layer components {
+  .inp {
+    @apply w-full border border-line rounded-lg px-3 py-2 text-ink outline-none
+           focus:border-brand-400 transition-colors bg-white;
+  }
 }
 
 /* Chek chop etish — faqat chek ko'rinadi */

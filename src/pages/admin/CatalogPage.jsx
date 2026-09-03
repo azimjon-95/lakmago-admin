@@ -66,18 +66,20 @@ export function CatalogPage() {
         </button>
       </div>
 
-      {/* Filtr */}
-      <div className="flex gap-2 mt-4 mb-4">
+      {/* Filtr — mobilda ustma-ust (ikkalasi ham to'liq kenglikda,
+          70 ta kategoriyaning eng uzuni ham qulay o'qiladi),
+          sm+ ekranda yonma-yon */}
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_15rem] gap-2 mt-4 mb-4">
         <input
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Nom bo'yicha qidirish..."
-          className="inp flex-1"
+          className="inp"
         />
         <select
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          className="inp w-44 flex-none"
+          className="inp"
         >
           <option value="">Barcha kategoriya</option>
           {CATEGORIES.map((c) => (
