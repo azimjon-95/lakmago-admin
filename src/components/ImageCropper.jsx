@@ -152,7 +152,7 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
       ctx.drawImage(img.el, dx, dy, dw, dh);
 
       const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.9));
-      if (!blob) throw new Error('Kesib bo\u2018lmadi');
+      if (!blob) throw new Error('Kesib bo‘lmadi');
 
       onDone(new File([blob], 'crop.jpg', { type: 'image/jpeg' }));
     } catch {

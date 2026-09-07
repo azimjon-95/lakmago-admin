@@ -459,3 +459,68 @@ body {
 @media (max-width: 480px) {
   .rb-card__value { font-size: 17px; }
 }
+
+
+/* ═══ Hisobotlar — kengaytirilgan ko'rsatkichlar ═══ */
+
+/*
+ * Asosiy karta (tushum) — ataylab ajratilgan. Restoran egasi
+ * sahifani ochganda ko'zi eng avval shu raqamga tushishi kerak.
+ */
+.rb-card--accent {
+  background: linear-gradient(160deg, rgba(214, 158, 46, 0.10), rgba(214, 158, 46, 0.03));
+  border-color: rgba(214, 158, 46, 0.35);
+}
+.rb-card--accent .rb-card__icon { color: var(--brand-600); }
+.rb-card--accent .rb-card__value { font-size: 22px; }
+
+/* Diqqat talab qiladigan holat (bekor qilingan buyurtmalar bor) */
+.rb-card--alert .rb-card__icon,
+.rb-card--alert .rb-card__value { color: #C93B31; }
+
+/*
+ * Eng ko'p sotilganlar. Jadval emas, ro'yxat — chunki bu yerda
+ * solishtirish emas, TARTIB muhim. Telefonda ham, katta ekranda
+ * ham bir xil o'qiladi.
+ */
+.rb-top {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+}
+.rb-top__row {
+  display: grid;
+  grid-template-columns: 26px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  font-size: 13.5px;
+}
+.rb-top__row + .rb-top__row { border-top: 1px solid var(--line); }
+
+.rb-top__rank {
+  width: 22px; height: 22px;
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--canvas);
+  color: var(--muted);
+  font-size: 11.5px; font-weight: 700;
+}
+.rb-top__name {
+  color: var(--ink);
+  font-weight: 500;
+  /* Uzun nom qatorni buzmasin */
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.rb-top__qty { color: var(--muted); font-size: 12.5px; white-space: nowrap; }
+.rb-top__sum { color: var(--ink); font-weight: 600; white-space: nowrap; }
+
+/* Telefonda summa pastga tushadi — nom uchun joy qolsin */
+@media (max-width: 480px) {
+  .rb-top__row {
+    grid-template-columns: 26px 1fr auto;
+    row-gap: 2px;
+  }
+  .rb-top__sum { grid-column: 2 / -1; font-size: 12.5px; color: var(--muted); }
+}

@@ -19,10 +19,10 @@ function toDateInput(d) {
 }
 
 const LEDGER_LABEL = {
-  payment_in: 'Mijoz to\u2018lovi',
+  payment_in: 'Mijoz to‘lovi',
   commission: 'Komissiya',
   restaurant_due: 'Ulush hisoblandi',
-  payout: 'O\u2018tkazma',
+  payout: 'O‘tkazma',
   refund: 'Qaytarish',
   adjustment: 'Tuzatish',
   waiter_payout: 'Ofitsiant haqi',
@@ -66,6 +66,9 @@ export function RestaurantBillingPage() {
     } else if (preset === 'yesterday') {
       const y = new Date(now); y.setDate(y.getDate() - 1);
       setFrom(toDateInput(y)); setTo(toDateInput(y));
+    } else if (preset === 'week') {
+      const w = new Date(now); w.setDate(w.getDate() - 6);
+      setFrom(toDateInput(w)); setTo(today);
     } else if (preset === 'month') {
       setFrom(toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)));
       setTo(today);
@@ -73,7 +76,7 @@ export function RestaurantBillingPage() {
   };
 
   return (
-    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-5xl">
+    <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-7xl">
       <div className="mb-5">
         <h1 className="text-lg sm:text-xl font-semibold text-ink">Hisobotlar</h1>
         <p className="text-xs sm:text-sm text-muted mt-0.5 truncate">{user?.restaurant?.name}</p>
@@ -86,6 +89,7 @@ export function RestaurantBillingPage() {
         <div className="flex gap-1.5">
           <PresetBtn active={isToday} onClick={() => applyPreset('today')}>Bugun</PresetBtn>
           <PresetBtn onClick={() => applyPreset('yesterday')}>Kecha</PresetBtn>
+          <PresetBtn onClick={() => applyPreset('week')}>7 kun</PresetBtn>
           <PresetBtn onClick={() => applyPreset('month')}>Shu oy</PresetBtn>
         </div>
 
@@ -108,17 +112,31 @@ export function RestaurantBillingPage() {
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
       ) : summaryQ.isError ? (
         <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-          Hisobotni yuklab bo\u2018lmadi
+          Hisobotni yuklab bo‘lmadi
         </div>
       ) : (
         <>
           {/* ═══ ASOSIY KARTALAR ═══ */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+          {/*
+            BIRINCHI QATOR — restoran egasi ertalab ochib eng avval
+            ko'radigan to'rt raqam. Tushum birinchi o'rinda: "bugun
+            qancha ishladim" eng ko'p so'raladigan savol.
+          */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
             <StatCard
-              icon="ti-clipboard"
-              label="Jami buyurtma"
-              value={orders?.ordersTotal ?? 0}
-              suffix="ta"
+              icon="ti-wallet"
+              label="Tushum"
+              value={som(orders?.revenue)}
+              suffix="so'm"
+              hint={`${orders?.ordersTotal ?? 0} ta buyurtma`}
+              accent
+            />
+            <StatCard
+              icon="ti-receipt"
+              label="O‘rtacha chek"
+              value={som(orders?.avgCheck)}
+              suffix="so'm"
+              hint="Bitta buyurtmaga"
             />
             <StatCard
               icon="ti-cash"
@@ -128,23 +146,70 @@ export function RestaurantBillingPage() {
               hint={`${orders?.cash?.count ?? 0} ta buyurtma`}
             />
             <StatCard
-              icon="ti-cash"
+              icon="ti-credit-card"
               label="Karta orqali"
               value={som(orders?.card?.amount)}
               suffix="so'm"
               hint={`${orders?.card?.count ?? 0} ta buyurtma`}
             />
-            <BalanceCard payout={payout} />
           </div>
+
+          {/*
+            IKKINCHI QATOR — balans va sifat ko'rsatkichlari.
+            Bekor qilinganlar ataylab shu yerda: u pul emas, lekin
+            e'tibor talab qiladigan signal.
+          */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
+            <BalanceCard payout={payout} />
+            <StatCard
+              icon="ti-x"
+              label="Bekor qilingan"
+              value={orders?.cancelled ?? 0}
+              suffix="ta"
+              hint={cancelHint(orders)}
+              warn={(orders?.cancelled ?? 0) > 0}
+            />
+            <StatCard
+              icon="ti-moped"
+              label="Yetkazish"
+              value={orders?.delivery ?? 0}
+              suffix="ta"
+              hint="Kuryer orqali"
+            />
+            <StatCard
+              icon="ti-shopping-bag"
+              label="Olib ketish"
+              value={(orders?.pickup ?? 0) + (orders?.dinein ?? 0)}
+              suffix="ta"
+              hint="O‘zi olib ketgan"
+            />
+          </div>
+
+          {/* ═══ ENG KO'P SOTILGAN TAOMLAR ═══ */}
+          {orders?.topDishes?.length > 0 && (
+            <div className="mb-5">
+              <h2 className="text-sm font-semibold text-ink mb-2.5">Eng ko‘p sotilgan</h2>
+              <div className="rb-top">
+                {orders.topDishes.map((d, i) => (
+                  <div key={d.name} className="rb-top__row">
+                    <span className="rb-top__rank">{i + 1}</span>
+                    <span className="rb-top__name">{d.name}</span>
+                    <span className="rb-top__qty">{d.qty} ta</span>
+                    <span className="rb-top__sum">{som(d.amount)} so‘m</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* ═══ NAQD/KARTA TUSHUNTIRISH — shaffoflik uchun ═══ */}
           <div className="rb-note">
             <i className="ti ti-info-circle" />
             <div>
-              <b>Naqd</b> to\u2018lovlarda pul to\u2018liq sizda qoladi — biz komissiyamizni
-              keyingi karta to\u2018lovlaridan ushlab qolamiz.{' '}
-              <b>Karta</b> orqali to\u2018langan pul avval bizga tushadi, ulushingizni
-              keyin o\u2018tkazib beramiz (pastdagi jadvalda qachon-qanchaligi ko\u2018rinadi).
+              <b>Naqd</b> to‘lovlarda pul to‘liq sizda qoladi — biz komissiyamizni
+              keyingi karta to‘lovlaridan ushlab qolamiz.{' '}
+              <b>Karta</b> orqali to‘langan pul avval bizga tushadi, ulushingizni
+              keyin o‘tkazib beramiz (pastdagi jadvalda qachon-qanchaligi ko‘rinadi).
             </div>
           </div>
 
@@ -156,7 +221,7 @@ export function RestaurantBillingPage() {
               <div className="text-muted text-sm py-6 text-center">Yuklanmoqda...</div>
             ) : daily.length === 0 ? (
               <div className="text-center text-muted text-sm py-10 border border-dashed border-line rounded-xl">
-                Bu oraliqda yozuv yo\u2018q
+                Bu oraliqda yozuv yo‘q
               </div>
             ) : (
               <>
@@ -169,7 +234,7 @@ export function RestaurantBillingPage() {
                         <th className="px-4 py-2.5 font-medium text-right">Tushum</th>
                         <th className="px-4 py-2.5 font-medium text-right">Komissiya</th>
                         <th className="px-4 py-2.5 font-medium text-right">Ulushingiz</th>
-                        <th className="px-4 py-2.5 font-medium text-right">O\u2018tkazildi</th>
+                        <th className="px-4 py-2.5 font-medium text-right">O‘tkazildi</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -206,7 +271,7 @@ export function RestaurantBillingPage() {
                         )}
                         <div><span>Ulushingiz</span><span className="font-medium">{som(d.restoranUlushi)}</span></div>
                         {d.tolangan > 0 && (
-                          <div><span>O\u2018tkazildi</span><span className="text-green-600">{som(d.tolangan)}</span></div>
+                          <div><span>O‘tkazildi</span><span className="text-green-600">{som(d.tolangan)}</span></div>
                         )}
                       </div>
                     </div>
@@ -232,9 +297,23 @@ function PresetBtn({ active, onClick, children }) {
   );
 }
 
-function StatCard({ icon, label, value, suffix, hint }) {
+/*
+ * Bekor qilinganlar uchun izoh — nafaqat SONI, balki ULUSHI ham
+ * ko'rsatiladi. 3 ta bekor 10 ta buyurtmadan va 300 tadan
+ * butunlay boshqa narsa: birinchisi jiddiy muammo, ikkinchisi
+ * odatiy holat.
+ */
+function cancelHint(orders) {
+  const c = orders?.cancelled ?? 0;
+  if (!c) return 'Muammo yo‘q';
+  const done = orders?.ordersTotal ?? 0;
+  if (!done) return 'Yetkazilgan buyurtma yo‘q';
+  return `Buyurtmalarning ${Math.round((c / (c + done)) * 100)}%`;
+}
+
+function StatCard({ icon, label, value, suffix, hint, accent, warn }) {
   return (
-    <div className="rb-card">
+    <div className={`rb-card${accent ? ' rb-card--accent' : ''}${warn ? ' rb-card--alert' : ''}`}>
       <i className={`ti ${icon} rb-card__icon`} />
       <div className="rb-card__label">{label}</div>
       <div className="rb-card__value">
@@ -269,7 +348,7 @@ function BalanceCard({ payout }) {
   return (
     <div className="rb-card rb-card--ok">
       <i className="ti ti-cash rb-card__icon" />
-      <div className="rb-card__label">Sizga o\u2018tkaziladigan</div>
+      <div className="rb-card__label">Sizga o‘tkaziladigan</div>
       <div className="rb-card__value">
         {som(pending)} <span>so'm</span>
       </div>

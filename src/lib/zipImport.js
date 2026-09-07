@@ -81,12 +81,12 @@ export async function parseCatalogZip(file) {
     const errors = [];
 
     const name = String(entry.nomi || entry.name || '').trim();
-    if (!name) errors.push('Nomi yo\u2018q');
+    if (!name) errors.push('Nomi yo‘q');
     else if (name.length < 2 || name.length > 120) errors.push("Nomi 2-120 belgi bo'lishi kerak");
 
     const categoryLabel = String(entry.kategoriya || entry.category || '').trim();
     const categoryValue = matchCategory(categoryLabel);
-    if (!categoryLabel) errors.push('Kategoriya yo\u2018q');
+    if (!categoryLabel) errors.push('Kategoriya yo‘q');
     else if (!categoryValue) errors.push(`Kategoriya topilmadi: "${categoryLabel}"`);
 
     const description = String(entry.desc || entry.description || '').trim();
@@ -95,7 +95,7 @@ export async function parseCatalogZip(file) {
     let imageBlob = null;
     let imagePreviewUrl = null;
     if (!imagePath) {
-      errors.push('Rasm yo\u2018li yo\u2018q');
+      errors.push('Rasm yo‘li yo‘q');
     } else {
       const zipEntry = zip.file(basePath + imagePath) || zip.file(imagePath);
       if (!zipEntry) {

@@ -12,7 +12,7 @@ const CONCURRENCY = 3;
 const STATUS_LABEL = {
   idle: 'Kutilmoqda',
   uploading: 'Yuklanmoqda...',
-  done: 'Qo\u2018shildi',
+  done: 'Qo‘shildi',
   error: 'Xato',
   skipped: "O'tkazib yuborildi",
 };
@@ -56,7 +56,7 @@ export function CatalogZipImportModal({ onClose, onImported }) {
       setRows(parsed.map((r) => ({ ...r, status: 'idle', statusMsg: '' })));
       setStage('review');
     } catch (e2) {
-      setZipErr(e2.message || 'ZIP faylni o\u2018qib bo\u2018lmadi');
+      setZipErr(e2.message || 'ZIP faylni o‘qib bo‘lmadi');
     } finally {
       setParsing(false);
     }
@@ -222,7 +222,7 @@ export function CatalogZipImportModal({ onClose, onImported }) {
                       {r.errors.length > 0 ? (
                         <div className="text-xs text-red-600 truncate">{r.errors.join(' \u00b7 ')}</div>
                       ) : (
-                        <div className="text-xs text-muted truncate">{r.description || '\u2014'}</div>
+                        <div className="text-xs text-muted truncate">{r.description || '—'}</div>
                       )}
                     </div>
 
