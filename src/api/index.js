@@ -185,6 +185,14 @@ export const panelApi = {
 
   // O'z banneri
   markOrderPaid: (id, paid = true) => apiFetch(`/panel/orders/${id}/paid`, { method: 'PATCH', body: JSON.stringify({ paid }) }),
+
+  // ═══ Sozlamalar → Telegram (restoran xodimlari) ═══
+  telegramStaffList: () => apiFetch('/panel/telegram-staff'),
+  telegramStaffAdd: (username) => apiFetch('/panel/telegram-staff', {
+    method: 'POST', body: JSON.stringify({ username }),
+  }),
+  telegramStaffLink: (id) => apiFetch(`/panel/telegram-staff/${id}/link`, { method: 'POST' }),
+  telegramStaffRemove: (id) => apiFetch(`/panel/telegram-staff/${id}`, { method: 'DELETE' }),
   getBanner: () => apiFetch('/panel/banner'),
   setBanner: (data) => apiFetch('/panel/banner', { method: 'PUT', body: JSON.stringify(data) }),
   deleteBanner: () => apiFetch('/panel/banner', { method: 'DELETE' }),

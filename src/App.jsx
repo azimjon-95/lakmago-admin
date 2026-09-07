@@ -43,6 +43,7 @@ const RestaurantBillingPage = lazy(() => import('@/pages/restaurant/RestaurantBi
 const RestaurantMenuPage = lazy(() => import('@/pages/restaurant/MenuPage').then((m) => ({ default: m.RestaurantMenuPage })));
 const RestaurantBannerPage = lazy(() => import('@/pages/restaurant/BannerPage').then((m) => ({ default: m.RestaurantBannerPage })));
 const RestaurantProfilePage = lazy(() => import('@/pages/restaurant/ProfilePage').then((m) => ({ default: m.RestaurantProfilePage })));
+const TelegramStaffPage = lazy(() => import('@/pages/restaurant/TelegramStaffPage').then((m) => ({ default: m.TelegramStaffPage })));
 const StopListPage = lazy(() => import('@/pages/restaurant/StopListPage').then((m) => ({ default: m.StopListPage })));
 const DineInPage = lazy(() => import('@/pages/restaurant/DineInPage').then((m) => ({ default: m.DineInPage })));
 const DineInLivePage = lazy(() => import('@/pages/restaurant/DineInLivePage').then((m) => ({ default: m.DineInLivePage })));
@@ -159,6 +160,7 @@ function RestaurantRoutes() {
         <Route path="/menu" element={<RestaurantMenuPage />} />
         <Route path="/banner" element={<RestaurantBannerPage />} />
         <Route path="/profile" element={<RestaurantProfilePage />} />
+        <Route path="/telegram" element={<TelegramStaffPage />} />
         <Route path="/stop-list" element={<StopListPage />} />
         <Route path="/dine-in" element={<DineInPage />} />
         <Route path="/dine-in-live" element={<DineInLivePage />} />

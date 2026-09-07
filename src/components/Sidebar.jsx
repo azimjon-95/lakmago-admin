@@ -169,6 +169,11 @@ const restaurantNav = [
     label:"Banner"
   },
   {
+    to:"/telegram",
+    icon:"ti-brand-telegram",
+    label:"Telegram"
+  },
+  {
     to:"/profile",
     icon:"ti-settings",
     label:"Sozlamalar"
