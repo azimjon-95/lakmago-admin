@@ -25,6 +25,18 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
   const [img, setImg] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
+
+  /*
+   * ═══ AYLANTIRISH ═══
+   *
+   * Faqat 90° qadamlar: 0, 90, 180, 270. Erkin burchak
+   * ATAYLAB qo'llanmadi — oshpaz telefonda taom rasmini
+   * to'g'irlayapti, unga "3 gradusga burish" kerak emas.
+   * Kerak bo'ladigani: yonboshlab olingan rasmni tikka
+   * qilish. 90° qadam buni bir bosishda hal qiladi va
+   * natija har doim aniq to'g'ri chiqadi.
+   */
+  const [rot, setRot] = useState(0);
   const [busy, setBusy] = useState(false);
 
   const frameRef = useRef(null);
@@ -53,9 +65,26 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
     if (!frame || !img) return null;
     const fw = frame.clientWidth;
     const fh = fw / aspect;
-    const scale = Math.max(fw / img.w, fh / img.h);
-    return { fw, fh, w: img.w * scale, h: img.h * scale };
-  }, [img, aspect]);
+
+    /*
+     * 90° yoki 270° ga burilganda rasmning ENI va BO'YI
+     * o'rin almashadi. Shuni hisobga olmasak, tikka rasm
+     * burilgandan keyin ramkani qoplamay, chetlarida bo'sh
+     * joy qolardi.
+     */
+    const swapped = rot === 90 || rot === 270;
+    const iw = swapped ? img.h : img.w;
+    const ih = swapped ? img.w : img.h;
+
+    const scale = Math.max(fw / iw, fh / ih);
+    return {
+      fw, fh,
+      // Ko'rinadigan (burilgandan keyingi) o'lcham
+      w: iw * scale, h: ih * scale,
+      // Rasmning O'ZINING o'lchami — CSS transform uchun
+      rawW: img.w * scale, rawH: img.h * scale,
+    };
+  }, [img, aspect, rot]);
 
   /*
    * Chegara: rasm ramkadan uzoqlashib, chetida bo'sh joy
@@ -76,6 +105,16 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
   useEffect(() => {
     setPos((p) => clamp(p, zoom));
   }, [zoom, clamp]);
+
+  /*
+   * Burilgandan keyin surilgan joy ma'nosini yo'qotadi —
+   * rasm boshqa yo'nalishda turadi. Markazga qaytaramiz,
+   * shunda foydalanuvchi yangi holatdan boshlaydi.
+   */
+  const rotate = (dir) => {
+    setRot((r) => (r + dir * 90 + 360) % 360);
+    setPos({ x: 0, y: 0 });
+  };
 
   /* ═══ Surish va ikki barmoq ═══ */
   const dist = (t) => Math.hypot(
@@ -144,12 +183,31 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
 
       // Ekrandagi o'lchamdan asl rasmdagi o'lchamga o'tish
       const k = outW / f.fw;
-      const dw = f.w * zoom * k;
-      const dh = f.h * zoom * k;
-      const dx = (outW - dw) / 2 + pos.x * k;
-      const dy = (outH - dh) / 2 + pos.y * k;
 
-      ctx.drawImage(img.el, dx, dy, dw, dh);
+      /*
+       * ═══ AYLANTIRISHNI CHIZISH ═══
+       *
+       * Tartib MUHIM va ataylab shunday:
+       *   1. koordinata boshini kesish markaziga ko'chiramiz
+       *   2. buramiz
+       *   3. rasmni O'Z markazidan chizamiz
+       *
+       * Agar avval chizib, keyin bursak, rasm ramkadan
+       * chiqib ketardi — burilish nuqtasi noto'g'ri bo'lardi.
+       *
+       * `rawW/rawH` ishlatiladi, `w/h` emas: bular rasmning
+       * o'z o'lchamlari. `w/h` esa burilgandan KEYINGI
+       * ko'rinadigan o'lcham va u faqat ramkani to'ldirishni
+       * hisoblash uchun kerak edi.
+       */
+      ctx.save();
+      ctx.translate(outW / 2 + pos.x * k, outH / 2 + pos.y * k);
+      if (rot) ctx.rotate((rot * Math.PI) / 180);
+
+      const dw = f.rawW * zoom * k;
+      const dh = f.rawH * zoom * k;
+      ctx.drawImage(img.el, -dw / 2, -dh / 2, dw, dh);
+      ctx.restore();
 
       const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.9));
       if (!blob) throw new Error('Kesib bo‘lmadi');
@@ -239,9 +297,20 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
               draggable={false}
               className="absolute left-1/2 top-1/2 max-w-none will-change-transform"
               style={{
-                width: f.w,
-                height: f.h,
-                transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px) scale(${zoom})`,
+                /*
+                 * Rasmning O'Z o'lchami (rawW/rawH), burilgandan
+                 * keyingi ko'rinadigan o'lcham emas. Burish CSS
+                 * transform bilan qilinadi, shuning uchun element
+                 * o'z holicha qoladi.
+                 *
+                 * Transform tartibi canvas'dagi bilan BIR XIL:
+                 * avval markazga, keyin surish, keyin burish,
+                 * keyin masshtab. Aks holda ko'rinish va
+                 * yakuniy natija bir-biriga mos kelmasdi.
+                 */
+                width: f.rawW,
+                height: f.rawH,
+                transform: `translate(-50%, -50%) translate(${pos.x}px, ${pos.y}px) rotate(${rot}deg) scale(${zoom})`,
               }}
             />
           )}
@@ -276,11 +345,46 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
           />
           <i className="ti ti-photo text-white/40 text-xl" />
         </div>
+
+        {/*
+          Aylantirish tugmalari slayder OSTIDA, markazda.
+          Yuqorida bo'lsa kesish maydonidan joy olardi —
+          telefonda esa rasm ko'rinishi eng muhimi.
+        */}
+        <div className="mt-3 flex items-center justify-center gap-2">
+          <RotBtn icon="ti-rotate-2" label="Chapga burish" onClick={() => rotate(-1)} />
+          <span className="min-w-[52px] text-center text-[12px] tabular-nums text-white/50">
+            {rot}°
+          </span>
+          <RotBtn icon="ti-rotate-clockwise-2" label="O‘ngga burish" onClick={() => rotate(1)} />
+        </div>
       </div>
 
       </div>
     </div>
   ), document.body);
+}
+
+/*
+ * Aylantirish tugmasi.
+ *
+ * Katta bosish maydoni (44px) — telefonda barmoq bilan
+ * bosiladi va oshxona sharoitida aniqlik past bo'ladi.
+ */
+function RotBtn({ icon, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      title={label}
+      className="flex h-11 w-11 items-center justify-center rounded-xl
+                 bg-white/10 text-white active:bg-white/20 active:scale-95
+                 transition-transform"
+    >
+      <i className={`ti ${icon} text-xl`} />
+    </button>
+  );
 }
 
 /**
