@@ -10,7 +10,7 @@ const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const CAT_LABEL = {
   milliy: 'Milliy taom', osh: 'Osh', shashlik: 'Shashlik',
   sup: "Sho'rva", salat: 'Salatlar', choyxona: 'Choyxona',
-  zavtroki: 'Nonushta', obed: 'Tushlik', fastfood: 'Fast food',
+  zavtroki: 'Nonushta', obed: 'Issiq taomlar', fastfood: 'Fast food',
   lavash: 'Lavash', burger: 'Burger', tovuq: 'Tovuq',
   pitsa: 'Pitsa', sushi: 'Sushi', evropa: 'Yevropa',
   turetskaya: 'Turk taomlari', koffe: 'Qahva',

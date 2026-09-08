@@ -10,7 +10,7 @@ export const CATEGORIES = [
   { value: 'choyxona', label: 'Choyxona', icon: 'ti-tea' },
   // Vaqt bo'yicha
   { value: 'zavtroki', label: 'Nonushta', icon: 'ti-egg-fried' },
-  { value: 'obed', label: 'Tushlik / Biznes-lanch', icon: 'ti-tools-kitchen-2' },
+  { value: 'obed', label: 'Issiq taomlar', icon: 'ti-tools-kitchen-2' },
   // Tez ovqat
   { value: 'fastfood', label: 'Fast food', icon: 'ti-pizza' },
   { value: 'lavash', label: 'Lavash / Shaurma', icon: 'ti-meat' },

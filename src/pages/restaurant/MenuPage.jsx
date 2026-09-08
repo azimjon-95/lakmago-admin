@@ -20,7 +20,7 @@ const DISH_CATEGORIES = [
   { value: 'salat', label: 'Salatlar' },
   { value: 'choyxona', label: 'Choyxona' },
   { value: 'zavtroki', label: 'Nonushta' },
-  { value: 'obed', label: 'Tushlik' },
+  { value: 'obed', label: 'Issiq taomlar' },
   { value: 'fastfood', label: 'Fast food' },
   { value: 'lavash', label: 'Lavash' },
   { value: 'burger', label: 'Burger' },

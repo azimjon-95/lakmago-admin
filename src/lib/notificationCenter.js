@@ -193,9 +193,35 @@ export const useNotifications = create((set, get) => ({
     // Javob berilmaganlari uchun ovoz. Sinxronlashda ham chalinadi —
     // panel yopiq turganda kelgan buyurtma e'tibordan qolmasin.
     if (!silent) {
+      /*
+       * ═══ ESKI BILDIRISHNOMA OVOZ CHALMAYDI ═══
+       *
+       * MUAMMO: yangi restoran panelга birinchi marta kirilganda
+       * signal chalinardi, garchi ro'yxat BO'SH bo'lsa ham —
+       * "faol buyurtma yo'q, bron yo'q" deb turardi.
+       *
+       * SABAB: kirish paytida server oxirgi bildirishnomalarni
+       * yuboradi. Ular orasida allaqachon ahamiyatini yo'qotgan,
+       * bir necha soat oldingi yozuvlar bo'lishi mumkin. Yosh
+       * tekshirilmagani uchun hammasi chalinardi.
+       *
+       * Takrorlash mantig'ida bu tekshiruv ALLAQACHON bor edi
+       * (REPEAT_MAX_AGE_MS), lekin birinchi chalishda yo'q edi —
+       * ya'ni eski xabar bir marta chalinib, keyin takrorlanmasdi.
+       * Endi ikkalasi bir xil qoidaga bo'ysunadi.
+       */
+      const isFreshEnough = (n) => {
+        const born = new Date(n.createdAt).getTime();
+        // Sana noto'g'ri bo'lsa chalamiz — yangi deb hisoblaymiz,
+        // chunki haqiqiy buyurtmani o'tkazib yuborish yomonroq
+        if (Number.isNaN(born)) return true;
+        return Date.now() - born < REPEAT_MAX_AGE_MS;
+      };
+
       // Sozlamada o'chirilgan turlar jim qoladi
       fresh
         .filter((n) => ['NEW', 'DELIVERED'].includes(n.status))
+        .filter(isFreshEnough)
         .filter((n) => soundAllowed(n.type))
         .forEach((n) => {
           playSound(n.sound, n.priority);
