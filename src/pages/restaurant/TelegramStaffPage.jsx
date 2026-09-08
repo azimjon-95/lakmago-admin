@@ -21,6 +21,9 @@ export function TelegramStaffPage() {
   const [username, setUsername] = useState('');
   const [linkFor, setLinkFor] = useState(null);
   const [err, setErr] = useState('');
+  // Nusxa olingani KO'RINSIN — aks holda mijoz bosdimi yoki
+  // yo'qmi bilmaydi va qayta-qayta bosaveradi
+  const [copied, setCopied] = useState(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ['telegram-staff'],
@@ -89,7 +92,7 @@ export function TelegramStaffPage() {
           <button
             onClick={() => addMut.mutate(username)}
             disabled={!username.trim() || addMut.isPending}
-            className="px-4 rounded-xl bg-brand text-white text-sm font-semibold disabled:opacity-50"
+            className="px-5 rounded-xl bg-brand-400 text-brand-text text-sm font-semibold hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {addMut.isPending ? '...' : 'Qo‘shish'}
           </button>
@@ -115,19 +118,30 @@ export function TelegramStaffPage() {
 
       <div className="space-y-2.5">
         {staff.map((s) => (
-          <div key={s._id} className="p-3.5 rounded-2xl border border-line bg-surface">
+          <div
+            key={s._id}
+            className={`p-3.5 rounded-2xl border bg-surface transition-colors ${
+              s.telegramUserId && s.isActive
+                ? 'border-green-300 bg-green-50/40'
+                : 'border-line'
+            }`}
+          >
             <div className="flex items-center gap-3">
               <div className="flex-1 min-w-0">
                 <div className="font-semibold text-ink text-sm truncate">
                   @{s.username}
                 </div>
-                <div className="text-xs mt-0.5">
+                <div className="text-xs mt-1">
                   {s.telegramUserId && s.isActive ? (
-                    <span className="text-green-600">
-                      ● Ulangan{s.firstName ? ` · ${s.firstName}` : ''}
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-green-100 text-green-700 font-medium">
+                      <span className="w-1.5 h-1.5 rounded-full bg-green-500" />
+                      Ulangan{s.firstName ? ` · ${s.firstName}` : ''}
                     </span>
                   ) : (
-                    <span className="text-muted">○ Ulanmagan</span>
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-canvas text-muted">
+                      <span className="w-1.5 h-1.5 rounded-full bg-line" />
+                      Ulanmagan
+                    </span>
                   )}
                 </div>
               </div>
@@ -139,7 +153,7 @@ export function TelegramStaffPage() {
                       removeMut.mutate(s._id);
                     }
                   }}
-                  className="px-3 py-1.5 rounded-lg border border-line text-xs text-muted"
+                  className="px-3.5 py-2 rounded-lg border border-line text-xs text-muted hover:bg-canvas hover:text-ink transition-colors whitespace-nowrap"
                 >
                   Uzish
                 </button>
@@ -147,7 +161,7 @@ export function TelegramStaffPage() {
                 <button
                   onClick={() => linkMut.mutate(s._id)}
                   disabled={linkMut.isPending || botEnabled === false}
-                  className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold disabled:opacity-50"
+                  className="px-3.5 py-2 rounded-lg bg-brand-400 text-brand-text text-xs font-semibold hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
                 >
                   {linkMut.isPending ? '...' : 'Ulash havolasi'}
                 </button>
@@ -177,10 +191,12 @@ export function TelegramStaffPage() {
                   <button
                     onClick={() => {
                       navigator.clipboard?.writeText(linkFor.url);
+                      setCopied(true);
+                      setTimeout(() => setCopied(false), 1800);
                     }}
-                    className="px-3 rounded-lg bg-ink text-white text-xs font-semibold"
+                    className="px-3.5 rounded-lg bg-ink text-white text-xs font-semibold hover:opacity-90 transition-opacity whitespace-nowrap"
                   >
-                    Nusxa
+                    {copied ? '✓ Olindi' : 'Nusxa'}
                   </button>
                 </div>
               </div>
