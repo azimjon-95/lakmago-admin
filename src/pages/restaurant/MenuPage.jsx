@@ -32,7 +32,9 @@ const DISH_CATEGORIES = [
   { value: 'koffe', label: 'Qahva' },
   { value: 'shirinlik', label: 'Shirinlik' },
   { value: 'salqin', label: 'Ichimlik' },
-  { value: 'magazin_oziq', label: "Do'kon mahsuloti" },
+  { value: 'sous', label: 'Souslar' },
+  { value: 'boks', label: 'Bokslar' },
+  { value: 'non', label: 'Nonlar' },
 ];
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');

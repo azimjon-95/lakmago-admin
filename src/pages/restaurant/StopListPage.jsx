@@ -15,7 +15,7 @@ const CAT_LABEL = {
   pitsa: 'Pitsa', sushi: 'Sushi', evropa: 'Yevropa',
   turetskaya: 'Turk taomlari', koffe: 'Qahva',
   shirinlik: 'Shirinlik', salqin: 'Ichimlik',
-  magazin_oziq: "Do'kon mahsuloti",
+  sous: 'Souslar', boks: 'Bokslar', non: 'Nonlar',
 };
 
 export function StopListPage() {
