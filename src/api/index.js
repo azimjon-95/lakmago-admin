@@ -246,12 +246,33 @@ export const adminApi = {
   getBillingOverview: (q = '') => apiFetch(`/admin/billing/overview${q}`),
   getBillingByRestaurant: () => apiFetch('/admin/billing/restaurants'),
   getLedger: (q = '') => apiFetch(`/admin/billing/ledger${q}`),
-  payout: (data) => apiFetch('/admin/billing/payout', { method: 'POST', body: JSON.stringify(data) }),
+  /*
+   * `idempotencyKey` chaqiruvchi tomonidan berilishi kerak —
+   * agar tarmoq uzilib javob kelmasa va qayta urinilsa, AYNAN
+   * O'SHA kalit qayta yuborilishi shart (shunda server buni
+   * "qayta urinish" deb tanib, ikkinchi marta pul o'tkazmaydi —
+   * TZ 16-band). Chaqiruvchi bermasa, faqat SHU BIR MARTALIK
+   * so'rov uchun zaxira sifatida shu yerda yaratiladi — lekin bu
+   * holatda qayta urinish HIMOYALANMAYDI, shuning uchun chaqiruvchi
+   * (masalan BillingPage.jsx dagi doPayout) o'zi generatsiya
+   * qilib berishi tavsiya etiladi.
+   */
+  payout: ({ idempotencyKey, ...data }) => apiFetch('/admin/billing/payout', {
+    method: 'POST',
+    body: JSON.stringify({ idempotencyKey: idempotencyKey || crypto.randomUUID(), ...data }),
+  }),
   setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Kunlik hisob-kitob — Click/Paynet ajratilgan, qo'lda tasdiqlash
   getDailySettlement: (date) => apiFetch(`/admin/settlement/daily${date ? `?date=${date}` : ''}`),
   confirmSettlement: (data) => apiFetch('/admin/settlement/confirm', { method: 'POST', body: JSON.stringify(data) }),
+
+  // ═══ Restoran to'lov rekviziti (Moliya) ═══
+  getRestaurantPayout: (id) => apiFetch(`/admin/restaurants/${id}/payout`),
+  updateRestaurantPayout: (id, data) => apiFetch(`/admin/restaurants/${id}/payout`, {
+    method: 'PATCH', body: JSON.stringify(data),
+  }),
+  getRestaurantPayoutAudit: (id) => apiFetch(`/admin/restaurants/${id}/payout/audit`),
 
   // Kirim-chiqim (platformaning o'z xarajatlari)
   getExpenses: (q = '') => apiFetch(`/admin/expenses${q}`),

@@ -5,6 +5,7 @@ import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
 import { MapPicker } from '@/components/MapPicker';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useTempValue } from '@/hooks/useTempFlag';
+import { RestaurantPayoutSection } from './RestaurantPayoutSection';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
@@ -257,6 +258,19 @@ export function RestaurantSettingsPage() {
               Kamida bittasi yoqilgan bo'lishi kerak.
             </div>
           )}
+        </section>
+
+        {/*
+          ═══ MOLIYA — TO'LOV REKVIZITI ═══
+          Ataylab asosiy formadan TASHQARIDA, o'z saqlash tugmasi
+          bilan — yuqoridagi izohga qarang (RestaurantPayoutSection.jsx).
+        */}
+        <section className="bg-surface rounded-2xl p-5 border border-line">
+          <h2 className="text-base font-semibold text-ink mb-1">Moliya</h2>
+          <p className="text-xs text-muted mb-4">
+            Buxgalter pulni qayerga o'tkazishi — bank hisobi yoki karta.
+          </p>
+          <RestaurantPayoutSection restaurantId={id} />
         </section>
 
         {msg && (

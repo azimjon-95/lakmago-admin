@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
 
@@ -58,8 +58,14 @@ export function BillingPage() {
   useEffect(() => { loadAgreements(); }, [loadAgreements]);
 
   const [editing, setEditing] = useState(null);
+  // Tez ikki marta bosishdan himoya — server idempotencyKey
+  // orqali ham himoyalangan (defense in depth), lekin bu yerda
+  // oddiygina "so'rov hali tugamagan" holatini tekshiramiz
+  const payoutInFlight = useRef(new Set());
 
   const doPayout = async (r) => {
+    if (payoutInFlight.current.has(r._id)) return;
+
     const amount = await confirm({
       title: `${r.name} ga to'lov`,
       content: `Balans: ${som(r.balans)} so'm`,
@@ -70,10 +76,30 @@ export function BillingPage() {
       tone: 'success',
     });
     if (!amount) return;
+
+    /*
+     * Kalit shu YERDA, so'rov yuborilishidan oldin, BIR MARTA
+     * yaratiladi. Agar so'rov muvaffaqiyatsiz tugab, foydalanuvchi
+     * yana urinsa — bu funksiya qayta chaqiriladi va YANGI
+     * confirm dialog ochiladi, ya'ni bu YANGI logik so'rov (avvalgi
+     * urinish rostdan muvaffaqiyatsiz bo'lganini bildiradi, tarmoq
+     * darajasidagi "javob kelmadi" holatidan farqli). Shu sababli
+     * bu yerda har chaqiruvda yangi kalit yetarli — server
+     * tomonidagi atomik balans tekshiruvi haqiqiy himoyani beradi.
+     */
+    payoutInFlight.current.add(r._id);
     try {
-      await adminApi.payout({ restaurantId: r._id, amount: Number(amount) });
+      await adminApi.payout({
+        restaurantId: r._id,
+        amount: Number(amount),
+        idempotencyKey: crypto.randomUUID(),
+      });
       load();
-    } catch (e) { alert(e.message); }
+    } catch (e) {
+      alert(e.message);
+    } finally {
+      payoutInFlight.current.delete(r._id);
+    }
   };
 
   const setCommission = async (r) => {
@@ -541,7 +567,7 @@ function DailySettlementTab() {
     // faqat "yubordim" deb qayd etadi
     const step1 = await confirm({
       title: "Rostdan ham pul o'tkazildimi?",
-      content: `${row.restaurantName} ga bank orqali ${somT(row.pendingAmount)} so'm `
+      content: `${row.restaurantName} ga bank orqali ${somT(row.netPayable)} so'm `
         + "HAQIQATDA o'tkazilgandan keyingina bosing. "
         + "Tizim pulni o'zi yubormaydi — faqat qayd etadi.",
       tone: 'warning',
@@ -563,11 +589,20 @@ function DailySettlementTab() {
 
     setBusyId(row.restaurantId);
     try {
+      /*
+       * `amount` sifatida SERVER hisoblagan `netPayable` yuboriladi
+       * — frontend hech qanday summani o'zi o'ylab topmaydi (TZ
+       * 9-band). Server baribir bu summani qayta tekshiradi va
+       * balansdan oshib ketsa rad etadi.
+       *
+       * `idempotencyKey` — bir marta yaratiladi, takroriy
+       * yuborishdan himoya (TZ 16-band).
+       */
       await adminApi.confirmSettlement({
         restaurantId: row.restaurantId,
-        paymentIds: row.unpaidPaymentIds,
-        amount: row.pendingAmount,
+        amount: row.netPayable,
         bankReference: bankReference || '',
+        idempotencyKey: crypto.randomUUID(),
       });
       await load();
     } catch (e) {
@@ -594,28 +629,38 @@ function DailySettlementTab() {
       </div>
 
       {/* Kun bo'yicha jami */}
-      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <SummaryCard label="Click tushum" value={`${somT(data.totals.click.total)} so'm`}
-          sub={`haq: ${somT(data.totals.click.fee)}`} />
-        <SummaryCard label="Paynet tushum" value={`${somT(data.totals.paynet.total)} so'm`}
-          sub={`haq: ${somT(data.totals.paynet.fee)}`} />
-        <SummaryCard label="LokmaGo netto" value={`${somT(data.totals.lokmaNet)} so'm`} accent />
-        <SummaryCard label="Restoranlarga qarz" value={`${somT(data.totals.pendingAmount)} so'm`}
-          danger={data.totals.pendingAmount > 0} />
+      <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <SummaryCard label="Click tushum" value={`${somT(data.totals.click.total)} so'm`} />
+        <SummaryCard label="Paynet tushum" value={`${somT(data.totals.paynet.total)} so'm`} />
+        <SummaryCard label="Naqd tushum" value={`${somT(data.totals.cash.total)} so'm`} />
+        <SummaryCard label="LokmaGo komissiyasi" value={`${somT(data.totals.platformCommission)} so'm`} accent
+          sub={`shundan naqd: ${somT(data.totals.cashCommissionDue)}`} />
+        <SummaryCard label="Restoranlarga to'lanadigan" value={`${somT(data.totals.netPayable)} so'm`}
+          danger={data.totals.netPayable > 0} />
       </div>
 
       {data.restaurants.length === 0 && (
-        <div className="text-muted text-sm py-6">Shu kunda to'lov bo'lmagan</div>
+        <div className="text-muted text-sm py-6">Shu kunda faollik bo'lmagan</div>
       )}
 
       <div className="space-y-3">
         {data.restaurants.map((row) => (
           <div key={row.restaurantId} className="rounded-xl border border-line p-3.5">
             <div className="mb-2 flex items-center justify-between">
-              <div className="font-semibold text-ink">{row.restaurantName}</div>
-              {row.isFullySettled ? (
+              <div className="flex items-center gap-2">
+                <div className="font-semibold text-ink">{row.restaurantName}</div>
+                {row.commissionMismatch && (
+                  <span
+                    title={`Bu restoranda ikki xil komissiya foizi bor: Moliya sozlamasida boshqa, shartnomada (${row.agreementCommissionPercent}%) boshqa. Tekshiring.`}
+                    className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] font-medium text-red-700"
+                  >
+                    ⚠ Komissiya nomos
+                  </span>
+                )}
+              </div>
+              {row.netPayable <= 0 ? (
                 <span className="rounded-full bg-green-50 px-2.5 py-0.5 text-xs font-medium text-green-700">
-                  To'langan
+                  Balans yopiq
                 </span>
               ) : (
                 <span className="rounded-full bg-amber-50 px-2.5 py-0.5 text-xs font-medium text-amber-700">
@@ -631,23 +676,24 @@ function DailySettlementTab() {
               {row.paynet.count > 0 && (
                 <Row label={`Paynet (${row.paynet.count})`} value={`${somT(row.paynet.total)} so'm`} />
               )}
-              <Row label="Shlyuz haqi" value={`− ${somT(row.click.fee + row.paynet.fee)} so'm`} />
-              <Row label="LokmaGo netto" value={`${somT(row.lokmaNet)} so'm`} accent />
+              {row.cash.count > 0 && (
+                <Row label={`Naqd (${row.cash.count})`} value={`${somT(row.cash.total)} so'm`} />
+              )}
+              <Row label="Komissiya" value={`${somT(row.platformCommission)} so'm`} />
+              {row.cashCommissionDue > 0 && (
+                <Row label="Naqd komissiya qarzi" value={`${somT(row.cashCommissionDue)} so'm`} />
+              )}
+              <Row label="Elektron ulush" value={`${somT(row.restaurantShare)} so'm`} accent />
             </div>
 
             <div className="my-2 h-px bg-line" />
 
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-muted">Restoranga to'lanadigan</div>
-                <div className="text-lg font-bold text-ink">{somT(row.pendingAmount)} so'm</div>
-                {row.alreadyPaidOut > 0 && (
-                  <div className="text-[11px] text-green-600">
-                    {somT(row.alreadyPaidOut)} so'm allaqachon to'langan
-                  </div>
-                )}
+                <div className="text-xs text-muted">Restoranga to'lanadigan (umumiy balans)</div>
+                <div className="text-lg font-bold text-ink">{somT(row.netPayable)} so'm</div>
               </div>
-              {row.pendingAmount > 0 && (
+              {row.netPayable > 0 && (
                 <button
                   onClick={() => markPaid(row)}
                   disabled={busyId === row.restaurantId}
