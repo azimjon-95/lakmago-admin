@@ -278,7 +278,7 @@ export function DashboardPage() {
               delta={stats?.yesterday && delta(today.revenue, stats.yesterday?.revenue)}
               sub={today ? `O'rtacha chek ${som(today.avgCheck)}` : null} />
 
-            <Kpi label={`Komissiya (${stats?.commissionPercent ?? 0}%)`}
+            <Kpi label="Komissiya"
               value={today ? som(today.commission) : null} unit="so'm"
               icon="ti-percentage" small
               sub={today ? `Jami ${som(stats.commission)}` : null} />

@@ -2,31 +2,31 @@ import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
 import { useTempFlag } from '@/hooks/useTempFlag';
 
-// Komissiya rejimlari — mijoz/restoranга ta'sirini tushuntiradi
-const MODES = [
-  {
-    value: 'none',
-    label: 'Komissiyasiz',
-    icon: 'ti-circle',
-    desc: 'Hozircha komissiya olinmaydi (0%). Keyin yoqishingiz mumkin.',
-  },
-  {
-    value: 'markup',
-    label: 'Narx ustiga qo‘shish',
-    icon: 'ti-arrow-up-circle',
-    desc: 'Mijoz taom narxi ustiga komissiya qo‘shib to‘laydi. Restoran to‘liq narxni oladi, foyda platformaga.',
-  },
-  {
-    value: 'deduct',
-    label: 'Narxdan olish',
-    icon: 'ti-arrow-down-circle',
-    desc: 'Restoran taom narxidan komissiya ushlab qolinadi. Mijoz oddiy narx to‘laydi, foyda restoran hisobidan.',
-  },
-];
-
+/*
+ * ═══ GLOBAL KOMISSIYA TANLAGICHI OLIB TASHLANDI ═══
+ *
+ * Bu sahifada ilgari "Komissiyasiz / Narx ustiga qo'shish /
+ * Narxdan olish" va foiz slayderi bor edi — BARCHA restoranlarga
+ * bitta umumiy sozlama sifatida taqdim etilgan.
+ *
+ * MUAMMO: har bir restoran allaqachon O'ZINING alohida
+ * komissiya foiziga ega (Restoranlar → tanlangan restoran →
+ * Komissiya, billingController.setCommission orqali belgilanadi).
+ * Bu ekran esa ikkinchi, GLOBAL qiymatni tahrirlardi — ikkalasi
+ * turlicha ishlatilib, adashtirardi: kimdir shu yerda "10%"
+ * qo'ysa, bu HAMMA restoranlarga emas, faqat individual foizi
+ * BELGILANMAGAN restoranlarga zaxira sifatida ta'sir qilardi.
+ *
+ * Bundan tashqari "Daromad" sahifasi bu global qiymatni BARCHA
+ * restoranlarga qo'llab, ularning o'z foizini butunlay
+ * e'tiborsiz qoldirar edi — bu alohida tuzatildi
+ * (controllers/admin.js, revenue()).
+ *
+ * Shu sababli bu ekran olib tashlandi. Har bir restoranning
+ * komissiyasi FAQAT o'sha restoran sahifasida ko'riladi va
+ * o'zgartiriladi.
+ */
 export function SettingsPage() {
-  const [percent, setPercent] = useState(0);
-  const [mode, setMode] = useState('none');
   const [referralEnabled, setReferralEnabled] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -34,11 +34,7 @@ export function SettingsPage() {
 
   useEffect(() => {
     adminApi.getSettings()
-      .then((s) => {
-        setPercent(s.commissionPercent);
-        setMode(s.commissionMode);
-        setReferralEnabled(s.referralEnabled !== false);
-      })
+      .then((s) => setReferralEnabled(s.referralEnabled !== false))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -46,11 +42,7 @@ export function SettingsPage() {
   const save = async () => {
     setSaving(true);
     try {
-      await adminApi.updateSettings({
-        commissionPercent: Number(percent),
-        commissionMode: mode,
-        referralEnabled,
-      });
+      await adminApi.updateSettings({ referralEnabled });
       flashSaved();
     } catch (e) {
       alert(e.message);
@@ -59,82 +51,15 @@ export function SettingsPage() {
     }
   };
 
-  // Misol hisob (10 000 so'mlik taom)
-  const example = 10000;
-  const commission = Math.round(example * (percent / 100));
-  let clientPays = example, restaurantGets = example, platformGets = 0;
-  if (mode === 'markup') { clientPays = example + commission; platformGets = commission; restaurantGets = example; }
-  else if (mode === 'deduct') { clientPays = example; platformGets = commission; restaurantGets = example - commission; }
-
   if (loading) return <div className="flex-1 p-6 text-muted text-sm">Yuklanmoqda...</div>;
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-4xl">
-      <h1 className="text-xl font-semibold text-ink">Komissiya sozlamalari</h1>
-      <p className="text-sm text-muted mt-0.5 mb-6">Platforma daromadini qanday hisoblashni belgilang</p>
-
-      {/* Rejim tanlash */}
-      <div className="grid gap-3 mb-6">
-        {MODES.map((m) => (
-          <button
-            key={m.value}
-            onClick={() => setMode(m.value)}
-            className={`text-left p-4 rounded-xl border transition-colors ${
-              mode === m.value ? 'border-brand-400 bg-brand-50' : 'border-line hover:bg-canvas'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-1">
-              <i className={`ti ${m.icon} text-lg ${mode === m.value ? 'text-brand-600' : 'text-muted'}`} />
-              <span className={`font-medium ${mode === m.value ? 'text-brand-600' : 'text-ink'}`}>{m.label}</span>
-              {mode === m.value && <i className="ti ti-check text-brand-600 ml-auto" />}
-            </div>
-            <p className="text-sm text-muted leading-relaxed">{m.desc}</p>
-          </button>
-        ))}
-      </div>
-
-      {/* Foiz */}
-      {mode !== 'none' && (
-        <div className="bg-surface border border-line rounded-xl p-4 mb-6">
-          <label className="block text-sm font-medium text-ink mb-2">Komissiya foizi</label>
-          <div className="flex items-center gap-3">
-            <input
-              type="range" min="0" max="30" step="0.5"
-              value={percent}
-              onChange={(e) => setPercent(e.target.value)}
-              className="flex-1 accent-brand-400"
-            />
-            <div className="flex items-center gap-1 bg-canvas border border-line rounded-lg px-3 py-2">
-              <input
-                type="number" min="0" max="100" step="0.5"
-                value={percent}
-                onChange={(e) => setPercent(e.target.value)}
-                className="w-14 bg-transparent text-ink text-right outline-none font-semibold"
-              />
-              <span className="text-muted">%</span>
-            </div>
-          </div>
-
-          {/* Misol hisob */}
-          <div className="mt-4 pt-4 border-t border-line">
-            <div className="text-xs text-muted mb-2">Misol: 10 000 so'mlik taom uchun</div>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div className="bg-canvas rounded-lg py-2">
-                <div className="text-[11px] text-muted">Mijoz to'laydi</div>
-                <div className="text-sm font-semibold text-ink">{clientPays.toLocaleString('ru-RU')}</div>
-              </div>
-              <div className="bg-canvas rounded-lg py-2">
-                <div className="text-[11px] text-muted">Restoran oladi</div>
-                <div className="text-sm font-semibold text-green-600">{restaurantGets.toLocaleString('ru-RU')}</div>
-              </div>
-              <div className="bg-brand-50 rounded-lg py-2">
-                <div className="text-[11px] text-brand-600">Platforma</div>
-                <div className="text-sm font-semibold text-brand-600">{platformGets.toLocaleString('ru-RU')}</div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      <h1 className="text-xl font-semibold text-ink">Sozlamalar</h1>
+      <p className="text-sm text-muted mt-0.5 mb-6">
+        Restoran komissiyasi endi shu yerda emas — har bir restoran
+        sahifasida alohida belgilanadi.
+      </p>
 
       {/* Referral tizimi */}
       <section className="bg-surface border border-line rounded-2xl p-4 sm:p-5 mb-4">

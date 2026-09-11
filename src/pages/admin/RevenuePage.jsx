@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
-const MODE_LABEL = { none: 'Komissiyasiz', markup: 'Narx ustiga', deduct: 'Narxdan olish' };
 
 export function RevenuePage() {
   const [data, setData] = useState(null);
@@ -21,7 +20,8 @@ export function RevenuePage() {
         <div>
           <h1 className="text-xl font-semibold text-ink">Daromad</h1>
           <p className="text-sm text-muted mt-0.5">
-            Yetkazilgan buyurtmalar bo'yicha · Komissiya: {data.commissionPercent}% ({MODE_LABEL[data.commissionMode]})
+            Yetkazilgan buyurtmalar bo'yicha — har bir restoran O'Z
+            komissiya foizi bilan hisoblangan
           </p>
         </div>
       </div>
@@ -55,12 +55,13 @@ export function RevenuePage() {
         <div className="bg-surface border border-line rounded-xl overflow-hidden">
           {/* Mobilda ustunlar sig'masa gorizontal scroll bilan */}
           <div className="overflow-x-auto">
-          <table className="w-full text-sm min-w-[480px]">
+          <table className="w-full text-sm min-w-[560px]">
             <thead>
               <tr className="text-left text-muted text-xs border-b border-line">
                 <th className="p-3 font-medium">Muassasa</th>
                 <th className="p-3 font-medium text-right">Buyurtma</th>
                 <th className="p-3 font-medium text-right">Aylanma</th>
+                <th className="p-3 font-medium text-right">Foiz</th>
                 <th className="p-3 font-medium text-right">Restoran</th>
                 <th className="p-3 font-medium text-right">Bizga</th>
               </tr>
@@ -71,6 +72,9 @@ export function RevenuePage() {
                   <td className="p-3 text-ink font-medium">{r.name}</td>
                   <td className="p-3 text-right text-muted">{r.orders}</td>
                   <td className="p-3 text-right text-ink">{som(r.gross)}</td>
+                  <td className="p-3 text-right text-muted">
+                    {r.commissionMode === 'none' ? '—' : `${r.commissionPercent}%`}
+                  </td>
                   <td className="p-3 text-right text-green-600">{som(r.restaurantIncome)}</td>
                   <td className="p-3 text-right text-brand-600 font-medium">{som(r.platformIncome)}</td>
                 </tr>
