@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
@@ -31,6 +31,7 @@ export function RestaurantSettingsPage() {
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
+  const payoutRef = useRef(null);
   const [mapOpen, setMapOpen] = useState(false);
   const [msg, flashMsg, setMsg] = useTempValue();
 
@@ -74,7 +75,25 @@ export function RestaurantSettingsPage() {
       const { name, ...rest } = form;
       const payload = { ...rest, images: rest.imageUrl ? [rest.imageUrl] : [] };
       await adminApi.updateRestaurant(id, payload);
-      flashMsg({ type: 'ok', text: 'Saqlandi' });
+
+      /*
+       * Moliya (bank/karta) ham SHU tugma bilan saqlanadi —
+       * ikkita alohida "Saqlash" o'rniga bitta. Agar bu qism
+       * muvaffaqiyatsiz bo'lsa (masalan foydalanuvchida
+       * 'billing' ruxsati yo'q), asosiy forma SAQLANGAN bo'lib
+       * qoladi — faqat moliya haqida alohida xabar chiqadi,
+       * butun saqlash bekor qilinmaydi.
+       */
+      let payoutError = '';
+      try {
+        await payoutRef.current?.save();
+      } catch (e) {
+        payoutError = e.message;
+      }
+
+      flashMsg(payoutError
+        ? { type: 'err', text: `Saqlandi, lekin Moliya: ${payoutError}` }
+        : { type: 'ok', text: 'Saqlandi' });
     } catch (e) {
       setMsg({ type: 'err', text: e.message });
     } finally {
@@ -270,7 +289,7 @@ export function RestaurantSettingsPage() {
           <p className="text-xs text-muted mb-4">
             Buxgalter pulni qayerga o'tkazishi — bank hisobi yoki karta.
           </p>
-          <RestaurantPayoutSection restaurantId={id} />
+          <RestaurantPayoutSection ref={payoutRef} restaurantId={id} />
         </section>
 
         {msg && (

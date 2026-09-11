@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef, useImperativeHandle } from 'react';
 import { adminApi } from '@/api';
 
 /*
@@ -9,23 +9,31 @@ import { adminApi } from '@/api';
  * Buxgalter pulni qo'lda qayerga (bank hisobi yoki karta)
  * o'tkazishini shu yerda belgilaydi.
  *
- * ATAYLAB ALOHIDA KOMPONENT, asosiy tahrirlash formasidan
- * MUSTAQIL: o'z holati, o'z saqlash tugmasi bor. Sabab:
- *   • asosiy forma (RestaurantSettingsPage) ALLAQACHON katta —
- *     TZ 20-band "yaratish formasi keragidan ortiq
- *     murakkablashtirilmasin" deydi
- *   • bu ma'lumot BOSHQA huquq darajasi bilan himoyalangan
- *     (backend 'billing' permission talab qiladi) — asosiy
- *     forma esa umumiy restoran tahrirlash huquqi bilan ishlaydi
- *   • ikkalasini bitta "Saqlash" tugmasiga bog'lash xato
- *     ehtimolini oshirardi (masalan admin nom o'zgartirib
- *     "Saqlash" bossa, bexosdan bank rekvizitini ham qayta
- *     yozib yuborishi mumkin edi)
+ * ═══ BITTA "SAQLASH" TUGMASI ═══
+ *
+ * ILGARI bu komponent o'zining ALOHIDA "Saqlash" tugmasiga ega
+ * edi — sahifada ikkita tugma paydo bo'lardi (asosiy forma
+ * uchun bittasi, bu yerda yana bittasi), foydalanuvchi qaysi
+ * birini bosish kerakligini bilmasdi.
+ *
+ * ENDI: bu komponent `forwardRef` orqali TASHQARIGA faqat bitta
+ * `save()` funksiyasini ochadi. Sahifaning PASTKI, YAGONA
+ * "Saqlash" tugmasi bosilganda, asosiy forma bilan BIRGA shu
+ * funksiya ham chaqiriladi (RestaurantSettingsPage.jsx dagi
+ * save() ga qarang). Bu yerda o'z tugmasi YO'Q.
+ *
+ * ═══ ICHKI RAMKALAR OLIB TASHLANDI ═══
+ *
+ * Ilgari har bo'lim ("Karta rekvizitlari", "Bank rekvizitlari",
+ * "Hisob-kitob") o'z ramkasiga ega edi, TASHQI "Moliya"
+ * ramkasining ICHIDA — "ramka ichida ramka" ko'rinishi hosil
+ * qilardi, torroq va chalkash edi. Endi bo'limlar oddiy
+ * sarlavha + bo'shliq bilan ajratiladi, faqat TASHQI ramka
+ * qoladi (RestaurantSettingsPage.jsx dagi "Moliya" <section>).
  */
-export function RestaurantPayoutSection({ restaurantId }) {
+export const RestaurantPayoutSection = forwardRef(function RestaurantPayoutSection({ restaurantId }, ref) {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
   const [err, setErr] = useState('');
 
   const [method, setMethod] = useState('bank');
@@ -42,9 +50,6 @@ export function RestaurantPayoutSection({ restaurantId }) {
       setMethod(res.method || 'bank');
       setCardHolder(res.card?.holderName || '');
       setCardBank(res.card?.bankName || '');
-      // Bank maydonlari — hisob raqami MASKALANGAN holda keladi,
-      // qayta yozib yubormaslik uchun input bo'sh qoldiriladi
-      // (placeholder orqali "hozirgi" ko'rsatiladi)
     } catch (e) {
       setErr(e.message);
     }
@@ -53,42 +58,46 @@ export function RestaurantPayoutSection({ restaurantId }) {
 
   useEffect(() => { load(); }, [load]);
 
-  const save = async () => {
-    setSaving(true);
-    setErr('');
-    try {
-      const payload = { method };
-      // Faqat TO'LDIRILGAN maydonlar yuboriladi — bo'sh qoldirilsa
-      // eski qiymat saqlanib qoladi (backend shunday ishlaydi)
-      const bankPatch = Object.fromEntries(
-        Object.entries(bank).filter(([, v]) => v.trim() !== ''),
-      );
-      if (Object.keys(bankPatch).length > 0) payload.bank = bankPatch;
+  /*
+   * Tashqariga ochiladigan yagona metod. Hech narsa
+   * o'zgartirilmagan bo'lsa ham xavfsiz — backend "noChanges"
+   * deb qaytaradi, xato tashlamaydi.
+   */
+  useImperativeHandle(ref, () => ({
+    save: async () => {
+      setErr('');
+      try {
+        const payload = { method };
+        const bankPatch = Object.fromEntries(
+          Object.entries(bank).filter(([, v]) => v.trim() !== ''),
+        );
+        if (Object.keys(bankPatch).length > 0) payload.bank = bankPatch;
 
-      if (cardNumber.trim() || cardHolder.trim() || cardBank.trim()) {
-        payload.card = {
-          ...(cardNumber.trim() ? { cardNumber: cardNumber.trim() } : {}),
-          ...(cardHolder.trim() ? { holderName: cardHolder.trim() } : {}),
-          ...(cardBank.trim() ? { bankName: cardBank.trim() } : {}),
-        };
+        if (cardNumber.trim() || cardHolder.trim() || cardBank.trim()) {
+          payload.card = {
+            ...(cardNumber.trim() ? { cardNumber: cardNumber.trim() } : {}),
+            ...(cardHolder.trim() ? { holderName: cardHolder.trim() } : {}),
+            ...(cardBank.trim() ? { bankName: cardBank.trim() } : {}),
+          };
+        }
+
+        await adminApi.updateRestaurantPayout(restaurantId, payload);
+        setCardNumber(''); // to'liq raqam ekranda ham saqlanmaydi
+        setBank({ accountNumber: '', bankName: '', mfo: '', inn: '', holderName: '' });
+        await load();
+      } catch (e) {
+        setErr(e.message);
+        throw e; // asosiy save() bu xatoni ko'rib, xabar chiqarishi uchun
       }
-
-      await adminApi.updateRestaurantPayout(restaurantId, payload);
-      setCardNumber(''); // to'liq raqam ekranda ham saqlanmaydi
-      setBank({ accountNumber: '', bankName: '', mfo: '', inn: '', holderName: '' });
-      await load();
-    } catch (e) {
-      setErr(e.message);
-    }
-    setSaving(false);
-  };
+    },
+  }), [method, bank, cardNumber, cardHolder, cardBank, restaurantId, load]);
 
   if (loading) return <div className="text-sm text-muted py-4">Yuklanmoqda...</div>;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       {/* ═══ KARTA REKVIZITLARI ═══ */}
-      <div className="rounded-2xl border border-line bg-surface p-4">
+      <div>
         <div className="mb-3 flex items-center gap-2 font-semibold text-ink">
           💳 Karta rekvizitlari
         </div>
@@ -96,60 +105,68 @@ export function RestaurantPayoutSection({ restaurantId }) {
           Hozirgi: {data?.card?.hasCard ? data.card.cardMasked : 'kiritilmagan'}
         </p>
 
-        <label className="mb-3 block">
-          <span className="mb-1 block text-xs font-medium text-muted">
-            Yangi karta raqami (to'liq — faqat o'zgartirishda)
-          </span>
-          <input
-            value={cardNumber}
-            onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
-            placeholder="8600 **** **** ****"
-            className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm tracking-wide"
-          />
-        </label>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">
+              Yangi karta raqami (to'liq — faqat o'zgartirishda)
+            </span>
+            <input
+              value={cardNumber}
+              onChange={(e) => setCardNumber(e.target.value.replace(/\D/g, '').slice(0, 16))}
+              placeholder="8600 **** **** ****"
+              className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm tracking-wide"
+            />
+          </label>
 
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-muted">Karta egasi</span>
-          <input
-            value={cardHolder}
-            onChange={(e) => setCardHolder(e.target.value)}
-            placeholder={data?.card?.holderName || 'F.I.Sh.'}
-            className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm"
-          />
-        </label>
+          <label className="block">
+            <span className="mb-1 block text-xs font-medium text-muted">Karta egasi</span>
+            <input
+              value={cardHolder}
+              onChange={(e) => setCardHolder(e.target.value)}
+              placeholder={data?.card?.holderName || 'F.I.Sh.'}
+              className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm"
+            />
+          </label>
+        </div>
       </div>
 
+      <div className="h-px bg-line" />
+
       {/* ═══ BANK REKVIZITLARI ═══ */}
-      <div className="rounded-2xl border border-line bg-surface p-4">
+      <div>
         <div className="mb-3 flex items-center gap-2 font-semibold text-ink">
           🏦 Bank rekvizitlari
         </div>
 
-        {[
-          ['accountNumber', 'Hisob raqami', data?.bank?.hasAccountNumber ? data.bank.accountNumber : ''],
-          ['bankName', 'Bank nomi', data?.bank?.bankName],
-          ['mfo', 'MFO', data?.bank?.mfo],
-          ['inn', 'STIR', data?.bank?.inn],
-          ['holderName', 'Hisob egasi', data?.bank?.holderName],
-        ].map(([key, label, current]) => (
-          <label key={key} className="mb-3 block last:mb-0">
-            <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
-            <input
-              value={bank[key]}
-              onChange={(e) => setBank((b) => ({ ...b, [key]: e.target.value }))}
-              placeholder={current || ''}
-              className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm"
-            />
-          </label>
-        ))}
+        <div className="grid gap-3 sm:grid-cols-2">
+          {[
+            ['accountNumber', 'Hisob raqami', data?.bank?.hasAccountNumber ? data.bank.accountNumber : ''],
+            ['bankName', 'Bank nomi', data?.bank?.bankName],
+            ['mfo', 'MFO', data?.bank?.mfo],
+            ['inn', 'STIR', data?.bank?.inn],
+            ['holderName', 'Hisob egasi', data?.bank?.holderName],
+          ].map(([key, label, current]) => (
+            <label key={key} className="block">
+              <span className="mb-1 block text-xs font-medium text-muted">{label}</span>
+              <input
+                value={bank[key]}
+                onChange={(e) => setBank((b) => ({ ...b, [key]: e.target.value }))}
+                placeholder={current || ''}
+                className="w-full rounded-xl border border-line bg-canvas px-3 py-2.5 text-sm"
+              />
+            </label>
+          ))}
+        </div>
       </div>
 
+      <div className="h-px bg-line" />
+
       {/* ═══ HISOB-KITOB — QAYSI USUL ASOSIY ═══ */}
-      <div className="rounded-2xl border border-line bg-surface p-4">
+      <div>
         <div className="mb-3 flex items-center gap-2 font-semibold text-ink">
           💰 Hisob-kitob
         </div>
-        <label className="block">
+        <label className="block sm:max-w-xs">
           <span className="mb-1 block text-xs font-medium text-muted">To'lov usuli</span>
           <select
             value={method}
@@ -167,14 +184,6 @@ export function RestaurantPayoutSection({ restaurantId }) {
       </div>
 
       {err && <p className="text-sm text-red-600">{err}</p>}
-
-      <button
-        onClick={save}
-        disabled={saving}
-        className="w-full rounded-xl bg-brand-400 py-3 font-semibold text-brand-text disabled:opacity-50"
-      >
-        {saving ? 'Saqlanmoqda...' : 'Saqlash'}
-      </button>
     </div>
   );
-}
+});
