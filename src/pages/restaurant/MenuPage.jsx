@@ -305,7 +305,6 @@ function DishForm({ dish, onClose, onSaved }) {
     weight: dish?.weight || '',
     volume: dish?.volume || '',
     drinkType: dish?.drinkType || '',
-    volume: dish?.volume || '',
     calories: dish?.calories ?? null,
     protein: dish?.protein ?? null,
     fat: dish?.fat ?? null,

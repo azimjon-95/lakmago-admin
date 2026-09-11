@@ -82,8 +82,16 @@ const players = new Map();   // sound → HTMLAudioElement
 // Navbat elementlari: { sound, priority }
 let queue = [];
 let playing = false;
-let unlocked = false;
 let muted = false;
+
+/*
+ * Ruxsati ochilgan elementlar va hozir "ochilayotgan"lar.
+ * Ochilayotgan element ustida haqiqiy ovoz boshlansa, ochish
+ * jarayoni uni to'xtatib qo'ymasligi uchun ajratib turiladi.
+ */
+const unlockedEls = new WeakSet();
+const unlockingEls = new Set();
+let visibilityBound = false;
 
 function player(sound) {
   if (!players.has(sound)) {
@@ -95,35 +103,62 @@ function player(sound) {
 }
 
 /**
- * Brauzer cheklovini ochish. Birinchi bosishda chaqiriladi:
- * har faylni ovozsiz bir marta ijro etib to'xtatamiz, shundan
- * keyin dastur xohlagan paytda chala oladi.
+ * Brauzer cheklovini ochish — foydalanuvchi ekranga tekkanida.
+ *
+ * ═══ XATO TUZATILDI: iPhone'da "kirishim bilan muzika chaladi" ═══
+ *
+ * AVVAL: har fayl `volume = 0` qilib ijro etilardi. Lekin iOS'da
+ * (Safari, Telegram ichidagi brauzer, PWA) `volume` FAQAT O'QISH
+ * UCHUN — tizim uni e'tiborsiz qoldiradi. Natijada panelga
+ * birinchi tegishda UCHALA qo'ng'iroq (buyurtma, bron, zal) to'liq
+ * balandlikda chalinib ketardi — ro'yxat bo'sh bo'lsa ham.
+ *
+ * ENDI: `muted = true` — bu iOS'da ham ishlaydi. Element ovozsiz
+ * ijro etilib darhol to'xtatiladi; foydalanuvchi harakati ichida
+ * ijro etilgani uchun keyin dastur uni bemalol chala oladi.
+ *
+ * Idempotent: muvaffaqiyatsiz bo'lgan element keyingi tegishda
+ * qayta uriniladi. @returns {boolean} hammasi ochilganmi
  */
 export function unlockSound() {
-  if (unlocked) return;
-  unlocked = true;
-
   Object.keys(FILES).forEach((sound) => {
     const el = player(sound);
-    const prev = el.volume;
-    el.volume = 0;
-    el.play()
-      .then(() => { el.pause(); el.currentTime = 0; el.volume = prev; })
-      .catch(() => { el.volume = prev; });
+    if (unlockedEls.has(el) || unlockingEls.has(el) || !el.paused) return;
+
+    unlockingEls.add(el);
+    el.muted = true;
+    const finish = (ok) => {
+      // Shu orada haqiqiy ovoz boshlangan bo'lsa (next() egallagan) — tegmaymiz
+      if (!unlockingEls.has(el)) return;
+      unlockingEls.delete(el);
+      try { el.pause(); el.currentTime = 0; } catch { /* ignore */ }
+      el.muted = false;
+      if (ok) unlockedEls.add(el);
+    };
+    try {
+      Promise.resolve(el.play()).then(() => finish(true), () => finish(false));
+    } catch {
+      finish(false);
+    }
   });
 
   /*
-   * Halqa DARHOL yoqilmaydi.
-   *
-   * Sahifa ko'rinib turganda play() baribir ishlaydi — halqa
-   * hech narsa bermaydi, faqat quvvat sarflaydi. U faqat
-   * sahifa fonga o'tganda kerak, o'sha paytda yoqiladi:
-   * sessiya hali tirik bo'lgani uchun halqa uni ushlab qoladi.
+   * Halqa DARHOL yoqilmaydi — faqat sahifa fonga o'tganda kerak
+   * (sessiya hali tirik bo'lgani uchun halqa uni ushlab qoladi).
    */
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'hidden') startKeepAlive();
-    else stopKeepAlive();
-  });
+  if (!visibilityBound) {
+    visibilityBound = true;
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') startKeepAlive();
+      else stopKeepAlive();
+    });
+  }
+  return isSoundUnlocked();
+}
+
+/** Barcha ovoz fayllari ochilganmi. */
+export function isSoundUnlocked() {
+  return Object.keys(FILES).every((sound) => unlockedEls.has(player(sound)));
 }
 
 /** Navbatdagi keyingi ovozni chalish. */
@@ -134,7 +169,11 @@ function next() {
   const { sound } = item;
 
   const el = player(sound);
-  el.volume = currentVolume();
+  // Element hali "ochilayotgan" bo'lsa — egallaymiz: ochish jarayoni
+  // endi uni to'xtatmaydi, ovoz esa jim qolmaydi
+  unlockingEls.delete(el);
+  el.muted = false;
+  el.volume = currentVolume();   // iOS'da e'tiborsiz — tizim balandligi ishlaydi
 
   /*
    * Tizimga bu "media" ekanini bildiramiz. Shusiz ba'zi
@@ -190,8 +229,12 @@ export function stopSound() {
   queue = [];
   playing = false;
   players.forEach((el) => {
+    if (unlockingEls.has(el)) return;   // jim ochish jarayoni — o'zi tugaydi
     try { el.pause(); el.currentTime = 0; } catch { /* ignore */ }
   });
+  if ('mediaSession' in navigator) {
+    try { navigator.mediaSession.playbackState = 'none'; } catch { /* ignore */ }
+  }
 }
 
 /** Joriy tovush balandligini qo'llash (sozlama o'zgarganda). */

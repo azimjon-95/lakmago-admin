@@ -51,3 +51,22 @@ export function joinRestaurant(restaurantId) {
   const s = getSocket();
   if (s.connected) s.emit('join:restaurant', String(restaurantId));
 }
+
+/**
+ * Socketni butunlay yopish va xonalar ro'yxatini tozalash.
+ *
+ * Chiqib ketishda (logout) chaqiriladi: aks holda socket eski
+ * restoran xonasida qolib, shu qurilmada boshqa akkaunt bilan
+ * kirilganda OLDINGI restoranning buyurtmalari ham kelardi
+ * (va ularga ovoz chalinardi). Keyingi getSocket() yangi,
+ * toza ulanish ochadi.
+ */
+export function resetSocket() {
+  rooms.clear();
+  if (!socket) return;
+  try {
+    socket.removeAllListeners();
+    socket.disconnect();
+  } catch { /* ignore */ }
+  socket = null;
+}

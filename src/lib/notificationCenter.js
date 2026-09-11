@@ -1,8 +1,8 @@
 import { create } from 'zustand';
-import { getSocket, joinRestaurant } from '@/lib/socket';
+import { getSocket, joinRestaurant, resetSocket } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/api/client';
-import { playSound, stopSound, unlockSound, setMuted, isMuted } from '@/lib/soundQueue';
+import { playSound, stopSound, unlockSound, isSoundUnlocked, setMuted, isMuted } from '@/lib/soundQueue';
 import { soundAllowed, useNotifSettings } from '@/lib/notifSettings';
 import { subscribePush } from '@/lib/push';
 
@@ -21,9 +21,33 @@ import { subscribePush } from '@/lib/push';
  *
  * Socketga YOLG'IZ ishonmaymiz: ulanish tiklanganda oxirgi seq
  * bo'yicha serverdan yo'qolganlarini olib kelamiz.
+ *
+ * ═══ OVOZ QOIDASI: FAQAT YANGI MA'LUMOTGA ═══
+ *
+ * Har bildirishnoma ikki toifadan biriga tushadi:
+ *
+ *   TARIX — panel ochilgan paytda allaqachon mavjud bo'lganlar
+ *     (birinchi yuklanish). Ro'yxatda va hisoblagichda ko'rinadi,
+ *     lekin HECH QACHON ovoz chalmaydi: na darhol, na takroran.
+ *
+ *   JONLI — sessiya davomida kelganlar: socket orqali yoki
+ *     uzilishdan keyingi sinxronlashda, sessiya chegarasidan
+ *     (server `headSeq`) KEYINGI seq bilan. Faqat shular chaladi.
+ *
+ * AVVALGI XATO: eski bildirishnomalar jim yuklanardi-yu, darhol
+ * takroriy ovoz rejasiga tushardi. Kutish vaqti yaratilgan
+ * paytdan hisoblangani uchun 8 soniyadan eski HAR BIR xabar
+ * panel ochilishi bilan DARHOL chalinardi.
  */
 
-const SEQ_KEY = 'lokmago_notif_seq';
+const SEQ_KEY_PREFIX = 'lokmago_notif_seq';
+let seqKey = SEQ_KEY_PREFIX;
+
+/*
+ * Sessiya davomida JONLI kelgan bildirishnomalar. Ovoz va
+ * takrorlash faqat shularga tegishli.
+ */
+const liveIds = new Set();
 
 /*
  * Har bir bildirishnoma oxirgi marta qachon chalinganini
@@ -76,6 +100,18 @@ function clearRepeat(id) {
   repeatTimers.delete(id);
   lastPlayedAt.delete(id);
   playCount.delete(id);
+  liveIds.delete(id);
+}
+
+/** Bildirishnoma hali javob kutyaptimi va ovozga arziydimi. */
+function isRingable(n) {
+  if (!n || !liveIds.has(n.notificationId)) return false;       // tarix — hech qachon
+  if (!['NEW', 'DELIVERED'].includes(n.status)) return false;
+  if (!soundAllowed(n.type)) return false;
+  const born = new Date(n.createdAt).getTime();
+  // Sana noto'g'ri — jonli kelgan, yangi deb hisoblaymiz
+  if (Number.isNaN(born)) return true;
+  return Date.now() - born < REPEAT_MAX_AGE_MS;
 }
 
 /**
@@ -90,15 +126,16 @@ function scheduleRepeat(n) {
 
   const { repeatInterval } = useNotifSettings.getState();
   if (!repeatInterval) return;                   // takrorlash o'chirilgan
-  if (!['NEW', 'DELIVERED'].includes(n.status)) return;
-  if (!soundAllowed(n.type)) return;
-
-  const born = new Date(n.createdAt).getTime();
-  // Eski xabar takrorlanmaydi — ahamiyatini yo'qotgan
-  if (Date.now() - born >= REPEAT_MAX_AGE_MS) return;
+  if (!isRingable(n)) return;                    // tarix yoki javob berilgan
   if ((playCount.get(id) || 0) >= MAX_PLAYS) return;
 
-  const last = lastPlayedAt.get(id) ?? born;
+  /*
+   * Kutish BIRINCHI CHALINGAN paytdan hisoblanadi. Hali bir marta
+   * ham chalinmagan bo'lsa — takrorlash ham yo'q (avval yaratilgan
+   * paytdan hisoblanib, eski xabar darhol chalinardi).
+   */
+  const last = lastPlayedAt.get(id);
+  if (last === undefined) return;
   const wait = Math.max(0, last + repeatInterval * 1000 - Date.now());
 
   const timer = setTimeout(() => {
@@ -108,9 +145,8 @@ function scheduleRepeat(n) {
     // qabul qilingan yoki o'chirilgan bo'lishi mumkin
     const fresh = useNotifications.getState().items
       .find((x) => x.notificationId === id);
-    if (!fresh) { clearRepeat(id); return; }
-    if (!['NEW', 'DELIVERED'].includes(fresh.status)) { clearRepeat(id); return; }
-    if (Date.now() - new Date(fresh.createdAt).getTime() >= REPEAT_MAX_AGE_MS) return;
+    if (!fresh || !['NEW', 'DELIVERED'].includes(fresh.status)) { clearRepeat(id); return; }
+    if (!isRingable(fresh)) return;
 
     const played = playCount.get(id) || 0;
     if (played >= MAX_PLAYS) return;
@@ -154,19 +190,79 @@ function showDesktopNotification(n) {
   } catch { /* ruxsat yo'q — muhim emas */ }
 }
 
-const readSeq = () => Number(localStorage.getItem(SEQ_KEY)) || 0;
-const writeSeq = (v) => { try { localStorage.setItem(SEQ_KEY, String(v)); } catch { /* ignore */ } };
+/*
+ * seq restoran bo'yicha saqlanadi — bitta qurilmada ikki akkaunt
+ * ishlatilsa biri ikkinchisining joyini buzmasin. Server `headSeq`
+ * bersa, u ustun turadi (bu faqat eski server uchun zaxira).
+ */
+const readSeq = () => { try { return Number(localStorage.getItem(seqKey)) || 0; } catch { return 0; } };
+const writeSeq = (v) => { try { localStorage.setItem(seqKey, String(v)); } catch { /* ignore */ } };
+
+/*
+ * Sinxronlashlar KETMA-KET bajariladi. Avval panel ochilishidagi
+ * yuklanish va socket ulanishidagi sinxronlash parallel ketib,
+ * biri ikkinchisining natijasini "yangi" deb chalib yuborishi
+ * mumkin edi (poyga). Endi har biri oldingisi tugashini kutadi.
+ */
+let syncChain = Promise.resolve();
+
+/*
+ * Sessiya raqami: logout/akkaunt almashishida oshadi. Eski
+ * sessiyada boshlangan so'rov javobi kechikib kelsa — yangi
+ * sessiyaga (boshqa restoranga) yozilmaydi.
+ */
+let sessionNo = 0;
+
+async function runSync(get, set) {
+  if (!started) return;
+  const mySession = sessionNo;
+  const first = !get().didFirstSync;
+  const qs = first ? '' : `?after=${get().lastSeq}`;
+  const data = await apiFetch(`/panel/notifications${qs}`);
+  if (mySession !== sessionNo || !started) return;
+  const items = Array.isArray(data?.items) ? data.items : [];
+
+  if (first) {
+    get().ingest(items, { live: false });
+    /*
+     * Sessiya chegarasi. Server `headSeq` bersa — u haqiqat
+     * manbai (localStorage'dagi eski yoki boshqa akkauntniki
+     * bo'lgan qiymat hisobga olinmaydi). Eski server uchun zaxira.
+     */
+    const head = Number(data?.headSeq);
+    const baseline = Number.isFinite(head) && head > 0
+      ? Math.max(head, ...items.map((n) => Number(n.seq) || 0))
+      : Math.max(readSeq(), get().lastSeq, Number(data?.lastSeq) || 0);
+    set({ lastSeq: baseline, didFirstSync: true });
+    writeSeq(baseline);
+    return;
+  }
+
+  get().ingest(items, { live: true });
+  if (data?.lastSeq) {
+    set({ lastSeq: Math.max(get().lastSeq, Number(data.lastSeq) || 0) });
+    writeSeq(get().lastSeq);
+  }
+}
 
 export const useNotifications = create((set, get) => ({
   items: [],            // eng yangisi birinchi
-  lastSeq: readSeq(),
+  lastSeq: 0,          // birinchi sinxronlashda server headSeq bilan o'rnatiladi
   connected: false,
   muted: isMuted(),
   open: false,          // panel ochiqmi
   didFirstSync: false,  // birinchi sync tugadimi (poyga himoyasi)
 
-  /** Bittasi yoki bir nechtasi keldi. Dublikatlar bu yerda to'siladi. */
-  ingest(list, { silent = false } = {}) {
+  /**
+   * Bittasi yoki bir nechtasi keldi. Dublikatlar bu yerda to'siladi.
+   *
+   * @param {object} opts
+   * @param {boolean} opts.live  true — sessiya davomida kelgan (ovoz
+   *   chalinadi); false — tarix (faqat ro'yxatga qo'shiladi).
+   *   `silent: true` eski nomi — `live: false` bilan bir xil.
+   */
+  ingest(list, { live, silent } = {}) {
+    const isLive = live ?? !silent;
     const incoming = Array.isArray(list) ? list : [list];
     if (incoming.length === 0) return;
 
@@ -182,59 +278,29 @@ export const useNotifications = create((set, get) => ({
     if (fresh.length === 0) return;
 
     // seq faqat oldinga siljiydi
-    const maxSeq = Math.max(get().lastSeq, ...fresh.map((n) => n.seq || 0));
+    const maxSeq = Math.max(get().lastSeq, ...fresh.map((n) => Number(n.seq) || 0));
 
     set({
-      items: [...fresh].sort((a, b) => b.seq - a.seq).concat(items).slice(0, 100),
+      items: [...fresh].sort((a, b) => (b.seq || 0) - (a.seq || 0)).concat(items).slice(0, 100),
       lastSeq: maxSeq,
     });
     writeSeq(maxSeq);
 
-    // Javob berilmaganlari uchun ovoz. Sinxronlashda ham chalinadi —
-    // panel yopiq turganda kelgan buyurtma e'tibordan qolmasin.
-    if (!silent) {
-      /*
-       * ═══ ESKI BILDIRISHNOMA OVOZ CHALMAYDI ═══
-       *
-       * MUAMMO: yangi restoran panelга birinchi marta kirilganda
-       * signal chalinardi, garchi ro'yxat BO'SH bo'lsa ham —
-       * "faol buyurtma yo'q, bron yo'q" deb turardi.
-       *
-       * SABAB: kirish paytida server oxirgi bildirishnomalarni
-       * yuboradi. Ular orasida allaqachon ahamiyatini yo'qotgan,
-       * bir necha soat oldingi yozuvlar bo'lishi mumkin. Yosh
-       * tekshirilmagani uchun hammasi chalinardi.
-       *
-       * Takrorlash mantig'ida bu tekshiruv ALLAQACHON bor edi
-       * (REPEAT_MAX_AGE_MS), lekin birinchi chalishda yo'q edi —
-       * ya'ni eski xabar bir marta chalinib, keyin takrorlanmasdi.
-       * Endi ikkalasi bir xil qoidaga bo'ysunadi.
-       */
-      const isFreshEnough = (n) => {
-        const born = new Date(n.createdAt).getTime();
-        // Sana noto'g'ri bo'lsa chalamiz — yangi deb hisoblaymiz,
-        // chunki haqiqiy buyurtmani o'tkazib yuborish yomonroq
-        if (Number.isNaN(born)) return true;
-        return Date.now() - born < REPEAT_MAX_AGE_MS;
-      };
+    if (isLive) {
+      fresh.forEach((n) => liveIds.add(n.notificationId));
 
-      // Sozlamada o'chirilgan turlar jim qoladi
-      fresh
-        .filter((n) => ['NEW', 'DELIVERED'].includes(n.status))
-        .filter(isFreshEnough)
-        .filter((n) => soundAllowed(n.type))
-        .forEach((n) => {
-          playSound(n.sound, n.priority);
-          // Birinchi chalish ham hisobga olinadi — takroriy sikl
-          // bilan birga JAMI 5 marta bo'lsin (6 emas)
-          playCount.set(n.notificationId, 1);
-          lastPlayedAt.set(n.notificationId, Date.now());
-        });
+      // Faqat JONLI, javob kutayotgan, yangi va sozlamada yoqilganlar
+      fresh.filter(isRingable).forEach((n) => {
+        playSound(n.sound, n.priority);
+        // Birinchi chalish ham hisobga olinadi — JAMI 5 marta (6 emas)
+        playCount.set(n.notificationId, 1);
+        lastPlayedAt.set(n.notificationId, Date.now());
+      });
 
       // Ilova ochiq, lekin boshqa oynada — brauzer bildirishnomasi
       if (document.visibilityState === 'hidden'
           && useNotifSettings.getState().desktopNotifications) {
-        fresh.forEach(showDesktopNotification);
+        fresh.filter((n) => ['NEW', 'DELIVERED'].includes(n.status)).forEach(showDesktopNotification);
       }
     }
 
@@ -243,7 +309,7 @@ export const useNotifications = create((set, get) => ({
       .filter((n) => n.status === 'NEW')
       .forEach((n) => get().patch(n.notificationId, 'DELIVERED', { quiet: true }));
 
-    // Yangi kelganlar uchun takroriy ovoz rejasi
+    // Yangi kelganlar uchun takroriy ovoz rejasi (tarix rejaga tushmaydi)
     syncRepeats();
   },
 
@@ -280,42 +346,20 @@ export const useNotifications = create((set, get) => ({
   },
 
   /**
-   * Yo'qolganlarini serverdan olib kelish.
+   * Serverdan olib kelish — KETMA-KET (syncChain).
    *
-   * POYGA HOLATI TUZATILDI (2026-08): avval faqat `initial: true`
-   * bilan chaqirilgan sync jim edi. Lekin socket 'connect'
-   * hodisasi ham sync() chaqirardi — JIM EMAS. Agar socket
-   * dastlabki sync tugashidan OLDIN ulansa (login paytida
-   * odatda shunday bo'ladi), u `?after=0` bilan BARCHA eski
-   * bildirishnomalarni olib kelib, ularni "yangi" deb OVOZ
-   * bilan chalardi — foydalanuvchi shikoyat qilgan holat aynan
-   * shu edi.
+   * BIRINCHI sinxronlash (qaysi yo'ldan chaqirilishidan qat'i
+   * nazar: panel ochilishi, socket ulanishi) — javob kutayotganlar
+   * TARIX sifatida, ovozsiz yuklanadi va sessiya chegarasi
+   * o'rnatiladi: lastSeq = server headSeq.
    *
-   * Endi: birinchi muvaffaqiyatli sync HAR DOIM jim, qaysi
-   * yo'ldan chaqirilishidan qat'i nazar.
+   * KEYINGILARI (qayta ulanish, 60 soniyalik zaxira, sahifaga
+   * qaytish) — faqat chegaradan keyingi seq'lar so'raladi. Ular
+   * sessiya davomida yaratilgan, ya'ni haqiqatan YANGI — chalinadi.
    */
-  async sync({ initial = false } = {}) {
-    const firstEver = !get().didFirstSync;
-    const silent = initial || firstEver;
-    try {
-      // Birinchi yuklanишda javob berilmaganlar, keyin esa
-      // oxirgi seq'dan keyingilari
-      const qs = initial ? '' : `?after=${get().lastSeq}`;
-      const data = await apiFetch(`/panel/notifications${qs}`);
-      const items = data?.items || [];
-
-      // Dastlabki yuklanishda ovoz chalinmaydi: bu eski ishlar,
-      // panel ochilishi bilan shovqin bo'lmasin
-      get().ingest(items, { silent });
-      if (firstEver) set({ didFirstSync: true });
-
-      if (data?.lastSeq) {
-        set({ lastSeq: Math.max(get().lastSeq, data.lastSeq) });
-        writeSeq(get().lastSeq);
-      }
-    } catch {
-      /* keyingi urinishда tiklanadi */
-    }
+  sync() {
+    syncChain = syncChain.then(() => runSync(get, set)).catch(() => { /* keyingi urinishda */ });
+    return syncChain;
   },
 
   toggleMute() {
@@ -370,8 +414,7 @@ export function startNotificationCenter() {
   if (started) return;
 
   // Kim ekanimiz aniq bo'lguncha kutamiz: socket xonasi shunga
-  // qarab tanlanadi. Avval bu sahifalarga bog'liq edi va
-  // bildirishnoma markazi noto'g'ri xonada qolib ketardi.
+  // qarab tanlanadi.
   const { user, status } = useAuth.getState();
   if (status !== 'authed' || !user) return;
 
@@ -381,133 +424,186 @@ export function startNotificationCenter() {
    */
   if (user.role !== 'restaurant') return;
 
+  const rid = String(user.restaurantId || useAuth.getState().restaurant?._id || '');
+  if (!rid) return;
+
   started = true;
+  sessionNo += 1;
+  seqKey = `${SEQ_KEY_PREFIX}:${rid}`;
 
   const store = useNotifications.getState();
   const socket = getSocket();
+  const cleanups = [];
+  const on = (target, event, fn, opts) => {
+    target.addEventListener(event, fn, opts);
+    cleanups.push(() => target.removeEventListener(event, fn, opts));
+  };
+  const onSocket = (event, fn) => {
+    socket.on(event, fn);
+    cleanups.push(() => socket.off(event, fn));
+  };
 
   /**
-   * Socket xonasiga qo'shilish.
-   *
-   * To'g'ridan-to'g'ri emit qilamiz: socket.io ulanmagan paytdagi
-   * emitlarni o'zi buferlaydi va ulanганda yuboradi. Avval bu
-   * socket.js dagi "xonalarni qayta tiklash" mexanizmiga
-   * bog'langan edi va u ba'zan ishlamay qolardi — xona
-   * bo'lmasa esa hech qanday bildirishnoma kelmaydi.
+   * Socket xonasiga qo'shilish. socket.io ulanmagan paytdagi
+   * emitlarni o'zi buferlaydi va ulanganda yuboradi.
    */
   const joinRoom = () => {
-    const rid = user.restaurantId || useAuth.getState().restaurant?._id;
-    if (!rid) return;
     joinRestaurant(rid);              // qayta ulanish ro'yxatiga ham
-    socket.emit('join:restaurant', String(rid));
+    socket.emit('join:restaurant', rid);
   };
   joinRoom();
 
-  socket.on('notification:new', (n) => useNotifications.getState().ingest(n));
+  /*
+   * Faqat O'Z restoranimizning bildirishnomasi. Admin uchun
+   * nusxalangan (`mirrored`) yoki boshqa restoranniki kelsa —
+   * (masalan eski xona qolib ketgan bo'lsa) e'tiborsiz.
+   */
+  onSocket('notification:new', (n) => {
+    if (!n || n.mirrored) return;
+    if (n.restaurantId && String(n.restaurantId) !== rid) return;
+    useNotifications.getState().ingest(n, { live: true });
+  });
 
-  socket.on('notification:status', ({ notificationId, status }) => {
+  onSocket('notification:status', ({ notificationId, status: st } = {}) => {
+    if (!notificationId) return;
     useNotifications.setState({
       items: useNotifications.getState().items.map((n) =>
-        (n.notificationId === notificationId ? { ...n, status } : n)),
+        (n.notificationId === notificationId ? { ...n, status: st } : n)),
     });
 
-    // Boshqa qurilmada qabul qilinsa — bu yerda ham jimiydi
-    if (['ACCEPTED', 'CANCELLED', 'MUTED'].includes(status)) {
+    // Boshqa qurilmada / Telegram botda hal qilinsa — bu yerda ham jimiydi
+    if (['ACCEPTED', 'CANCELLED', 'MUTED'].includes(st)) {
       clearRepeat(notificationId);
+      // Hozir aynan shu xabar chalinayotgan bo'lsa — to'xtatamiz
+      const stillRinging = useNotifications.getState().items.some(
+        (n) => n.notificationId !== notificationId
+          && isRingable(n)
+          && (playCount.get(n.notificationId) || 0) < MAX_PLAYS,
+      );
+      if (!stillRinging) stopSound();
     } else {
       syncRepeats();
     }
   });
 
-  socket.on('connect', () => {
+  onSocket('connect', () => {
     useNotifications.setState({ connected: true });
-    joinRoom();   // qayta ulanганda xona yo'qoladi — qaytamiz
-    // Uzilib turgan paytda kelganlarini olib kelamiz
+    joinRoom();   // qayta ulanganda xona yo'qoladi — qaytamiz
+    // Uzilib turgan paytda kelganlarini olib kelamiz (ketma-ket navbatda)
     useNotifications.getState().sync();
   });
 
-  socket.on('disconnect', () => {
+  onSocket('disconnect', () => {
     useNotifications.setState({ connected: false });
   });
 
   useNotifications.setState({ connected: socket.connected });
 
-  // Panel yangilanganda bajarilmagan ishlar tiklanadi
-  store.sync({ initial: true });
+  // Panel ochilishi — javob kutayotganlar TARIX sifatida (ovozsiz)
+  store.sync();
 
-  // Zaxira: socket "ulangan" ko'rinib turib hodisa kelmasligi
-  // mumkin (proxy uzib qo'ysa). Har 60 soniyada tekshiramiz.
   /*
-   * Zaxira sinxronlash.
-   *
-   * Sahifa fonda bo'lsa so'rov YUBORILMAYDI: socket baribir
-   * ulanib turibdi va hodisalarni yetkazadi, ko'rinmayotgan
-   * tabdan har daqiqada tarmoqni bezovta qilishning ma'nosi
-   * yo'q. Qaytib kelinganda darhol bir marta sinxronlanadi —
-   * ya'ni ma'lumot eskirib qolmaydi.
+   * Zaxira sinxronlash: socket "ulangan" ko'rinib turib hodisa
+   * kelmasligi mumkin (proxy uzib qo'ysa). Sahifa fonda bo'lsa
+   * so'rov yuborilmaydi — qaytib kelinganda darhol sinxronlanadi.
    */
-  setInterval(() => {
+  const interval = setInterval(() => {
     if (document.visibilityState !== 'visible') return;
     useNotifications.getState().sync();
   }, 60000);
+  cleanups.push(() => clearInterval(interval));
 
-  document.addEventListener('visibilitychange', () => {
+  on(document, 'visibilitychange', () => {
     if (document.visibilityState === 'visible') {
       useNotifications.getState().sync();
       syncRepeats();
     }
   });
 
-  // Brauzer ovozga ruxsatni faqat foydalanuvchi harakatidan
-  // keyin beradi
+  /*
+   * Brauzer ovozga ruxsatni faqat foydalanuvchi harakatidan keyin
+   * beradi. Ochish JIM bajariladi (soundQueue.unlockSound) va
+   * muvaffaqiyatsiz bo'lsa keyingi tegishda qayta uriniladi —
+   * tinglovchi faqat hammasi ochilgach olib tashlanadi.
+   */
+  let pushAsked = false;
   const unlock = () => {
     unlockSound();
-    // Push obunasi ham foydalanuvchi harakatidan keyin so'raladi:
-    // sahifa ochilishi bilan ruxsat so'rash bezovta qiladi va
-    // ko'pchilik rad etadi
-    if (useNotifSettings.getState().pushNotifications) {
+    // Push obunasi ham foydalanuvchi harakatidan keyin so'raladi
+    if (!pushAsked && useNotifSettings.getState().pushNotifications) {
+      pushAsked = true;
       subscribePush().catch(() => {});
     }
-    window.removeEventListener('pointerdown', unlock);
+    if (isSoundUnlocked()) window.removeEventListener('pointerdown', unlock);
   };
-  window.addEventListener('pointerdown', unlock);
+  on(window, 'pointerdown', unlock);
 
   // Service Worker'dan kelgan xabarlar (push bosilganda)
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.addEventListener('message', (e) => {
+    on(navigator.serviceWorker, 'message', (e) => {
       const { source, payload, url } = e.data || {};
-      if (source === 'push' && payload) {
-        // Ilova ochiq edi — markaziy tizim o'zi ko'rsatadi.
-        // Socket allaqachon yetkazgan bo'lsa dedupe to'sadi.
-        useNotifications.getState().sync();
-      }
+      // Ilova ochiq edi — socket allaqachon yetkazgan bo'lsa dedupe to'sadi
+      if (source === 'push' && payload) useNotifications.getState().sync();
       if (source === 'push-click' && url) window.location.assign(url);
     });
   }
 
-  /*
-   * Javob berilmagan bildirishnoma QAYTA-QAYTA eslatiladi —
-   * telefon jiringlagani kabi. Bitta marta chalinib jim
-   * qolsa, ekrandan uzoqdagi admin uni butunlay o'tkazib
-   * yuborishi mumkin edi — aynan shu "yaxshi ishlamayapti"
-   * degan shikoyatning sababi.
-   *
-   * Faqat NEW/DELIVERED holatidagilar takrorlanadi: bildirishnoma
-   * ochib ko'rilsa (SEEN) yoki chindan hal qilinsa (ACCEPTED/
-   * CANCELLED/MUTED) — jimiydi. Har bir tur o'zining ovozidan
-   * foydalanadi, sozlamada o'chirilgan turlar tinch qoladi.
-   */
   syncRepeats();
 
   /*
-   * Takrorlash oralig'i sozlamada o'zgarsa rejalar qayta
-   * quriladi. Ilgari 2 soniyalik sikl yangi qiymatni keyingi
-   * aylanishida o'zi o'qib olardi; rejalangan taymerga esa
-   * aniq xabar berish kerak.
+   * Takrorlash oralig'i sozlamada o'zgarsa rejalar qayta quriladi.
    */
-  useNotifSettings.subscribe(() => {
+  const unsubSettings = useNotifSettings.subscribe(() => {
     repeatTimers.forEach((t) => clearTimeout(t));
     repeatTimers.clear();
     syncRepeats();
+  });
+  cleanups.push(unsubSettings);
+
+  /*
+   * ═══ CHIQIB KETISH / AKKAUNT ALMASHISHI ═══
+   * Avval markaz bir marta ishga tushib, logout'dan keyin ham
+   * ishlayverardi: socket eski restoran xonasida qolar, shu
+   * qurilmada boshqa restoran bilan kirilsa OLDINGISINING
+   * buyurtmalariga ovoz chalinar va ro'yxatda ular ko'rinardi.
+   */
+  const unsubAuth = useAuth.subscribe((state) => {
+    const nextRid = String(state.user?.restaurantId || state.restaurant?._id || '');
+    if (state.status !== 'authed' || state.user?.role !== 'restaurant' || (nextRid && nextRid !== rid)) {
+      stopNotificationCenter();
+    }
+  });
+  cleanups.push(unsubAuth);
+
+  teardown = () => {
+    cleanups.splice(0).forEach((fn) => { try { fn(); } catch { /* ignore */ } });
+  };
+}
+
+let teardown = null;
+
+/**
+ * Markazni to'liq to'xtatish: ovoz, taymerlar, socket, holat.
+ * Keyingi kirishda startNotificationCenter() noldan boshlaydi.
+ */
+export function stopNotificationCenter() {
+  if (!started) return;
+  started = false;
+  sessionNo += 1;
+  teardown?.();
+  teardown = null;
+
+  repeatTimers.forEach((t) => clearTimeout(t));
+  repeatTimers.clear();
+  lastPlayedAt.clear();
+  playCount.clear();
+  liveIds.clear();
+  stopSound();
+  resetSocket();
+  syncChain = Promise.resolve();
+  seqKey = SEQ_KEY_PREFIX;
+
+  useNotifications.setState({
+    items: [], lastSeq: 0, connected: false, open: false, didFirstSync: false,
   });
 }
