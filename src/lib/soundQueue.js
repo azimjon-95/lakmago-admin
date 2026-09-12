@@ -89,6 +89,28 @@ let muted = false;
  * Ochilayotgan element ustida haqiqiy ovoz boshlansa, ochish
  * jarayoni uni to'xtatib qo'ymasligi uchun ajratib turiladi.
  */
+/*
+ * ═══ QULF: BIRINCHI YUKLANISH TUGAMAGUNCHA OVOZ YO'Q ═══
+ *
+ * Ovoz FAQAT bildirishnoma markazi birinchi sinxronlashni
+ * tugatgandan keyin ochiladi (notificationCenter → armSound).
+ *
+ * Bu himoya qatlami: panelga kirganda ovoz chalinishi mumkin
+ * bo'lgan HAR QANDAY yo'lni yopadi — kod xatosi, kutilmagan
+ * hodisa yoki kelajakda qo'shiladigan yangi chaqiruv bo'lsa ham.
+ * Sabab: mijoz "kirsam hamma musiqa chalib yubordi" deb shikoyat
+ * qildi; bitta joyni tuzatish yetarli emas, kafolat kerak.
+ */
+let armed = false;
+
+export function armSound(value = true) {
+  armed = value;
+}
+
+export function isSoundArmed() {
+  return armed;
+}
+
 const unlockedEls = new WeakSet();
 const unlockingEls = new Set();
 let visibilityBound = false;
@@ -212,6 +234,8 @@ const RANK = { CRITICAL: 0, HIGH: 1, NORMAL: 2 };
  * o'tadi. Mijoz stolda kutib turibdi.
  */
 export function playSound(sound, priority = 'NORMAL') {
+  // Qulf ochilmagan (panel endi yuklanmoqda) — hech narsa chalinmaydi
+  if (!armed) return;
   if (muted || sound === 'none' || !FILES[sound]) return;
 
   // Bir xil ovoz navbatda ikki marta turmasin — ketma-ket

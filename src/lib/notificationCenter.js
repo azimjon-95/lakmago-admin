@@ -2,7 +2,9 @@ import { create } from 'zustand';
 import { getSocket, joinRestaurant, resetSocket } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/api/client';
-import { playSound, stopSound, unlockSound, isSoundUnlocked, setMuted, isMuted } from '@/lib/soundQueue';
+import {
+  playSound, stopSound, unlockSound, isSoundUnlocked, setMuted, isMuted, armSound,
+} from '@/lib/soundQueue';
 import { soundAllowed, useNotifSettings } from '@/lib/notifSettings';
 import { subscribePush } from '@/lib/push';
 
@@ -499,8 +501,20 @@ export function startNotificationCenter() {
 
   useNotifications.setState({ connected: socket.connected });
 
-  // Panel ochilishi — javob kutayotganlar TARIX sifatida (ovozsiz)
-  store.sync();
+  /*
+   * Panel ochilishi — javob kutayotganlar TARIX sifatida (ovozsiz).
+   *
+   * Ovoz qulfi FAQAT shu birinchi yuklanish tugagach ochiladi
+   * (muvaffaqiyatli bo'ldimi yoki tarmoq xato berdimi — farqi yo'q,
+   * aks holda tarmoq uzilganda ovoz umuman ishlamay qolardi).
+   * Shu paytgacha hech qanday ovoz chalinmaydi.
+   */
+  store.sync().finally(() => {
+    if (started) armSound(true);
+  });
+
+  // Diagnostika: konsolda shu satr ko'rinsa — yangi versiya ishlayapti
+  console.info('[bildirishnoma] ovoz tizimi v2 — kirishda jim, faqat yangi xabarga');
 
   /*
    * Zaxira sinxronlash: socket "ulangan" ko'rinib turib hodisa
@@ -598,6 +612,7 @@ export function stopNotificationCenter() {
   lastPlayedAt.clear();
   playCount.clear();
   liveIds.clear();
+  armSound(false);     // keyingi kirishda qulf yana yopiq bo'ladi
   stopSound();
   resetSocket();
   syncChain = Promise.resolve();
