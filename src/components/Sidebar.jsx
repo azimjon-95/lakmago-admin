@@ -80,6 +80,14 @@ const adminNav = [
     page: "billing",
   },
   {
+    // Botga ulangan restoranlar va ularga xabar yuborish
+    to: "/bot",
+    icon: "ti-brand-telegram",
+    label: "Restoran botlari",
+    page: "bot",
+    adminOnly: true,
+  },
+  {
     to: "/staff",
     icon: "ti-users-group",
     label: "Xodimlar",

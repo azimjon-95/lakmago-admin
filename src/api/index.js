@@ -263,6 +263,13 @@ export const adminApi = {
   }),
   setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
 
+  // ===== RESTORAN BOTLARI (alohida bo'lim) =====
+  botRestaurants: () => apiFetch('/admin/bot/restaurants'),
+  botBroadcasts: () => apiFetch('/admin/bot/broadcasts'),
+  botBroadcastDetail: (id) => apiFetch(`/admin/bot/broadcasts/${id}`),
+  createBotBroadcast: (data) => apiFetch('/admin/bot/broadcasts', { method: 'POST', body: JSON.stringify(data) }),
+  deleteBotBroadcast: (id) => apiFetch(`/admin/bot/broadcasts/${id}`, { method: 'DELETE' }),
+
   // Kunlik hisob-kitob — Click/Paynet ajratilgan, qo'lda tasdiqlash
   getDailySettlement: (date) => apiFetch(`/admin/settlement/daily${date ? `?date=${date}` : ''}`),
   confirmSettlement: (data) => apiFetch('/admin/settlement/confirm', { method: 'POST', body: JSON.stringify(data) }),

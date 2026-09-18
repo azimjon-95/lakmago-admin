@@ -28,6 +28,7 @@ const RestaurantDetailPage = lazy(() => import('@/pages/admin/RestaurantDetailPa
 const UsersPage = lazy(() => import('@/pages/admin/UsersPage').then((m) => ({ default: m.UsersPage })));
 const SettingsPage = lazy(() => import('@/pages/admin/SettingsPage').then((m) => ({ default: m.SettingsPage })));
 const BillingPage = lazy(() => import('@/pages/admin/BillingPage').then((m) => ({ default: m.BillingPage })));
+const BotBroadcastPage = lazy(() => import('@/pages/admin/BotBroadcastPage').then((m) => ({ default: m.BotBroadcastPage })));
 const StaffPage = lazy(() => import('@/pages/admin/StaffPage').then((m) => ({ default: m.StaffPage })));
 const CouriersPage = lazy(() => import('@/pages/admin/CouriersPage').then((m) => ({ default: m.CouriersPage })));
 const CatalogPage = lazy(() => import('@/pages/admin/CatalogPage').then((m) => ({ default: m.CatalogPage })));
@@ -138,6 +139,7 @@ function AdminRoutes() {
         <Route path="/banners" element={<Guarded page="banners"><BannersPage /></Guarded>} />
         <Route path="/settings" element={<Guarded page="settings"><SettingsPage /></Guarded>} />
         <Route path="/billing" element={<Guarded page="billing"><BillingPage /></Guarded>} />
+        <Route path="/bot" element={<Guarded page="bot"><BotBroadcastPage /></Guarded>} />
         <Route path="/staff" element={<Guarded page="staff"><StaffPage /></Guarded>} />
         <Route path="/couriers" element={<Guarded page="couriers"><CouriersPage /></Guarded>} />
         <Route path="/catalog" element={<Guarded page="catalog"><CatalogPage /></Guarded>} />
