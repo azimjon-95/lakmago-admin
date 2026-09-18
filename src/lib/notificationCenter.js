@@ -3,7 +3,7 @@ import { getSocket, joinRestaurant, resetSocket } from '@/lib/socket';
 import { useAuth } from '@/store/auth';
 import { apiFetch } from '@/api/client';
 import {
-  playSound, stopSound, unlockSound, isSoundUnlocked, setMuted, isMuted, armSound,
+  playSound, stopSound, unlockSound, isSoundUnlocked, setMuted, armSound,
 } from '@/lib/soundQueue';
 import { soundAllowed, useNotifSettings } from '@/lib/notifSettings';
 import { subscribePush } from '@/lib/push';
@@ -251,7 +251,11 @@ export const useNotifications = create((set, get) => ({
   items: [],            // eng yangisi birinchi
   lastSeq: 0,          // birinchi sinxronlashda server headSeq bilan o'rnatiladi
   connected: false,
-  muted: isMuted(),
+  /*
+   * Boshlang'ich holat DOIMIY sozlamadan: qurilmada ovoz
+   * o'chirilgan bo'lsa, panel ochilganda ham o'chiq turadi.
+   */
+  muted: !useNotifSettings.getState().masterSound,
   open: false,          // panel ochiqmi
   didFirstSync: false,  // birinchi sync tugadimi (poyga himoyasi)
 
@@ -364,10 +368,25 @@ export const useNotifications = create((set, get) => ({
     return syncChain;
   },
 
+  /*
+   * Dinamik tugmasi — endi DOIMIY sozlamani boshqaradi.
+   *
+   * Avval u faqat xotiradagi bayroqni o'zgartirardi: sahifa
+   * yangilanishi bilan holat yo'qolib, ovoz qaytadan yoqilardi.
+   * Endi tanlov qurilmada saqlanadi (notifSettings.masterSound):
+   * restoran bir marta yoqsa — yoqiq qoladi, o'chirsa — o'chiq.
+   *
+   * Standart holat: O'CHIQ. Ovoz faqat restoran o'zi yoqqanda
+   * chalinadi.
+   */
   toggleMute() {
-    const next = !get().muted;
-    setMuted(next);
-    set({ muted: next });
+    const nextMuted = !get().muted;
+    setMuted(nextMuted);
+    useNotifSettings.getState().set({ masterSound: !nextMuted });
+    set({ muted: nextMuted });
+
+    // Yoqilgan paytda chalinayotgan ovoz bo'lsa — to'xtatamiz
+    if (nextMuted) stopSound();
   },
 
   setOpen(open) {
@@ -432,6 +451,13 @@ export function startNotificationCenter() {
   started = true;
   sessionNo += 1;
   seqKey = `${SEQ_KEY_PREFIX}:${rid}`;
+
+  /*
+   * Xotiradagi "jim" bayrog'ini doimiy sozlama bilan moslaymiz.
+   * Aks holda sahifa yangilangandan keyin ular ajralib qolardi:
+   * sozlamada o'chiq, xotirada yoqiq.
+   */
+  setMuted(!useNotifSettings.getState().masterSound);
 
   const store = useNotifications.getState();
   const socket = getSocket();

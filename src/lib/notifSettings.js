@@ -12,7 +12,18 @@ import { persist } from 'zustand/middleware';
  */
 
 export const DEFAULTS = {
-  masterSound: true,
+  /*
+   * ═══ OVOZ STANDART HOLATDA O'CHIRILGAN ═══
+   *
+   * Restoran panelga kirganda hech qanday ovoz chalinmasligi
+   * kerak — kutilmagan musiqa foydalanuvchini cho'chitadi va
+   * ish joyida noqulay. Ovozni restoranning O'ZI dinamik
+   * tugmasidan yoqadi, shundan keyingina chalinadi.
+   *
+   * Tanlov qurilmada saqlanadi: bir marta yoqilsa, keyingi
+   * kirishlarda ham yoqiq qoladi.
+   */
+  masterSound: false,
   volume: 0.8,
 
   // Har tur uchun alohida
@@ -50,7 +61,26 @@ export const useNotifSettings = create(
       set: (patch) => set(patch),
       reset: () => set({ ...DEFAULTS }),
     }),
-    { name: 'lokmago_notif_settings' },
+    {
+      name: 'lokmago_notif_settings',
+      /*
+       * Versiya 2: ovoz standart holatda O'CHIRILDI.
+       *
+       * Migratsiya kerak, chunki avvalgi versiyada `masterSound`
+       * standart `true` edi va u har bir qurilmada allaqachon
+       * saqlanib qolgan. Versiyasiz eski qurilmalarda ovoz
+       * yoqiq qolaverardi va "hamma restoranda jim bo'lsin"
+       * talabi bajarilmasdi.
+       *
+       * Ataylab bir martalik majburiy o'chirish: kim ovozni
+       * xohlasa, dinamik tugmasidan qayta yoqadi.
+       */
+      version: 2,
+      migrate: (state, from) => {
+        if (from < 2) return { ...state, masterSound: false };
+        return state;
+      },
+    },
   ),
 );
 
