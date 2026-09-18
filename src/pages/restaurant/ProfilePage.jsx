@@ -34,12 +34,8 @@ export function RestaurantProfilePage() {
         timezone: r.timezone || 'Asia/Tashkent',
         workingDays: r.workingDays || [],
 
-        deliveryType: r.delivery?.type || 'free',
+        deliveryEnabled: r.deliveryEnabled !== false,
         maxDistanceKm: r.delivery?.maxDistanceKm ?? 10,
-        freeKm: r.delivery?.pricing?.freeKm ?? 0,
-        basePrice: r.delivery?.pricing?.basePrice ?? null,
-        extraKmPrice: r.delivery?.pricing?.extraKmPrice ?? null,
-        maxPrice: r.delivery?.pricing?.maxPrice ?? null,
 
         deliveryMin: r.deliveryMin ?? 25,
         deliveryMax: r.deliveryMax ?? 40,
@@ -65,23 +61,12 @@ export function RestaurantProfilePage() {
     setMsg(null);
     try {
       // Bo'sh raqamlar 0 sifatida yuboriladi
-      const {
-        deliveryType, maxDistanceKm, freeKm, basePrice,
-        extraKmPrice, maxPrice, ...rest
-      } = form;
+      // Radius alohida obyektda saqlanadi, qolgani to'g'ridan-to'g'ri
+      const { maxDistanceKm, ...rest } = form;
 
       const payload = {
         ...rest,
-        delivery: {
-          type: deliveryType,
-          maxDistanceKm: Number(maxDistanceKm) || 0,
-          pricing: {
-            freeKm: Number(freeKm) || 0,
-            basePrice: Number(basePrice) || 0,
-            extraKmPrice: Number(extraKmPrice) || 0,
-            maxPrice: Number(maxPrice) || 0,
-          },
-        },
+        delivery: { maxDistanceKm: Number(maxDistanceKm) || 0 },
       };
       for (const k of ['deliveryFee', 'freeDeliveryThreshold', 'minOrderAmount',
                        'pickupDiscountPercent', 'deliveryMarkupPercent']) {
@@ -290,90 +275,29 @@ export function RestaurantProfilePage() {
             )}
           </Field>
 
-          <Field label="Yetkazish turi">
-            <div className="grid grid-cols-3 gap-2">
-              {[
-                ['free', 'Bepul'],
-                ['paid', 'Masofaga qarab'],
-                ['disabled', "Yo'q"],
-              ].map(([k, label]) => (
-                <button key={k} type="button"
-                  onClick={() => set('deliveryType', k)}
-                  className={`py-2.5 rounded-xl text-sm border ${
-                    form.deliveryType === k
-                      ? 'border-brand-400 bg-brand-50 text-brand-600'
-                      : 'border-line text-muted'
-                  }`}>
-                  {label}
-                </button>
-              ))}
-            </div>
-          </Field>
-
-          {form.deliveryType !== 'disabled' && (
-            <Field label="Yetkazish radiusi" hint="Undan uzoqqa buyurtma qabul qilinmaydi">
-              <NumberInput value={form.maxDistanceKm}
-                onChange={(v) => set('maxDistanceKm', v)}
-                suffix="km" placeholder="10" />
-            </Field>
-          )}
-
-          {form.deliveryType === 'paid' && (
-            <>
-              <Field label="Bepul masofa" hint="Shu masofagacha bepul">
-                <NumberInput value={form.freeKm}
-                  onChange={(v) => set('freeKm', v)} suffix="km" placeholder="3" />
-              </Field>
-
-              <Field label="Boshlang'ich narx" hint="Har buyurtmaga qo'shiladi">
-                <MoneyInput value={form.basePrice}
-                  onChange={(v) => set('basePrice', v)} />
-              </Field>
-
-              <Field label="Har km uchun" hint="Bepul masofadan keyin">
-                <MoneyInput value={form.extraKmPrice}
-                  onChange={(v) => set('extraKmPrice', v)} placeholder="3 000" />
-              </Field>
-
-              <Field label="Eng ko'p narx" hint="Bo'sh = cheklovsiz">
-                <MoneyInput value={form.maxPrice}
-                  onChange={(v) => set('maxPrice', v)} />
-              </Field>
-
-              {/* Misol */}
-              <div className="text-xs bg-canvas rounded-lg p-3 leading-relaxed">
-                <div className="font-medium text-ink mb-1">Misol: 5 km masofa</div>
-                <div className="text-muted">
-                  {Number(form.freeKm) > 0 && (
-                    <>Birinchi {form.freeKm} km — bepul<br /></>
-                  )}
-                  {Math.max(0, 5 - (Number(form.freeKm) || 0)) > 0 && (
-                    <>
-                      Qolgan {Math.max(0, 5 - (Number(form.freeKm) || 0))} km ×{' '}
-                      {(Number(form.extraKmPrice) || 0).toLocaleString('ru-RU')}<br />
-                    </>
-                  )}
-                  <b className="text-ink">
-                    Jami:{' '}
-                    {(
-                      (Number(form.basePrice) || 0)
-                      + Math.ceil(Math.max(0, 5 - (Number(form.freeKm) || 0)))
-                        * (Number(form.extraKmPrice) || 0)
-                    ).toLocaleString('ru-RU')} so'm
-                  </b>
-                </div>
-              </div>
-
-              <div className="text-[11px] text-muted leading-relaxed">
-                Masofa Yandex xaritasi orqali haqiqiy yo'l bo'yicha
-                hisoblanadi — to'g'ri chiziq emas.
-              </div>
-            </>
-          )}
         </Section>
 
         {/* Yetkazish */}
         <Section title="Yetkazib berish" icon="ti-truck-delivery">
+          {/*
+            Yetkazish xizmati bormi — eng yuqorida. O'chirilsa
+            mijoz savatida "Yetkazib berish" tanlovi ko'rinmaydi
+            va server ham bunday buyurtmani qabul qilmaydi.
+          */}
+          {/*
+            Yetkazish xizmati bormi — eng yuqorida. O'chirilsa
+            mijoz savatida "Yetkazib berish" tanlovi ko'rinmaydi
+            va server ham bunday buyurtmani qabul qilmaydi.
+          */}
+          <Toggle
+            checked={form.deliveryEnabled}
+            onChange={(v) => set('deliveryEnabled', v)}
+            label="Yetkazib berish bor"
+            hint="O'chirilsa mijoz faqat o'zi olib keta oladi"
+          />
+
+          {form.deliveryEnabled && (
+          <div className="mt-3 space-y-3">
           <div className="grid grid-cols-2 gap-3">
             <Field label="Eng kam vaqt">
               <NumberInput
@@ -391,7 +315,18 @@ export function RestaurantProfilePage() {
             </Field>
           </div>
 
-          <Field label="Yetkazish narxi" hint="Bo'sh yoki 0 = bepul">
+          <Field
+            label="Yetkazish radiusi"
+            hint="Undan uzoqqa buyurtma qabul qilinmaydi. Bo'sh = cheklovsiz"
+          >
+            <NumberInput
+              value={form.maxDistanceKm}
+              onChange={(v) => set('maxDistanceKm', v)}
+              suffix="km" placeholder="10"
+            />
+          </Field>
+
+          <Field label="Yetkazish narxi" hint="Bo'sh yoki 0 = mijozga bepul">
             <MoneyInput value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} />
           </Field>
 
@@ -405,6 +340,32 @@ export function RestaurantProfilePage() {
           <Field label="Minimal buyurtma" hint="Shu summadan kam bo'lsa buyurtma berilmaydi">
             <MoneyInput value={form.minOrderAmount} onChange={(v) => set('minOrderAmount', v)} />
           </Field>
+
+          {/* Mijoz nimani ko'rishini darhol ko'rsatamiz */}
+          <div className="text-xs bg-canvas rounded-lg p-3 leading-relaxed">
+            <div className="font-medium text-ink mb-1">Mijoz nimani ko‘radi</div>
+            <div className="text-muted">
+              {Number(form.deliveryFee) > 0 ? (
+                <>
+                  Yetkazish:{' '}
+                  <b className="text-ink">
+                    {Number(form.deliveryFee).toLocaleString('ru-RU')} so‘m
+                  </b>
+                  {Number(form.freeDeliveryThreshold) > 0 && (
+                    <>
+                      <br />
+                      {Number(form.freeDeliveryThreshold).toLocaleString('ru-RU')} so‘mdan
+                      yuqori buyurtmada — <b className="text-ink">bepul</b>
+                    </>
+                  )}
+                </>
+              ) : (
+                <>Yetkazish: <b className="text-ink">bepul</b></>
+              )}
+            </div>
+          </div>
+          </div>
+          )}
         </Section>
 
         {/* Olib ketish */}
