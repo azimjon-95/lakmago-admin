@@ -44,6 +44,10 @@ export function RestaurantProfilePage() {
         freeDeliveryThreshold: r.freeDeliveryThreshold ?? null,
         minOrderAmount: r.minOrderAmount ?? null,
 
+        cashEnabled: r.cashEnabled !== false,
+        pricingMode: r.delivery?.pricingMode === 'perKm' ? 'perKm' : 'flat',
+        freeKm: r.delivery?.freeKm ?? 0,
+        perKm: r.delivery?.perKm ?? null,
         pickupEnabled: r.pickupEnabled ?? false,
         pickupDiscountPercent: r.pickupDiscountPercent ?? null,
         prepMinutes: r.prepMinutes ?? 20,
@@ -62,11 +66,16 @@ export function RestaurantProfilePage() {
     try {
       // Bo'sh raqamlar 0 sifatida yuboriladi
       // Radius alohida obyektda saqlanadi, qolgani to'g'ridan-to'g'ri
-      const { maxDistanceKm, ...rest } = form;
+      const { maxDistanceKm, pricingMode, freeKm, perKm, ...rest } = form;
 
       const payload = {
         ...rest,
-        delivery: { maxDistanceKm: Number(maxDistanceKm) || 0 },
+        delivery: {
+          maxDistanceKm: Number(maxDistanceKm) || 0,
+          pricingMode: pricingMode === 'perKm' ? 'perKm' : 'flat',
+          freeKm: Number(freeKm) || 0,
+          perKm: Number(perKm) || 0,
+        },
       };
       for (const k of ['deliveryFee', 'freeDeliveryThreshold', 'minOrderAmount',
                        'pickupDiscountPercent', 'deliveryMarkupPercent']) {
@@ -326,9 +335,43 @@ export function RestaurantProfilePage() {
             />
           </Field>
 
-          <Field label="Yetkazish narxi" hint="Bo'sh yoki 0 = mijozga bepul">
-            <MoneyInput value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} />
+          {/*
+            Narx rejimi. Restoran o'ziga qulayini tanlaydi:
+            bitta qat'iy narx yoki masofaga qarab.
+          */}
+          <Field label="Narx qanday hisoblansin">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                ['flat', 'Qat‘iy narx'],
+                ['perKm', 'Kilometrga qarab'],
+              ].map(([k, label]) => (
+                <button key={k} type="button" onClick={() => set('pricingMode', k)}
+                  className={`py-2.5 rounded-xl text-sm border transition ${
+                    form.pricingMode === k
+                      ? 'border-brand-400 bg-brand-50 text-brand-600 font-medium'
+                      : 'border-line text-muted'
+                  }`}>
+                  {label}
+                </button>
+              ))}
+            </div>
           </Field>
+
+          {form.pricingMode === 'perKm' ? (
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="Bepul masofa" hint="Shu masofagacha bepul. 0 = bepul masofa yo‘q">
+                <NumberInput value={form.freeKm} onChange={(v) => set('freeKm', v)}
+                  suffix="km" placeholder="1" />
+              </Field>
+              <Field label="Har km uchun" hint="Bepul masofadan keyin">
+                <MoneyInput value={form.perKm} onChange={(v) => set('perKm', v)} />
+              </Field>
+            </div>
+          ) : (
+            <Field label="Yetkazish narxi" hint="Bo'sh yoki 0 = mijozga bepul">
+              <MoneyInput value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} />
+            </Field>
+          )}
 
           <Field label="Bepul yetkazish chegarasi" hint="Shu summadan boshlab bepul">
             <MoneyInput
@@ -345,26 +388,69 @@ export function RestaurantProfilePage() {
           <div className="text-xs bg-canvas rounded-lg p-3 leading-relaxed">
             <div className="font-medium text-ink mb-1">Mijoz nimani ko‘radi</div>
             <div className="text-muted">
-              {Number(form.deliveryFee) > 0 ? (
+              {form.pricingMode === 'perKm' ? (
+                <>
+                  {Number(form.freeKm) > 0 && (
+                    <>{Number(form.freeKm)} km gacha — <b className="text-ink">bepul</b><br /></>
+                  )}
+                  Keyin har km uchun{' '}
+                  <b className="text-ink">
+                    {Number(form.perKm || 0).toLocaleString('ru-RU')} so‘m
+                  </b>
+                  <br />
+                  <span className="opacity-80">
+                    Masalan 3 km: {(() => {
+                      const paid = Math.max(0, 3 - (Number(form.freeKm) || 0));
+                      const sum = Math.round((paid * (Number(form.perKm) || 0)) / 100) * 100;
+                      return sum ? `${sum.toLocaleString('ru-RU')} so‘m` : 'bepul';
+                    })()}
+                  </span>
+                </>
+              ) : Number(form.deliveryFee) > 0 ? (
                 <>
                   Yetkazish:{' '}
                   <b className="text-ink">
                     {Number(form.deliveryFee).toLocaleString('ru-RU')} so‘m
                   </b>
-                  {Number(form.freeDeliveryThreshold) > 0 && (
-                    <>
-                      <br />
-                      {Number(form.freeDeliveryThreshold).toLocaleString('ru-RU')} so‘mdan
-                      yuqori buyurtmada — <b className="text-ink">bepul</b>
-                    </>
-                  )}
                 </>
               ) : (
                 <>Yetkazish: <b className="text-ink">bepul</b></>
               )}
+
+              {Number(form.freeDeliveryThreshold) > 0 && (
+                <>
+                  <br />
+                  {Number(form.freeDeliveryThreshold).toLocaleString('ru-RU')} so‘mdan
+                  yuqori buyurtmada — <b className="text-ink">bepul</b>
+                </>
+              )}
             </div>
           </div>
           </div>
+          )}
+        </Section>
+
+        {/* To'lov usullari */}
+        <Section title="To'lov" icon="ti-credit-card">
+          {/*
+            Naqd o'chirilsa mijoz savatida "Naqd" tanlovi
+            ko'rinmaydi va server ham bunday buyurtmani rad etadi.
+          */}
+          <Toggle
+            checked={form.cashEnabled}
+            onChange={(v) => set('cashEnabled', v)}
+            label="Naqd pul qabul qilaman"
+            hint={form.cashEnabled
+              ? 'Mijoz naqd yoki karta orqali to‘lay oladi'
+              : 'Mijoz FAQAT karta orqali to‘laydi — naqd tanlovi ko‘rinmaydi'}
+          />
+
+          {!form.cashEnabled && (
+            <div className="mt-3 text-xs bg-canvas rounded-lg p-3 text-muted leading-relaxed">
+              Karta to‘lovi ishlashi uchun hisobingiz to‘lov tizimiga
+              ulangan bo‘lishi kerak. Ulanmagan bo‘lsa mijoz buyurtma
+              bera olmaydi — naqdni o‘chirishdan oldin tekshiring.
+            </div>
           )}
         </Section>
 
