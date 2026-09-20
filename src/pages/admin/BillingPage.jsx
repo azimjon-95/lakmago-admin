@@ -1,5 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { adminApi } from '@/api';
+import { getSocket, joinAdmin } from '@/lib/socket';
+import { softVibrate } from '@/lib/haptic';
 import { confirm } from '@/components/ui/confirm';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -38,6 +40,47 @@ export function BillingPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  /*
+   * ═══ JONLI YANGILANISH ═══
+   *
+   * Server buyurtma hisob-kitobi yoki qaytarish bo'lganda
+   * `billing:update` yuboradi. Avval sahifa uni TINGLAMASDI —
+   * buyurtma qabul qilinsa ham raqamlar eski holicha turardi,
+   * faqat qo'lda yangilaganda o'zgarardi.
+   *
+   * Yangilanish 400 ms kechiktiriladi: bitta buyurtma bir necha
+   * yozuv yaratadi (komissiya, restoran qarzi) — har biriga
+   * alohida so'rov yubormaymiz.
+   */
+  const [flash, setFlash] = useState(false);
+
+  useEffect(() => {
+    joinAdmin();
+    const socket = getSocket();
+    let timer = null;
+
+    const onUpdate = () => {
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        load();
+        softVibrate();
+        // Qisqa yorug'lik — raqam o'zgarganini ko'z ilg'asin
+        setFlash(true);
+        setTimeout(() => setFlash(false), 900);
+      }, 400);
+    };
+
+    socket.on('billing:update', onUpdate);
+    // Buyurtma yetkazilganda ham summalar o'zgaradi
+    socket.on('order:update', onUpdate);
+
+    return () => {
+      clearTimeout(timer);
+      socket.off('billing:update', onUpdate);
+      socket.off('order:update', onUpdate);
+    };
+  }, [load]);
 
   useEffect(() => {
     if (tab !== 'ledger') return;
@@ -145,7 +188,16 @@ export function BillingPage() {
 
   return (
     <div className="p-4 sm:p-6">
-      <h1 className="text-xl font-semibold text-ink mb-1">Moliya</h1>
+      <h1 className="text-xl font-semibold text-ink mb-1 flex items-center gap-2">
+        Moliya
+        {/* Jonli yangilandi — qisqa yashil belgi */}
+        <span
+          className={`w-2 h-2 rounded-full bg-green-500 transition-opacity duration-500 ${
+            flash ? 'opacity-100' : 'opacity-0'
+          }`}
+          aria-hidden="true"
+        />
+      </h1>
       <p className="text-sm text-muted mb-5">
         Pul harakati, komissiya va restoranlar bilan hisob-kitob
       </p>
