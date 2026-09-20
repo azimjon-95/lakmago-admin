@@ -154,9 +154,21 @@ export function BillingPage() {
       {overview && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           <Stat label="Mijozlardan tushum" value={overview.tushum} color="text-green-600" />
-          <Stat label="Platforma daromadi" value={overview.platformaDaromadi} color="text-brand-600" />
+          {/*
+            LokmaGo daromadi — kelishuv bo'yicha komissiya.
+            Click ushlagani shu summa ICHIDAN chiqadi, shuning
+            uchun pastida alohida ko'rsatiladi.
+          */}
+          <Stat
+            label="LokmaGo daromadi"
+            value={overview.platformaDaromadi}
+            color="text-brand-600"
+            note={overview.clickFee > 0
+              ? `${som(overview.komissiyaBrutto)} − Click ${som(overview.clickFee)}`
+              : null}
+          />
           <Stat label="Restoranlarga qarz" value={overview.restoranlargaQarz} color="text-blue-600" />
-          <Stat label="Qaytarilgan" value={overview.qaytarilgan} color="text-red-600" />
+          <Stat label="Click ushlagani" value={overview.clickFee} color="text-muted" />
         </div>
       )}
 
@@ -201,9 +213,24 @@ export function BillingPage() {
 
               <div className="grid grid-cols-3 gap-2 text-center">
                 <Mini label="Tushum" value={r.tushum} />
-                <Mini label="Komissiya" value={r.komissiya} accent />
+                <Mini label="LokmaGo daromadi" value={r.komissiya} accent />
                 <Mini label="To'langan" value={r.tolangan} />
               </div>
+
+              {/*
+                Click faqat karta to'lovlarida bo'ladi. Naqdda 0 —
+                u hech qanday to'lov tizimiga tegmaydi.
+              */}
+              {r.clickFee > 0 && (
+                <div className="mt-2 text-xs text-muted flex items-center justify-between
+                                bg-canvas rounded-lg px-3 py-2">
+                  <span>Click 1.5% ushlagani</span>
+                  <span>
+                    −{som(r.clickFee)} · sof{' '}
+                    <b className="text-ink">{som(r.sofKomissiya)}</b>
+                  </span>
+                </div>
+              )}
 
               {/*
                 Naqd/karta buyurtma SONI — "nechta buyurtma
@@ -315,12 +342,13 @@ export function BillingPage() {
   );
 }
 
-function Stat({ label, value, color }) {
+function Stat({ label, value, color, note }) {
   return (
     <div className="bg-surface border border-line rounded-xl p-3.5">
       <div className="text-xs text-muted mb-1">{label}</div>
       <div className={`text-lg font-bold ${color}`}>{som(value)}</div>
-      <div className="text-[10px] text-muted">so'm</div>
+      {/* Izoh — raqam qanday chiqqanini ko'rsatadi */}
+      <div className="text-[10px] text-muted">{note || "so'm"}</div>
     </div>
   );
 }
