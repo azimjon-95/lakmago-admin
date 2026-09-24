@@ -1,3 +1,4 @@
+import { resilientFetch } from '@/lib/resilientFetch';
 // LokmaGo panel — markaziy API klienti (admin + restoran uchun umumiy)
 const API_BASE = import.meta.env.VITE_API_URL ?? '/api';
 
@@ -14,7 +15,8 @@ export function clearToken() {
 }
 
 export async function apiFetch(path, options = {}) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  // Vaqt chegarasi + o'qishda qayta urinish (lib/resilientFetch.js)
+  const res = await resilientFetch(`${API_BASE}${path}`, {
     ...options,
     headers: {
       'Content-Type': 'application/json',
@@ -48,7 +50,12 @@ export const SOCKET_URL = import.meta.env.VITE_SOCKET_URL ?? 'http://localhost:4
  * yubormaydi va 401 qaytadi.
  */
 export async function downloadFile(path) {
-  const res = await fetch(`${API_BASE}${path}`, {
+  /*
+   * Katta hisobot (Excel) tayyorlanishi 15 soniyadan oshishi
+   * mumkin — yuklab olish uchun chegara 60 soniya.
+   */
+  const res = await resilientFetch(`${API_BASE}${path}`, {
+    timeoutMs: 60000,
     headers: {
       ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
     },

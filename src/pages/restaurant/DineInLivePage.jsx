@@ -132,7 +132,15 @@ export function DineInLivePage() {
   const fireCourse = async (order, course) => {
     try {
       await panelApi.fireDineInCourse(order._id, course);
-      loadDebounced();
+      /*
+       * XATO TUZATILDI: avval `loadDebounced()` chaqirilardi, u esa
+       * pastdagi useEffect ICHIDA e'lon qilingan — bu yerdan
+       * ko'rinmaydi. Kurs muvaffaqiyatli yuborilardi, lekin keyin
+       * "loadDebounced is not defined" xatosi chiqardi.
+       * To'g'ridan-to'g'ri `load()` — socket hodisasi ham
+       * baribir ro'yxatni yangilaydi.
+       */
+      load();
     } catch (e) {
       alert(e.message);
     }

@@ -7,6 +7,8 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
 import { catalogCategoryLabel } from '@/constants/catalogCategories';
+import { OptionGroupsEditor, validateOptionGroups, serializeOptionGroups } from '@/components/OptionGroupsEditor';
+import { isVariantGroup } from '@/lib/dishPricing';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
@@ -315,6 +317,29 @@ function DishForm({ dish, onClose, onSaved }) {
   });
   const [err, setErr] = useState(null);
 
+  /*
+   * ═══ HAJM VA QO'SHIMCHALAR ═══
+   *
+   * Mavjud guruhlar yuklanganda ularning TURI aniqlanadi —
+   * mijoz ilovasi va server bilan AYNAN bir xil mantiqda.
+   *
+   * Nega muhim: import qilingan eski guruhlarda `kind` yozilmagan.
+   * Agar forma ularni turisiz qayta saqlasa, server "qo'shimcha"
+   * deb yozib qo'yardi va pitsa 33/40 sm narxi yana QO'SHILIB
+   * ketardi (199 875 xatosi qaytardi).
+   *
+   * Qo'shimcha himoya: guruhlar faqat restoran ularni HAQIQATAN
+   * o'zgartirganda yuboriladi (`groupsDirty`).
+   */
+  const [groups, setGroups] = useState(() => (dish?.optionGroups || []).map((g) => ({
+    title: g.title || '',
+    kind: isVariantGroup(g, dish?.price) ? 'variant' : 'addon',
+    options: (g.options || []).map((o) => ({ name: o.name || '', price: o.price ?? null })),
+  })));
+  const [groupsDirty, setGroupsDirty] = useState(false);
+  const changeGroups = (next) => { setGroups(next); setGroupsDirty(true); };
+  const hasVariant = groups.some((g) => g.kind === 'variant');
+
   // Kategoriyaga qarab miqdor maydoni (gramm yoki litr)
   const amount = amountField(form.category);
   const [saving, setSaving] = useState(false);
@@ -323,6 +348,10 @@ function DishForm({ dish, onClose, onSaved }) {
   const submit = async () => {
     if (!form.name.trim()) { setErr('Taom nomini kiriting'); return; }
     if (!form.price || Number(form.price) <= 0) { setErr('Narxni kiriting'); return; }
+    if (groupsDirty) {
+      const groupErr = validateOptionGroups(groups);
+      if (groupErr) { setErr(groupErr); return; }
+    }
     setErr(null); setSaving(true);
     try {
       const payload = {
@@ -349,6 +378,8 @@ function DishForm({ dish, onClose, onSaved }) {
           ? { dineInPrice: Number(form.dineInPrice) }
           : {}),
         ...(form.imageUrl ? { imageUrl: form.imageUrl, images: [form.imageUrl] } : {}),
+        // Faqat o'zgartirilgan bo'lsa — eski ma'lumot tasodifan qayta yozilmasin
+        ...(groupsDirty ? { optionGroups: serializeOptionGroups(groups) } : {}),
       };
 
       if (isEdit) await panelApi.updateDish(dish._id, payload);
@@ -463,6 +494,15 @@ function DishForm({ dish, onClose, onSaved }) {
             />
           </Field>
         </div>
+
+        {/* 4b. Hajm / razmer va qo'shimchalar */}
+        <Field
+          label="Hajm va qo‘shimchalar"
+          hint={hasVariant
+            ? 'Hajm tanlansa uning narxi yuqoridagi narx o‘rniga olinadi'
+            : 'Ixtiyoriy: pitsa 33/40 sm, 250/500 gramm yoki qo‘shimchalar'}>
+          <OptionGroupsEditor groups={groups} onChange={changeGroups} />
+        </Field>
 
         {/* 5. Tayyorlanish vaqti */}
         <Field label="Tayyorlanish vaqti" hint="Mijozga «nechida tayyor» shu bo'yicha hisoblanadi">
