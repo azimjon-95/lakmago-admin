@@ -334,7 +334,9 @@ function DishForm({ dish, onClose, onSaved }) {
   const [groups, setGroups] = useState(() => (dish?.optionGroups || []).map((g) => ({
     title: g.title || '',
     kind: isVariantGroup(g, dish?.price) ? 'variant' : 'addon',
-    options: (g.options || []).map((o) => ({ name: o.name || '', price: o.price ?? null })),
+    options: (g.options || []).map((o) => ({
+      name: o.name || '', price: o.price ?? null, mandatory: Boolean(o.mandatory),
+    })),
   })));
   const [groupsDirty, setGroupsDirty] = useState(false);
   const changeGroups = (next) => { setGroups(next); setGroupsDirty(true); };
