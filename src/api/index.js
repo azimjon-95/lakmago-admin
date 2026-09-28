@@ -244,7 +244,10 @@ export const adminApi = {
 
   // ===== Moliya =====
   getBillingOverview: (q = '') => apiFetch(`/admin/billing/overview${q}`),
-  getBillingByRestaurant: () => apiFetch('/admin/billing/restaurants'),
+  // q: '?from=YYYY-MM-DD&to=YYYY-MM-DD' (Toshkent kunlari) — lib/billingPeriod.js
+  getBillingByRestaurant: (q = '') => apiFetch(`/admin/billing/restaurants${q}`),
+  // "Naqd: N ta / Karta: N ta" ortidagi buyurtmalar: '?method=cash&from=..&to=..'
+  getRestaurantBillingOrders: (id, q = '') => apiFetch(`/admin/billing/restaurant/${id}/orders${q}`),
   getLedger: (q = '') => apiFetch(`/admin/billing/ledger${q}`),
   /*
    * `idempotencyKey` chaqiruvchi tomonidan berilishi kerak —
@@ -280,6 +283,8 @@ export const adminApi = {
     method: 'PATCH', body: JSON.stringify(data),
   }),
   getRestaurantPayoutAudit: (id) => apiFetch(`/admin/restaurants/${id}/payout/audit`),
+  // TO'LIQ rekvizit (bank hisob / karta raqami) — har ko'rish serverda audit'ga yoziladi
+  revealRestaurantPayout: (id) => apiFetch(`/admin/restaurants/${id}/payout/reveal`),
 
   // Kirim-chiqim (platformaning o'z xarajatlari)
   getExpenses: (q = '') => apiFetch(`/admin/expenses${q}`),

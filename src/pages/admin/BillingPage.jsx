@@ -1,10 +1,21 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { softVibrate } from '@/lib/haptic';
 import { confirm } from '@/components/ui/confirm';
+import { PeriodFilter } from '@/components/billing/PeriodFilter';
+import { RestaurantOrdersModal } from '@/components/billing/RestaurantOrdersModal';
+import { PayoutModal } from '@/components/billing/PayoutModal';
+import { PayoutsHistoryModal } from '@/components/billing/PayoutsHistoryModal';
+import { rangeFor, buildQuery, periodLabel } from '@/lib/billingPeriod';
 
-const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
+/*
+ * Kasr qismi bo'lishi mumkin (Click 1.5% → 9 940,5). Avval vergul
+ * bo'shliqqa almashtirilardi va "9 940 5" ko'rinardi — o'qib
+ * bo'lmasdi. Endi kasr vergul bilan, ming'lar bo'shliq bilan.
+ */
+const som = (n) => (Math.round((Number(n) || 0) * 100) / 100)
+  .toLocaleString('ru-RU', { maximumFractionDigits: 2 });
 // Payment/Expense modellari TIYINDA saqlaydi (1 so'm = 100 tiyin),
 // eski Ledger/Restaurant.balance esa SO'MDA — shuning uchun
 // yangi (kunlik hisobot, kirim-chiqim) qismlarda alohida yordamchi:
@@ -24,20 +35,44 @@ export function BillingPage() {
   const [overview, setOverview] = useState(null);
   const [restaurants, setRestaurants] = useState([]);
   const [ledger, setLedger] = useState([]);
-  const [loading, setLoading] = useState(true);
+  /*
+   * Butun sahifa "Yuklanmoqda" bo'lib qolishi FAQAT birinchi
+   * yuklanishda. Filtr almashtirilganda yoki jonli yangilanishda
+   * ro'yxat joyida turadi (avval har yangilanish sahifani
+   * miltillatib yuborardi).
+   */
+  const [initialLoading, setInitialLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [loadError, setLoadError] = useState('');
+
+  // Restoranlar bo'limining sana filtri (Toshkent kunlari)
+  const [period, setPeriod] = useState({ key: 'all', from: '', to: '' });
+  const range = useMemo(() => rangeFor(period), [period]);
+  const periodText = periodLabel(period, range);
+
+  // Ketma-ket filtr almashtirilsa, kechikkan ESKI javob yangisini bosib ketmasin
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
-    setLoading(true);
+    const mine = ++loadSeq.current;
+    setRefreshing(true);
     try {
       const [o, r] = await Promise.all([
         adminApi.getBillingOverview(),
-        adminApi.getBillingByRestaurant(),
+        adminApi.getBillingByRestaurant(buildQuery(range)),
       ]);
+      if (mine !== loadSeq.current) return;
       setOverview(o);
       setRestaurants(r);
-    } catch { /* ignore */ }
-    setLoading(false);
-  }, []);
+      setLoadError('');
+    } catch (e) {
+      if (mine !== loadSeq.current) return;
+      // Xato yutilmaydi: buxgalter eski raqamni yangi deb o'ylab qolmasin
+      setLoadError(e.message || 'Ma‘lumotni yuklab bo‘lmadi');
+    }
+    setInitialLoading(false);
+    setRefreshing(false);
+  }, [range]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -89,61 +124,33 @@ export function BillingPage() {
 
   // Restoran bo'yicha alohida kelishuvlar
   const [agreements, setAgreements] = useState({});
+  /*
+   * XATO TUZATILDI: yuklanmasa (masalan ruxsat yo'q) `.catch(() => {})`
+   * jimgina yutardi va HAR restoran "Kelishuv belgilanmagan" bo'lib
+   * ko'rinardi — buxgalter foizlar yo'q deb o'ylardi. Endi "yuklanmadi"
+   * deb aniq aytiladi.
+   */
+  const [agreementsError, setAgreementsError] = useState('');
   const loadAgreements = useCallback(() => {
     adminApi.getAgreements()
       .then((list) => {
         const map = {};
         list.forEach((r) => { map[r._id] = r; });
         setAgreements(map);
+        setAgreementsError('');
       })
-      .catch(() => {});
+      .catch((e) => setAgreementsError(e.message || 'Kelishuvlarni yuklab bo‘lmadi'));
   }, []);
   useEffect(() => { loadAgreements(); }, [loadAgreements]);
 
   const [editing, setEditing] = useState(null);
-  // Tez ikki marta bosishdan himoya — server idempotencyKey
-  // orqali ham himoyalangan (defense in depth), lekin bu yerda
-  // oddiygina "so'rov hali tugamagan" holatini tekshiramiz
-  const payoutInFlight = useRef(new Set());
-
-  const doPayout = async (r) => {
-    if (payoutInFlight.current.has(r._id)) return;
-
-    const amount = await confirm({
-      title: `${r.name} ga to'lov`,
-      content: `Balans: ${som(r.balans)} so'm`,
-      input: true,
-      defaultValue: String(r.balans),
-      inputPlaceholder: "Qancha to'lanadi?",
-      okText: "To'lash",
-      tone: 'success',
-    });
-    if (!amount) return;
-
-    /*
-     * Kalit shu YERDA, so'rov yuborilishidan oldin, BIR MARTA
-     * yaratiladi. Agar so'rov muvaffaqiyatsiz tugab, foydalanuvchi
-     * yana urinsa — bu funksiya qayta chaqiriladi va YANGI
-     * confirm dialog ochiladi, ya'ni bu YANGI logik so'rov (avvalgi
-     * urinish rostdan muvaffaqiyatsiz bo'lganini bildiradi, tarmoq
-     * darajasidagi "javob kelmadi" holatidan farqli). Shu sababli
-     * bu yerda har chaqiruvda yangi kalit yetarli — server
-     * tomonidagi atomik balans tekshiruvi haqiqiy himoyani beradi.
-     */
-    payoutInFlight.current.add(r._id);
-    try {
-      await adminApi.payout({
-        restaurantId: r._id,
-        amount: Number(amount),
-        idempotencyKey: crypto.randomUUID(),
-      });
-      load();
-    } catch (e) {
-      alert(e.message);
-    } finally {
-      payoutInFlight.current.delete(r._id);
-    }
-  };
+  /*
+   * "To'lash" endi oddiy dialog emas — PayoutModal: pul QAYERGA
+   * o'tkazilishi (karta/bank, to'liq) shu yerda ko'rinadi.
+   */
+  const [payTarget, setPayTarget] = useState(null);
+  const [ordersView, setOrdersView] = useState(null);   // { restaurant, method }
+  const [historyView, setHistoryView] = useState(null); // restoran
 
   const setCommission = async (r) => {
     const percent = await confirm({
@@ -184,7 +191,7 @@ export function BillingPage() {
     } catch (e) { alert(e.message); }
   };
 
-  if (loading) return <div className="p-6 text-muted">Yuklanmoqda...</div>;
+  if (initialLoading) return <div className="p-6 text-muted">Yuklanmoqda...</div>;
 
   return (
     <div className="p-4 sm:p-6">
@@ -247,93 +254,151 @@ export function BillingPage() {
       </div>
 
       {tab === 'overview' && (
-        <div className="space-y-3">
-          {restaurants.map((r) => (
-            <div key={r._id} className="bg-surface border border-line rounded-xl p-4">
-              <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <div className="font-semibold text-ink">{r.name}</div>
-                  <AgreementLine info={agreements[r._id]} />
+        <div>
+          {loadError && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-3 py-2.5 text-sm text-red-600">
+              <span>Ma&apos;lumotni yuklab bo&apos;lmadi: {loadError}</span>
+              <button type="button" onClick={load} className="flex-none underline">Qayta urinish</button>
+            </div>
+          )}
+          {agreementsError && (
+            <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-amber-500/40 bg-amber-500/10 px-3 py-2.5 text-sm text-amber-700">
+              <span>Kelishuv foizlarini yuklab bo&apos;lmadi ({agreementsError}). Foizlar ko&apos;rsatilmayapti.</span>
+              <button type="button" onClick={loadAgreements} className="flex-none underline">Qayta urinish</button>
+            </div>
+          )}
+
+          <PeriodFilter value={period} onChange={setPeriod} />
+
+          {/* Davr tanlangan bo'lsa — umumiy natija ("kecha qancha o'tkazildi?") */}
+          {range && (() => {
+            const sum = (k) => restaurants.reduce((a, r) => a + (r.period?.[k] || 0), 0);
+            return (
+              <div className="mb-3 rounded-xl border border-brand-400/40 bg-brand-400/5 p-3">
+                <div className="mb-1.5 text-xs font-medium text-ink">{periodText}</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <Mini label="O'tkazilgan" value={sum('tolangan')} />
+                  <Mini label="Tushum" value={sum('tushum')} />
+                  <Mini label="LokmaGo daromadi" value={sum('komissiya')} accent />
                 </div>
-                <button
-                  onClick={() => setEditing({ id: r._id, name: r.name, info: agreements[r._id] })}
-                  className="text-xs border border-line px-3 py-1.5 rounded-lg text-muted hover:bg-canvas flex-none"
-                >
-                  Kelishuv
-                </button>
+                <div className="mt-1.5 text-[10px] text-muted">
+                  «Restoranga qarzimiz» — hozirgi qoldiq, tanlangan davrga bog&apos;liq emas
+                </div>
               </div>
+            );
+          })()}
 
-              <div className="grid grid-cols-3 gap-2 text-center">
-                <Mini label="Tushum" value={r.tushum} />
-                <Mini label="LokmaGo daromadi" value={r.komissiya} accent />
-                <Mini label="To'langan" value={r.tolangan} />
-              </div>
+          <div className={`space-y-3 transition-opacity ${refreshing ? 'opacity-70' : ''}`}>
+            {restaurants.map((r) => {
+              // Davr tanlangan bo'lsa — SHU DAVR summalari, aks holda jami
+              const p = r.period;
+              const tushum = p ? p.tushum : r.tushum;
+              const komissiya = p ? p.komissiya : r.komissiya;
+              const tolangan = p ? p.tolangan : r.tolangan;
+              const clickFee = p ? p.clickFee : r.clickFee;
+              const sof = p ? p.sofKomissiya : r.sofKomissiya;
 
-              {/*
-                Click faqat karta to'lovlarida bo'ladi. Naqdda 0 —
-                u hech qanday to'lov tizimiga tegmaydi.
-              */}
-              {r.clickFee > 0 && (
-                <div className="mt-2 text-xs text-muted flex items-center justify-between
-                                bg-canvas rounded-lg px-3 py-2">
-                  <span>Click 1.5% ushlagani</span>
-                  <span>
-                    −{som(r.clickFee)} · sof{' '}
-                    <b className="text-ink">{som(r.sofKomissiya)}</b>
-                  </span>
-                </div>
-              )}
-
-              {/*
-                Naqd/karta buyurtma SONI — "nechta buyurtma
-                bo'ldi, nechtasi naqd, nechtasi karta" savoliga
-                javob. Yuqoridagi Mini grid summalarni ko'rsatadi,
-                bu qator esa SONNI — ikkalasi birga o'qilganda
-                "5 ta naqd buyurtma, jami 250 000 so'm" kabi
-                to'liq tasavvur beradi.
-              */}
-              {(r.cashCount > 0 || r.cardCount > 0) && (
-                <div className="flex items-center gap-3 mt-2 text-[11px] text-muted">
-                  <span className="flex items-center gap-1">
-                    <i className="ti ti-cash text-sm" /> Naqd: <b className="text-ink">{r.cashCount}</b> ta
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <i className="ti ti-cash text-sm" /> Karta: <b className="text-ink">{r.cardCount}</b> ta
-                  </span>
-                </div>
-              )}
-
-              <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
-                <div>
-                  <div className="text-xs text-muted">
-                    {r.balans >= 0 ? 'Restoranga qarzimiz' : 'Restoran bizga qarz'}
+              return (
+                <div key={r._id} className="bg-surface border border-line rounded-xl p-4">
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-ink">{r.name}</div>
+                      <AgreementLine info={agreements[r._id]} failed={Boolean(agreementsError)} />
+                    </div>
+                    <button
+                      onClick={() => setEditing({ id: r._id, name: r.name, info: agreements[r._id] })}
+                      className="text-xs border border-line px-3 py-1.5 rounded-lg text-muted hover:bg-canvas flex-none"
+                    >
+                      Kelishuv
+                    </button>
                   </div>
-                  <div className={`text-lg font-bold ${
-                    r.balans >= 0 ? 'text-ink' : 'text-red-600'
-                  }`}>
-                    {som(Math.abs(r.balans))} so'm
+
+                  <div className="grid grid-cols-3 gap-2 text-center">
+                    <Mini label="Tushum" value={tushum} />
+                    <Mini label="LokmaGo daromadi" value={komissiya} accent />
+                    {/* Bosilsa — qachon, qancha, kim o'tkazgani */}
+                    <button
+                      type="button"
+                      onClick={() => setHistoryView(r)}
+                      className="rounded-lg text-center ring-brand-400 hover:ring-1"
+                      title="O'tkazmalar tarixi"
+                    >
+                      <Mini label={p ? "O'tkazilgan ›" : "To'langan ›"} value={tolangan} />
+                    </button>
                   </div>
-                  {r.balans < 0 && (
-                    <div className="text-[11px] text-muted mt-0.5">
-                      Naqd to'lovlar komissiyasi — keyingi karta
-                      to'lovlaridan yopiladi
+
+                  {/*
+                    Click faqat karta to'lovlarida bo'ladi. Naqdda 0 —
+                    u hech qanday to'lov tizimiga tegmaydi.
+                  */}
+                  {clickFee > 0 && (
+                    <div className="mt-2 text-xs text-muted flex items-center justify-between
+                                    bg-canvas rounded-lg px-3 py-2">
+                      <span>Click 1.5% ushlagani</span>
+                      <span>
+                        −{som(clickFee)} · sof{' '}
+                        <b className="text-ink">{som(sof)}</b>
+                      </span>
                     </div>
                   )}
+
+                  {/*
+                    Naqd/karta buyurtma SONI — bosilsa, aynan shu buyurtmalar:
+                    qaysi taom, taom puli, yetkazish puli, karta bo'lsa
+                    qancha yechilgani. Son davrga (yuqoridagi filtr) mos.
+                  */}
+                  {(r.cashCount > 0 || r.cardCount > 0) && (
+                    <div className="flex items-center gap-4 mt-2 text-[11px] text-muted">
+                      {[['cash', 'Naqd', r.cashCount], ['card', 'Karta', r.cardCount]].map(([m, label, count]) => (
+                        <button
+                          key={m}
+                          type="button"
+                          disabled={count === 0}
+                          onClick={() => setOrdersView({ restaurant: r, method: m })}
+                          className="-mx-1.5 flex items-center gap-1 rounded-md px-1.5 py-1 hover:bg-canvas disabled:opacity-60 disabled:hover:bg-transparent"
+                        >
+                          <i className="ti ti-cash text-sm" /> {label}:{' '}
+                          <b className="text-ink underline decoration-dotted underline-offset-2">{count}</b> ta
+                          {count > 0 && <i className="ti ti-chevron-right text-xs" />}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-line">
+                    <div>
+                      <div className="text-xs text-muted">
+                        {r.balans >= 0 ? 'Restoranga qarzimiz' : 'Restoran bizga qarz'}
+                        {range && ' (hozirgi)'}
+                      </div>
+                      <div className={`text-lg font-bold ${
+                        r.balans >= 0 ? 'text-ink' : 'text-red-600'
+                      }`}>
+                        {som(Math.abs(r.balans))} so'm
+                      </div>
+                      {r.balans < 0 && (
+                        <div className="text-[11px] text-muted mt-0.5">
+                          Naqd to'lovlar komissiyasi — keyingi karta
+                          to'lovlaridan yopiladi
+                        </div>
+                      )}
+                    </div>
+                    {r.balans > 0 && (
+                      <button
+                        onClick={() => setPayTarget(r)}
+                        className="bg-brand-400 text-brand-text text-sm font-medium px-4 py-2 rounded-lg flex-none"
+                      >
+                        To'lash
+                      </button>
+                    )}
+                  </div>
                 </div>
-                {r.balans > 0 && (
-                  <button
-                    onClick={() => doPayout(r)}
-                    className="bg-brand-400 text-brand-text text-sm font-medium px-4 py-2 rounded-lg flex-none"
-                  >
-                    To'lash
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          {restaurants.length === 0 && (
-            <div className="text-muted text-sm">Hozircha ma'lumot yo'q</div>
-          )}
+              );
+            })}
+            {restaurants.length === 0 && (
+              <div className="text-muted text-sm">Hozircha ma'lumot yo'q</div>
+            )}
+          </div>
         </div>
       )}
 
@@ -342,6 +407,34 @@ export function BillingPage() {
           restaurant={editing}
           onClose={() => setEditing(null)}
           onSaved={() => { setEditing(null); loadAgreements(); load(); }}
+        />
+      )}
+
+      {payTarget && (
+        <PayoutModal
+          restaurant={payTarget}
+          onClose={() => setPayTarget(null)}
+          onDone={() => { setPayTarget(null); load(); }}
+        />
+      )}
+
+      {ordersView && (
+        <RestaurantOrdersModal
+          restaurant={ordersView.restaurant}
+          method={ordersView.method}
+          range={range}
+          periodText={periodText}
+          counts={{ cash: ordersView.restaurant.cashCount, card: ordersView.restaurant.cardCount }}
+          onClose={() => setOrdersView(null)}
+        />
+      )}
+
+      {historyView && (
+        <PayoutsHistoryModal
+          restaurant={historyView}
+          range={range}
+          periodText={periodText}
+          onClose={() => setHistoryView(null)}
         />
       )}
 
@@ -421,9 +514,15 @@ function Mini({ label, value, accent }) {
    ═══════════════════════════════════════════ */
 
 /** Kartadagi qisqa satr: 5% + 5% = 10%. */
-function AgreementLine({ info }) {
+function AgreementLine({ info, failed }) {
   const a = info?.agreement;
   const markup = info?.deliveryMarkupPercent || 0;
+
+  // Yuklab bo'lmagan bo'lsa "belgilanmagan" DEYILMAYDI — bu noto'g'ri
+  // bo'lardi (foiz bor, lekin ko'rsatib bo'lmayapti)
+  if (failed && !a) {
+    return <div className="text-xs mt-0.5 text-red-600">Kelishuv yuklanmadi</div>;
+  }
 
   if (!a) {
     return (

@@ -6,12 +6,27 @@ const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 export function RevenuePage() {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
-    adminApi.getRevenue().then(setData).catch(() => {}).finally(() => setLoading(false));
+    /*
+     * XATO TUZATILDI: `.catch(() => {})` xatoni jimgina yutardi va
+     * ruxsat yo'qligida ham "Ma'lumot yo'q" ko'rsatardi — buxgalter
+     * daromad haqiqatan yo'q deb o'ylardi.
+     */
+    adminApi.getRevenue().then(setData).catch((e) => setError(e.message || 'Yuklab bo‘lmadi')).finally(() => setLoading(false));
   }, []);
 
   if (loading) return <div className="flex-1 p-6 text-muted text-sm">Yuklanmoqda...</div>;
+  if (error) {
+    return (
+      <div className="flex-1 p-6">
+        <div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-600">
+          Daromadni yuklab bo&apos;lmadi: {error}
+        </div>
+      </div>
+    );
+  }
   if (!data) return <div className="flex-1 p-6 text-muted text-sm">Ma'lumot yo'q</div>;
 
   return (
