@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { panelApi } from '@/api';
 import { NumberInput, MoneyInput } from '@/components/form/NumberInput';
+import { perKmFee, fmtSom, BASE_PRICE_MAX } from '@/lib/deliveryFee';
 import { MapPicker } from '@/components/MapPicker';
 import { useTempValue } from '@/hooks/useTempFlag';
 
@@ -47,6 +48,8 @@ export function RestaurantProfilePage() {
         cashEnabled: r.cashEnabled !== false,
         pricingMode: r.delivery?.pricingMode === 'perKm' ? 'perKm' : 'flat',
         freeKm: r.delivery?.freeKm ?? 0,
+        // Boshlang'ich narx: freeKm masofagacha olinadigan summa (0 = bepul)
+        basePrice: r.delivery?.basePrice ?? 0,
         perKm: r.delivery?.perKm ?? null,
         pickupEnabled: r.pickupEnabled ?? false,
         pickupDiscountPercent: r.pickupDiscountPercent ?? null,
@@ -61,12 +64,16 @@ export function RestaurantProfilePage() {
   const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
 
   const save = async () => {
+    if (Number(form.basePrice) > BASE_PRICE_MAX) {
+      setMsg({ type: 'err', text: `Boshlang‘ich narx ${fmtSom(BASE_PRICE_MAX)} so‘mdan oshmasligi kerak` });
+      return;
+    }
     setSaving(true);
     setMsg(null);
     try {
       // Bo'sh raqamlar 0 sifatida yuboriladi
       // Radius alohida obyektda saqlanadi, qolgani to'g'ridan-to'g'ri
-      const { maxDistanceKm, pricingMode, freeKm, perKm, ...rest } = form;
+      const { maxDistanceKm, pricingMode, freeKm, perKm, basePrice, ...rest } = form;
 
       const payload = {
         ...rest,
@@ -74,6 +81,9 @@ export function RestaurantProfilePage() {
           maxDistanceKm: Number(maxDistanceKm) || 0,
           pricingMode: pricingMode === 'perKm' ? 'perKm' : 'flat',
           freeKm: Number(freeKm) || 0,
+          // flat rejimda ham yuboriladi: qiymat saqlanib qoladi (rejim
+          // qaytarilsa restoran uni qayta kiritmaydi)
+          basePrice: Number(basePrice) || 0,
           perKm: Number(perKm) || 0,
         },
       };
@@ -358,15 +368,41 @@ export function RestaurantProfilePage() {
           </Field>
 
           {form.pricingMode === 'perKm' ? (
-            <div className="grid grid-cols-2 gap-3">
-              <Field label="Bepul masofa" hint="Shu masofagacha bepul. 0 = bepul masofa yo‘q">
-                <NumberInput value={form.freeKm} onChange={(v) => set('freeKm', v)}
-                  suffix="km" placeholder="1" />
-              </Field>
-              <Field label="Har km uchun" hint="Bepul masofadan keyin">
+            <>
+              {/*
+                Birinchi qism: MASOFA va SHU MASOFA NARXI yonma-yon.
+                  1 km + 0 so'm    → 1 km gacha bepul
+                  1 km + 5 000     → 1 km gacha 5 000 so'm
+                Undan keyin har km uchun "Har km uchun" summasi QO'SHILADI.
+              */}
+              <div className="grid grid-cols-2 gap-3">
+                <Field
+                  label={Number(form.basePrice) > 0 ? 'Boshlang‘ich masofa' : 'Bepul masofa'}
+                  hint={Number(form.basePrice) > 0
+                    ? 'Shu masofagacha narx qat‘iy'
+                    : 'Shu masofagacha bepul. 0 = bepul masofa yo‘q'}
+                >
+                  <NumberInput value={form.freeKm} onChange={(v) => set('freeKm', v)}
+                    suffix="km" placeholder="1" />
+                </Field>
+                <Field label="Shu masofa narxi" hint="0 = bepul. Masalan 5 000 — shu masofagacha 5 000 so‘m">
+                  <MoneyInput value={form.basePrice} onChange={(v) => set('basePrice', v)} />
+                  {Number(form.basePrice) > BASE_PRICE_MAX && (
+                    <div className="mt-1 text-[11px] text-red-600">
+                      Eng ko‘pi {fmtSom(BASE_PRICE_MAX)} so‘m
+                    </div>
+                  )}
+                </Field>
+              </div>
+              <Field
+                label="Har km uchun"
+                hint={Number(form.basePrice) > 0 || Number(form.freeKm) > 0
+                  ? 'Shu masofadan keyin har km uchun qo‘shiladi'
+                  : 'Har bir kilometr uchun'}
+              >
                 <MoneyInput value={form.perKm} onChange={(v) => set('perKm', v)} />
               </Field>
-            </div>
+            </>
           ) : (
             <Field label="Yetkazish narxi" hint="Bo'sh yoki 0 = mijozga bepul">
               <MoneyInput value={form.deliveryFee} onChange={(v) => set('deliveryFee', v)} />
@@ -390,19 +426,24 @@ export function RestaurantProfilePage() {
             <div className="text-muted">
               {form.pricingMode === 'perKm' ? (
                 <>
-                  {Number(form.freeKm) > 0 && (
+                  {Number(form.basePrice) > 0 ? (
+                    Number(form.freeKm) > 0 ? (
+                      <>{Number(form.freeKm)} km gacha — <b className="text-ink">{fmtSom(form.basePrice)} so‘m</b><br /></>
+                    ) : (
+                      <>Boshlang‘ich narx: <b className="text-ink">{fmtSom(form.basePrice)} so‘m</b><br /></>
+                    )
+                  ) : Number(form.freeKm) > 0 && (
                     <>{Number(form.freeKm)} km gacha — <b className="text-ink">bepul</b><br /></>
                   )}
-                  Keyin har km uchun{' '}
+                  {Number(form.basePrice) > 0 || Number(form.freeKm) > 0 ? 'Keyin har km uchun' : 'Har km uchun'}{' '}
                   <b className="text-ink">
-                    {Number(form.perKm || 0).toLocaleString('ru-RU')} so‘m
+                    {Number(form.basePrice) > 0 && '+'}{fmtSom(form.perKm)} so‘m
                   </b>
                   <br />
                   <span className="opacity-80">
                     Masalan 3 km: {(() => {
-                      const paid = Math.max(0, 3 - (Number(form.freeKm) || 0));
-                      const sum = Math.round((paid * (Number(form.perKm) || 0)) / 100) * 100;
-                      return sum ? `${sum.toLocaleString('ru-RU')} so‘m` : 'bepul';
+                      const sum = perKmFee(3, form);
+                      return sum ? `${fmtSom(sum)} so‘m` : 'bepul';
                     })()}
                   </span>
                 </>
