@@ -5,6 +5,7 @@ import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { useTempValue } from '@/hooks/useTempFlag';
 import { useAuth } from '@/store/auth';
+import { CancelledOrderInfo } from '@/components/CancelledOrderInfo';
 
 /* ═══════════════════════════════════════════════════
    Boshqaruv paneli — platforma nazorati
@@ -149,6 +150,17 @@ export function DashboardPage() {
   useEffect(() => {
     const socket = getSocket();
     joinAdmin();
+    /*
+     * `order:new` / `order:update` ba'zan `userId`ni oddiy MATN (id) bilan yuboradi —
+     * ro'yxatdagi populate qilingan mijoz (ism, @username, telefon) shu bilan bosib
+     * ketilmasin, va kelmagan ma'lumot (mijoz yangi buyurtmada, bekor sababi)
+     * bir zumda bitta so'rov bilan to'ldirilsin (ketma-ket hodisalar birlashtiriladi).
+     */
+    let refetchTimer;
+    const refetchSoon = () => {
+      clearTimeout(refetchTimer);
+      refetchTimer = setTimeout(() => qc.invalidateQueries({ queryKey: ['admin', 'orders'] }), 800);
+    };
     const onNewOrder = (order) => {
       // Ruxsati bo'lmagan xodim uchun buyurtma keshini
       // umuman TO'LDIRMAYMIZ — u baribir ko'rsatilmaydi,
@@ -158,6 +170,7 @@ export function DashboardPage() {
         qc.setQueryData(['admin', 'orders'], (prev = []) =>
           [order, ...prev.filter((o) => o._id !== order._id)]);
         flashOrder(order._id);
+        if (typeof order.userId !== 'object') refetchSoon();
       }
       // Statistika o'zgardi — uni qayta so'raymiz (bu hammaga tegishli)
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
@@ -177,14 +190,17 @@ export function DashboardPage() {
         let found = false;
         const next = prev.map((o) => {
           if (o._id !== patch._id) return o;
-          found = true;
-          return { ...o, ...patch };
+                    found = true;
+          const userId = patch.userId && typeof patch.userId === 'object' ? patch.userId : o.userId;
+          return { ...o, ...patch, userId };
         });
         // Keshda yo'q buyurtma haqida xabar keldi — ro'yxat
         // eskirgan, qayta so'raymiz
         if (!found) qc.invalidateQueries({ queryKey: ['admin', 'orders'] });
         return next;
       });
+      // Bekor qilindi, lekin sabab/vaqt kelmadi (mijoz bekor qilsa yengil hodisa keladi) — to'ldiramiz
+      if (patch.status === 'cancelled' && patch.cancelReason === undefined) refetchSoon();
       qc.invalidateQueries({ queryKey: ['admin', 'stats'] });
     };
 
@@ -195,6 +211,7 @@ export function DashboardPage() {
       // Faqat shu sahifa qo'ygan tinglovchi olib tashlanadi.
       // removeAllListeners() markaziy bildirishnoma tizimining
       // tinglovchisini ham o'chirib yuborardi.
+      clearTimeout(refetchTimer);
       socket.off('order:new', onNewOrder);
       socket.off('order:update', onUpdate);
     };
@@ -497,7 +514,7 @@ function Leaderboard({ rows }) {
  */
 const FEED_LIMIT = 40;
 
-function OrderFeed({ orders, flash, filter }) {
+export function OrderFeed({ orders, flash, filter }) {
   const hidden = Math.max(0, orders.length - FEED_LIMIT);
   const visible = hidden ? orders.slice(0, FEED_LIMIT) : orders;
 
@@ -557,7 +574,10 @@ function OrderFeed({ orders, flash, filter }) {
               </div>
             </div>
 
-            {o.address && (
+            {o.status === 'cancelled' ? (
+              // Bekor qilingan: mijoz, @username, telefon, manzil+xarita, to'lov turi, sabab
+              <CancelledOrderInfo order={o} />
+            ) : o.address && (
               <div className="mt-2 flex items-start gap-1.5 border-t border-black/[0.05] pl-1.5 pt-2 text-[11.5px] text-muted">
                 <i className="ti ti-map-pin mt-[2px] flex-none text-[12px]" />
                 <span className="break-words">{o.address}</span>
