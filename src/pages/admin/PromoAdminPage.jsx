@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
+import { PinsManager } from '@/pages/admin/pins/PinsManager';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const fmtDate = (d) => new Date(d).toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit', year: 'numeric' });
@@ -21,7 +22,7 @@ const TABS = [
  * emas, bu yerda oddiy — lekin RAD ETISH uchun sabab so'raladi,
  * chunki restoran buni ko'radi).
  */
-export function PromoAdminPage() {
+function AdRequests() {
   const [tab, setTab] = useState('pending');
   const [ads, setAds] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,8 +73,7 @@ export function PromoAdminPage() {
   };
 
   return (
-    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
-      <h1 className="text-xl font-semibold text-ink mb-1">Reklama so'rovlari</h1>
+    <div>
       <p className="text-sm text-muted mb-5">
         Restoranlar yuborgan banner reklama so'rovlarini ko'rib chiqish
       </p>
@@ -151,6 +151,44 @@ export function PromoAdminPage() {
           ))}
         </div>
       )}
+    </div>
+  );
+}
+
+const SECTIONS = [
+  ['ads', 'Reklama so\'rovlari', 'ti-photo-check'],
+  ['pins', 'Top joylar', 'ti-pin'],
+];
+
+/**
+ * Mijoz jalb qilish (LokmaGo admin paneli):
+ *   • Reklama so'rovlari — restoranlar yuborgan banner reklamalarni tasdiqlash;
+ *   • Top joylar — mijoz ilovasidagi "Barcha restoranlar"da 1/2/3-o'ringa pin (muddat bilan).
+ */
+export function PromoAdminPage() {
+  const [section, setSection] = useState('ads');
+  return (
+    <div className="p-4 sm:p-6 max-w-4xl mx-auto">
+      <h1 className="text-xl font-semibold text-ink mb-4">Mijoz jalb qilish</h1>
+
+      <div role="tablist" aria-label="Bo'lim" className="mb-5 inline-grid grid-cols-2 gap-1 rounded-xl border border-line bg-canvas p-1">
+        {SECTIONS.map(([k, label, icon]) => (
+          <button
+            key={k}
+            role="tab"
+            aria-selected={section === k}
+            onClick={() => setSection(k)}
+            data-testid={`section-${k}`}
+            className={`flex items-center justify-center gap-1.5 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              section === k ? 'bg-white text-ink shadow-sm' : 'text-muted hover:text-ink'
+            }`}
+          >
+            <i className={`ti ${icon}`} />{label}
+          </button>
+        ))}
+      </div>
+
+      {section === 'ads' ? <AdRequests /> : <PinsManager />}
     </div>
   );
 }

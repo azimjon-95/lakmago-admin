@@ -338,6 +338,13 @@ export const adminApi = {
   broadcastToGroupForm: (chatId, formData, opts) => uploadForm(`/admin/groups/${chatId}/broadcast`, formData, opts),
   broadcastToAllForm: (formData, opts) => uploadForm('/admin/groups/broadcast-all', formData, opts),
 
+  // Top joylar: "Barcha restoranlar"da 1/2/3-o'ringa PIN (muddat bilan) — Mijoz jalb qilish
+  getPins: (history) => apiFetch(`/admin/pins${history ? '?history=1' : ''}`),
+  getPinRestaurants: (q) => apiFetch(`/admin/pins/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
+  createPin: (d) => apiFetch('/admin/pins', { method: 'POST', body: JSON.stringify(d) }),
+  updatePin: (id, d) => apiFetch(`/admin/pins/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  cancelPin: (id) => apiFetch(`/admin/pins/${id}`, { method: 'DELETE' }),
+
   // Muassasa ichi — menyu va bronlar (admin nazorati)
   getRestaurantDishes: (id) => apiFetch(`/admin/restaurants/${id}/dishes`),
   getRestaurantReservations: (id) => apiFetch(`/admin/restaurants/${id}/reservations`),
