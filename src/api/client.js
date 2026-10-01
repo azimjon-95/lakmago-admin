@@ -95,8 +95,12 @@ export function uploadForm(path, formData, { onProgress, timeoutMs = 10 * 60_000
     if (getToken()) xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
     xhr.timeout = timeoutMs;
 
-    if (xhr.upload && onProgress) {
-      xhr.upload.onprogress = (e) => { if (e.lengthComputable && e.total) onProgress(e.loaded / e.total); };
+    // Yuklash foizi har doim kuzatiladi: tarmoq xatosining SABABINI aynan shu ajratadi (pastga qarang)
+    let sent = 0; let total = 0;
+    if (xhr.upload) {
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && e.total) { sent = e.loaded / e.total; total = e.total; onProgress?.(sent); }
+      };
     }
     if (signal) {
       if (signal.aborted) { reject(new Error('Bekor qilindi')); return; }
@@ -113,9 +117,39 @@ export function uploadForm(path, formData, { onProgress, timeoutMs = 10 * 60_000
       err.status = xhr.status;
       reject(err);
     };
-    xhr.onerror = () => reject(new Error('Tarmoq xatosi. Ulanishni tekshiring.'));
+    xhr.onerror = () => reject(uploadNetworkError(sent, total));
     xhr.ontimeout = () => reject(new Error('Vaqt tugadi. Video hajmini kamaytiring yoki qayta urining.'));
     xhr.onabort = () => reject(new Error('Bekor qilindi'));
     xhr.send(formData);
   });
+}
+
+/*
+ * "Tarmoq xatosi"ning SABABI. Brauzer javob o'qib bo'lmaganda (ulanish uzildi YOKI proksi
+ * CORS sarlavhasisiz xato qaytardi: nginx 413/502/504, Cloudflare 524) bitta bir xil xato
+ * beradi — adminga hech narsa demaydi. Haqiqiy brauzerda takrorlab o'lchandi:
+ *   nginx `client_max_body_size` kichik (413)     → xato 0% da, bir zumda
+ *   ulanish yuklash o'rtasida uzildi (LTE, Wi-Fi) → xato o'rtada (masalan 30%)
+ *   to'liq yuklandi, lekin javob kelmadi (504)     → xato 100% da
+ * Shu foizdan sababni ajratamiz. (Kod `err.code` — kerak bo'lsa interfeys foydalanadi.)
+ */
+export function uploadNetworkError(sent, total, online = typeof navigator === 'undefined' || navigator.onLine !== false) {
+  const mb = total ? `${(total / 1024 / 1024).toFixed(1)} MB` : '';
+  let code; let msg;
+  if (!online) {
+    code = 'OFFLINE'; msg = 'Internet aloqasi yo‘q. Ulanishni tekshirib, qayta urining.';
+  } else if (!total) {
+    code = 'NETWORK'; msg = 'Tarmoq xatosi. Ulanishni tekshiring.';
+  } else if (sent >= 0.99) {
+    // Hammasi yuborildi, javob yo'q: server/proksi vaqti tugagan bo'lishi mumkin, reklama esa ketgan bo'lishi mumkin
+    code = 'NO_RESPONSE';
+    msg = `Video (${mb}) yuklandi, lekin server javob bermadi (proksi vaqt chegarasi). Reklama guruhga yuborilgan bo‘lishi mumkin — AVVAL GURUHNI TEKSHIRING, takror yubormang.`;
+  } else if (sent < 0.1) {
+    code = 'REJECTED_EARLY';
+    msg = `Server faylni (${mb}) qabul qilmadi. Ko‘pincha sabab — serverdagi nginx \`client_max_body_size\` kichik: uni 55M qiling. (Internet uzilgan bo‘lsa, qayta urinib ko‘ring.)`;
+  } else {
+    code = 'CONNECTION_LOST';
+    msg = `Ulanish yuklash paytida uzildi (${Math.round(sent * 100)}% yuklangan edi). Barqaror Wi‑Fi bilan qayta urining.`;
+  }
+  return Object.assign(new Error(msg), { code, status: 0 });
 }
