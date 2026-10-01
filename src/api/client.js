@@ -72,3 +72,50 @@ export async function downloadFile(path) {
 
   return res.blob();
 }
+
+/**
+ * FormData (fayl) yuborish — YUKLASH PROGRESSI bilan.
+ *
+ * apiFetch bu ish uchun yaramaydi: u `Content-Type: application/json`
+ * majburlaydi (multipart chegarasi yo'qoladi), qisqa vaqt chegarasi bor va
+ * fetch yuklash progressini bermaydi. 50 MB video mobil tarmoqda daqiqalab
+ * yuklanadi — admin "qotib qoldi"mi yoki ketyaptimi bilishi kerak.
+ *
+ * @param {string} path
+ * @param {FormData} formData
+ * @param {{ onProgress?: (fraction: number) => void, timeoutMs?: number, signal?: AbortSignal }} [opts]
+ *   onProgress(0..1) — fayl serverga yuklanish ulushi. 1 bo'lgach server hali
+ *   Telegram'ga uzatyapti bo'lishi mumkin (javob kelguncha).
+ */
+export function uploadForm(path, formData, { onProgress, timeoutMs = 10 * 60_000, signal } = {}) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', `${API_BASE}${path}`);
+    // Content-Type QO'YILMAYDI — brauzer multipart chegarasini o'zi qo'yadi
+    if (getToken()) xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
+    xhr.timeout = timeoutMs;
+
+    if (xhr.upload && onProgress) {
+      xhr.upload.onprogress = (e) => { if (e.lengthComputable && e.total) onProgress(e.loaded / e.total); };
+    }
+    if (signal) {
+      if (signal.aborted) { reject(new Error('Bekor qilindi')); return; }
+      signal.addEventListener('abort', () => xhr.abort(), { once: true });
+    }
+
+    xhr.onload = () => {
+      let json = null;
+      try { json = JSON.parse(xhr.responseText); } catch { /* JSON emas */ }
+      if (xhr.status === 401) { clearToken(); reject(new Error('Sessiya tugadi. Qaytadan kiring.')); return; }
+      if (xhr.status >= 200 && xhr.status < 300) { resolve(json ?? {}); return; }
+      const err = new Error(json?.error || `Xato: ${xhr.status}`);
+      err.code = json?.code;
+      err.status = xhr.status;
+      reject(err);
+    };
+    xhr.onerror = () => reject(new Error('Tarmoq xatosi. Ulanishni tekshiring.'));
+    xhr.ontimeout = () => reject(new Error('Vaqt tugadi. Video hajmini kamaytiring yoki qayta urining.'));
+    xhr.onabort = () => reject(new Error('Bekor qilindi'));
+    xhr.send(formData);
+  });
+}

@@ -1,4 +1,4 @@
-import { apiFetch, setToken, clearToken, getToken, downloadFile } from './client.js';
+import { apiFetch, setToken, clearToken, getToken, downloadFile, uploadForm } from './client.js';
 
 // ===== Autentifikatsiya =====
 export const auth = {
@@ -334,6 +334,9 @@ export const adminApi = {
   // Moslashuvchan reklama (rasm/matn/tugma)
   broadcastToGroup: (chatId, data) => apiFetch(`/admin/groups/${chatId}/broadcast`, { method: 'POST', body: JSON.stringify(data) }),
   broadcastToAll: (data) => apiFetch('/admin/groups/broadcast-all', { method: 'POST', body: JSON.stringify(data) }),
+  // VIDEO bilan reklama: multipart (fayl serverga xotiraga tushadi, bazaga yozilmaydi)
+  broadcastToGroupForm: (chatId, formData, opts) => uploadForm(`/admin/groups/${chatId}/broadcast`, formData, opts),
+  broadcastToAllForm: (formData, opts) => uploadForm('/admin/groups/broadcast-all', formData, opts),
 
   // Muassasa ichi — menyu va bronlar (admin nazorati)
   getRestaurantDishes: (id) => apiFetch(`/admin/restaurants/${id}/dishes`),
