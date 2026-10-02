@@ -101,6 +101,12 @@ const adminNav = [
     page: "couriers",
   },
   {
+    to: "/morning-checks",
+    icon: "ti-sunrise",
+    label: "Ertalabki tekshiruv",
+    page: "restaurants",
+  },
+  {
     to: "/settings",
     icon: "ti-settings",
     label: "Sozlamalar",

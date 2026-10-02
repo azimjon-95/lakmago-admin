@@ -84,6 +84,10 @@ export const panelApi = {
 
   getStoppedDishes: () => apiFetch('/panel/dishes/stopped'),
 
+  // Ertalabki ochilish tekshiruvi (banner): status 'pending' bo'lsa ko'rsatiladi
+  getMorningCheck: () => apiFetch('/panel/morning-check'),
+  morningCheckAllOk: () => apiFetch('/panel/morning-check/all-ok', { method: 'POST' }),
+
   /** Keyingi kursni (podacha) oshxonaga yuborish. */
   fireDineInCourse: (orderId, course) =>
     apiFetch(`/panel/dinein/orders/${orderId}/fire`, {
@@ -338,6 +342,8 @@ export const adminApi = {
   broadcastToAllForm: (formData, opts) => uploadForm('/admin/groups/broadcast-all', formData, opts),
 
   // Top joylar: "Barcha restoranlar"da 1/2/3-o'ringa PIN (muddat bilan) — Mijoz jalb qilish
+  // Ertalabki ochilish tekshiruvi — barcha restoranlar bo'yicha jadval
+  getMorningChecks: (date) => apiFetch(`/admin/morning-checks${date ? `?date=${encodeURIComponent(date)}` : ''}`),
   getPins: (history) => apiFetch(`/admin/pins${history ? '?history=1' : ''}`),
   getPinRestaurants: (q) => apiFetch(`/admin/pins/restaurants${q ? `?q=${encodeURIComponent(q)}` : ''}`),
   createPin: (d) => apiFetch('/admin/pins', { method: 'POST', body: JSON.stringify(d) }),

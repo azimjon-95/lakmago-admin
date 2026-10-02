@@ -4,6 +4,7 @@ import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { LoginPage } from '@/pages/LoginPage';
+import { MorningCheckBanner } from '@/components/restaurant/MorningCheckBanner';
 
 /*
  * KOD BO'LINISHI (code splitting) — 2026-08 optimizatsiya.
@@ -46,6 +47,7 @@ const RestaurantBannerPage = lazy(() => import('@/pages/restaurant/BannerPage').
 const RestaurantProfilePage = lazy(() => import('@/pages/restaurant/ProfilePage').then((m) => ({ default: m.RestaurantProfilePage })));
 const TelegramStaffPage = lazy(() => import('@/pages/restaurant/TelegramStaffPage').then((m) => ({ default: m.TelegramStaffPage })));
 const StopListPage = lazy(() => import('@/pages/restaurant/StopListPage').then((m) => ({ default: m.StopListPage })));
+const MorningChecksPage = lazy(() => import('@/pages/admin/MorningChecksPage').then((m) => ({ default: m.MorningChecksPage })));
 const DineInPage = lazy(() => import('@/pages/restaurant/DineInPage').then((m) => ({ default: m.DineInPage })));
 const DineInLivePage = lazy(() => import('@/pages/restaurant/DineInLivePage').then((m) => ({ default: m.DineInLivePage })));
 const DineInHistoryPage = lazy(() => import('@/pages/restaurant/DineInHistoryPage').then((m) => ({ default: m.DineInHistoryPage })));
@@ -145,6 +147,7 @@ function AdminRoutes() {
         <Route path="/catalog" element={<Guarded page="catalog"><CatalogPage /></Guarded>} />
         <Route path="/promo-admin" element={<Guarded page="marketing"><PromoAdminPage /></Guarded>} />
         <Route path="/dine-in-admin" element={<Guarded page="dinein"><DineInAdminPage /></Guarded>} />
+        <Route path="/morning-checks" element={<Guarded page="restaurants"><MorningChecksPage /></Guarded>} />
         <Route path="/users" element={<Guarded page="settings"><UsersPage /></Guarded>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -156,6 +159,8 @@ function AdminRoutes() {
 function RestaurantRoutes() {
   return (
     <Shell>
+      {/* Ertalabki ochilish tekshiruvi: faqat 'pending' bo'lganda, sahifa tepasida */}
+      <MorningCheckBanner />
       <Routes>
         <Route path="/" element={<RestaurantOrdersPage />} />
         <Route path="/billing" element={<RestaurantBillingPage />} />
