@@ -141,8 +141,14 @@ export function RestaurantOrdersPage() {
         flashOrder(order._id);
       }
     };
+    /*
+     * BIRLASHTIRISH, almashtirish emas: server ba'zan qisqa bo'lak yuboradi
+     * ({ _id, status } — kuryer topshirdi; { _id, isPaid } — naqd avto-to'landi).
+     * Almashtirilsa karta mijoz, taom va summalarini yo'qotib, keyingi ro'yxat
+     * yangilanishigacha (120 s) bo'sh qolardi. To'liq buyurtmada natija avvalgidek.
+     */
     const onUpdate = (order) => {
-      setOrders((prev) => prev.map((o) => (o._id === order._id ? order : o)));
+      setOrders((prev) => prev.map((o) => (o._id === order._id ? { ...o, ...order } : o)));
     };
     socket.on('order:new', onNew);
     socket.on('order:update', onUpdate);
