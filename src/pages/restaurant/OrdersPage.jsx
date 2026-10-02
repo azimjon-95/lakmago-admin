@@ -186,15 +186,7 @@ export function RestaurantOrdersPage() {
     }
   };
 
-  // Naqd to'lov qabul qilindi deb belgilash
-  const markPaid = async (id) => {
-    try {
-      await panelApi.markOrderPaid(id);
-      load();
-    } catch (e) {
-      alert(e.message);
-    }
-  };
+  
 
   const cancel = async (o) => {
     if (!await confirm({ title: 'Buyurtma bekor qilinsinmi?' })) return;
@@ -252,7 +244,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onPaid={markPaid} onDispatch={setDispatchingOrder} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onDispatch={setDispatchingOrder} />
             ))}
           </div>
 
@@ -286,7 +278,19 @@ export function RestaurantOrdersPage() {
   );
 }
 
-function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispatch }) {
+/*
+ * NAQD BUYURTMA — MIJOZ BILAN TASDIQLASH.
+ * Restoran naqd buyurtmani mijoz bilan gaplashmasdan qabul qilib, taom tayyor bo'lganda
+ * mijozni topa olmay qolardi (faqat naqdda). Shuning uchun YANGI naqd buyurtmada to'lov
+ * turi katta ko'rsatiladi va "Qabul qildim" tepasida "mijoz bilan gaplashib tasdiqlatib
+ * oling" yoziladi. Qabul qilish imkoni saqlanadi (xohlasa qabul qiladi).
+ * "To'lov qabul qilindi" tugmasi YO'Q: naqd to'lov buyurtma yakunlanganda server
+ * tomonidan AVTOMATIK "to'langan" bo'ladi.
+ */
+export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispatch }) {
+  const isCash = o.paymentMethod === 'cash';
+  const needsCashConfirm = o.status === 'pending' && isCash;
+  const customerPhone = o.phone || o.customer?.phone || '';
   const meta = metaOf(o);
   const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
   // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
@@ -316,12 +320,22 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
         </div>
         <div className="text-right flex-none">
           <div className="font-semibold text-ink whitespace-nowrap">{som(o.total)} so'm</div>
-          {/* To'lov: usuli va holati */}
-          <div className={`text-[11px] font-medium ${o.isPaid ? 'text-green-600' : 'text-amber-600'}`}>
-            {o.paymentMethod === 'cash' ? '💵 Naqd' : '💳 Karta'}
-            {' · '}
-            {o.isPaid ? "To'langan" : "To'lanmagan"}
-          </div>
+                    {/* To'lov: yangi NAQD buyurtmada KATTA va alohida; qolgan holatda kichik */}
+          {needsCashConfirm ? (
+            <div
+              className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-amber-100 px-3 py-1 text-base font-extrabold tracking-wide text-amber-800"
+              data-testid="cash-badge"
+            >
+              <i className="ti ti-cash text-lg" />
+              NAQD
+            </div>
+          ) : (
+            <div className={`text-[11px] font-medium ${o.isPaid ? 'text-green-600' : 'text-amber-600'}`} data-testid="pay-line">
+              {isCash ? '💵 Naqd' : '💳 Karta'}
+              {' · '}
+              {o.isPaid ? "To'langan" : isCash ? "topshirilganda to'lanadi" : "To'lanmagan"}
+            </div>
+          )}
         </div>
       </div>
 
@@ -419,15 +433,7 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
           </div>
         )}
 
-        {/* To'lov qabul qilindi — naqd uchun */}
-        {!o.isPaid && o.paymentMethod === 'cash' && (
-          <button
-            onClick={() => onPaid?.(o._id)}
-            className="w-full mt-3 py-2 rounded-lg border border-green-300 text-green-700 text-xs font-medium hover:bg-green-50"
-          >
-            <i className="ti ti-cash" /> To'lov qabul qilindi deb belgilash
-          </button>
-        )}
+        
 
         {/* ===== MIJOZ MA'LUMOTLARI ===== */}
         <div className="mt-2 pt-3 border-t border-line">
@@ -516,6 +522,29 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
         </div>
       </div>
 
+            {/* NAQD: mijoz bilan tasdiqlash ogohlantirishi — aynan "Qabul qildim" tepasida */}
+      {needsCashConfirm && (
+        <div className="mx-4 mb-3 rounded-xl border border-amber-300 bg-amber-50 px-3.5 py-3" role="note" data-testid="cash-warning">
+          <div className="flex items-center gap-2 text-sm font-bold text-amber-900">
+            <i className="ti ti-alert-triangle text-lg" />
+            To'lov turi: NAQD
+          </div>
+          <p className="mt-1 text-[13px] leading-snug text-amber-900">
+            Shuning uchun <b>mijoz bilan gaplashib, buyurtmani tasdiqlatib oling</b>, keyin qabul qiling.
+          </p>
+          {customerPhone && (
+            <a
+              href={`tel:${customerPhone}`}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-amber-900 ring-1 ring-amber-300 hover:bg-amber-100"
+              data-testid="cash-call"
+            >
+              <i className="ti ti-phone" />
+              Mijozga qo'ng'iroq: {customerPhone}
+            </a>
+          )}
+        </div>
+      )}
+
       {/* Amal tugmalari */}
       {meta.next && (
         <div className="px-4 pb-4 flex gap-2">
@@ -544,26 +573,22 @@ function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onPaid, onDispa
                 /*
                  * OLIB KETISHDA PUL OLINGANINI TEKSHIRAMIZ.
                  *
-                 * Naqd buyurtmada mijoz kelib taomni oladi va
-                 * SHU YERDA to'laydi. "Olib ketdi" bosilishi
-                 * bilan buyurtma yopiladi va u ro'yxatdan
-                 * chiqadi — agar pul olinmagan bo'lsa, keyin
-                 * buni payqash deyarli imkonsiz.
+                 * Naqd buyurtmada mijoz kelib taomni oladi va SHU YERDA to'laydi.
+                 * "Olib ketdi" bosilishi bilan buyurtma yopiladi va u ro'yxatdan
+                 * chiqadi, naqd to'lov esa AVTOMATIK "to'langan" deb qayd etiladi —
+                 * shuning uchun bir marta so'raymiz.
                  *
-                 * Yetkazishda bunday tekshiruv KERAK EMAS:
-                 * u yerda pulni kuryer oladi, restoran emas.
-                 *
-                 * Bu qattiq taqiq emas, ogohlantirish: xodim
-                 * pulni oldindan olgan bo'lishi ham mumkin.
+                 * Yetkazishda bunday tekshiruv KERAK EMAS: u yerda pulni kuryer
+                 * oladi, restoran emas.
                  */
-                if (isPickup(o) && o.status === 'ready' && !o.isPaid) {
+                if (isPickup(o) && o.status === 'ready' && o.paymentMethod === 'cash' && !o.isPaid) {
                   const ok = await confirm({
-                    title: 'To‘lov belgilanmagan',
+                    title: 'Naqd to‘lov olindimi?',
                     content: `${som(o.total)} so'm · naqd. `
-                      + 'Mijozdan pul olganingizga ishonchingiz komilmi? '
-                      + 'Yopilgandan keyin buyurtma ro‘yxatdan chiqadi.',
+                      + 'Mijoz taomni oldi va pulni to‘ladimi? '
+                      + 'Tasdiqlansa buyurtma yopiladi va “to‘langan” deb qayd etiladi.',
                     tone: 'warning',
-                    okText: 'Ha, pul olindi',
+                    okText: 'Ha, oldi va to‘ladi',
                   });
                   if (!ok) return;
                 }
