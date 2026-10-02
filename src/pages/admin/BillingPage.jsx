@@ -152,45 +152,6 @@ export function BillingPage() {
   const [ordersView, setOrdersView] = useState(null);   // { restaurant, method }
   const [historyView, setHistoryView] = useState(null); // restoran
 
-  const setCommission = async (r) => {
-    const percent = await confirm({
-      title: `${r.name} — komissiya foizi`,
-      content: `Hozir: ${r.commissionPercent ?? 'umumiy sozlama'}\n`
-        + "Bo'sh qoldirilsa umumiy foiz ishlatiladi.",
-      input: true,
-      defaultValue: String(r.commissionPercent ?? ''),
-      inputPlaceholder: 'Masalan: 15',
-    });
-    if (percent === false) return;
-
-    const mode = await confirm({
-      title: 'Komissiya qanday olinadi?',
-      options: [
-        {
-          value: 'deduct',
-          label: 'Restoran ulushidan',
-          hint: "Mijoz oddiy narx to'laydi",
-        },
-        {
-          value: 'markup',
-          label: 'Taom narxiga qo\'shiladi',
-          hint: "Mijoz ko'proq to'laydi",
-        },
-      ],
-      defaultValue: r.commissionMode || 'deduct',
-      okText: 'Saqlash',
-    });
-    if (mode === false) return;
-
-    try {
-      await adminApi.setCommission(r._id, {
-        commissionPercent: percent === '' ? null : Number(percent),
-        commissionMode: mode === '' ? null : mode,
-      });
-      load();
-    } catch (e) { alert(e.message); }
-  };
-
   if (initialLoading) return <div className="p-6 text-muted">Yuklanmoqda...</div>;
 
   return (
@@ -550,10 +511,16 @@ function AgreementLine({ info, failed }) {
  * yuboriladigan YAGONA foiz: shlyuz ikkita alohida komissiya
  * emas, bitta 10% oladi.
  */
-function AgreementModal({ restaurant, onClose, onSaved }) {
+export function AgreementModal({ restaurant, onClose, onSaved }) {
   const a = restaurant.info?.agreement;
-  const [restPct, setRestPct] = useState(String(a?.restaurantCommissionPercent ?? 5));
-  const [custPct, setCustPct] = useState(String(a?.customerFeePercent ?? 5));
+    /*
+   * Yangi kelishuvda maydonlar BO'SH: ilgari 5% + 5% oldindan to'ldirilardi va admin
+   * e'tiborsiz "Saqlash" bossa restoranga o'ylab topilgan 10% yozilib ketardi.
+   * Foiz har restoran bilan alohida kelishiladi — aniq kiritilishi shart (0 ham to'g'ri
+   * qiymat: komissiyasiz restoran). Mavjud kelishuvda — uning haqiqiy qiymatlari.
+   */
+  const [restPct, setRestPct] = useState(a ? String(a.restaurantCommissionPercent) : '');
+  const [custPct, setCustPct] = useState(a ? String(a.customerFeePercent) : '');
   const [note, setNote] = useState(a?.note || '');
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
@@ -561,7 +528,8 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
   const r = Number(restPct) || 0;
   const c = Number(custPct) || 0;
   const total = r + c;
-  const valid = r >= 0 && r <= 100 && c >= 0 && c <= 100 && total <= 100;
+    const filled = String(restPct).trim() !== '' && String(custPct).trim() !== '';
+  const valid = filled && r >= 0 && r <= 100 && c >= 0 && c <= 100 && total <= 100;
 
   /*
    * 10 000 so'mlik taomda nima bo'lishini ko'rsatamiz.
@@ -582,7 +550,8 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
   const demoLokma = demoRestCommAmt + demoFeeAmt;
   const som = (n) => n.toLocaleString('ru-RU');
 
-  const save = async () => {
+    const save = async () => {
+    if (!filled) { setErr('Ikkala foizni kiriting (0 ham to\'g\'ri qiymat)'); return; }
     if (!valid) { setErr('Foizlar noto\'g\'ri'); return; }
     setSaving(true); setErr(null);
     try {
@@ -608,25 +577,27 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Restoran komissiyasi" hint="Restoran ulushidan yechiladi">
-            <PercentInput value={restPct} onChange={setRestPct} />
+            <PercentInput value={restPct} onChange={setRestPct} testId="rest-pct" />
           </Field>
           <Field label="Mijoz xizmat haqi" hint="Taom narxi ustiga qo'shiladi">
-            <PercentInput value={custPct} onChange={setCustPct} />
+            <PercentInput value={custPct} onChange={setCustPct} testId="cust-pct" />
           </Field>
         </div>
 
         {/* Yig'indi — shlyuzga ketadigan foiz */}
-        <div className={`mb-4 rounded-xl px-4 py-3 ${
-          valid ? 'bg-brand-400/10' : 'bg-red-500/10'
-        }`}>
+                <div className={`mb-4 rounded-xl px-4 py-3 ${
+          !filled ? 'bg-canvas' : valid ? 'bg-brand-400/10' : 'bg-red-500/10'
+        }`} data-testid="split-box">
           <div className="flex items-baseline justify-between">
             <span className="text-sm text-muted">To&apos;lov tizimidan ushlanadi</span>
-            <span className={`text-2xl font-bold ${valid ? 'text-brand-600' : 'text-red-600'}`}>
-              {total}%
+                        <span className={`text-2xl font-bold ${!filled ? 'text-muted' : valid ? 'text-brand-600' : 'text-red-600'}`} data-testid="split-total">
+              {filled ? `${total}%` : '—'}
             </span>
           </div>
-          <div className="mt-0.5 text-[11px] text-muted">
-            {r}% (restoran) + {c}% (mijoz) — shlyuzga bitta {total}% yuboriladi
+                    <div className="mt-0.5 text-[11px] text-muted" data-testid="split-hint">
+            {filled
+              ? `${r}% (restoran) + ${c}% (mijoz) — shlyuzga bitta ${total}% yuboriladi`
+              : 'Ikkala foizni kiriting. 0 ham to‘g‘ri qiymat (komissiyasiz restoran).'}
           </div>
         </div>
 
@@ -680,11 +651,11 @@ function AgreementModal({ restaurant, onClose, onSaved }) {
   );
 }
 
-function PercentInput({ value, onChange }) {
+function PercentInput({ value, onChange, testId }) {
   return (
     <div className="relative">
       <input
-        type="number" inputMode="decimal" min="0" max="100" step="0.5"
+        type="number" inputMode="decimal" min="0" max="100" step="any" placeholder="0" data-testid={testId}
         value={value} onChange={(e) => onChange(e.target.value)}
         className="w-full rounded-lg border border-line bg-canvas px-3 py-2 pr-7 text-lg font-semibold text-ink"
       />

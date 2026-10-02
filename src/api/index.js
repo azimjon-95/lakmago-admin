@@ -264,7 +264,6 @@ export const adminApi = {
     method: 'POST',
     body: JSON.stringify({ idempotencyKey: idempotencyKey || crypto.randomUUID(), ...data }),
   }),
-  setCommission: (id, data) => apiFetch(`/admin/restaurants/${id}/commission`, { method: 'PATCH', body: JSON.stringify(data) }),
 
   // ===== RESTORAN BOTLARI (alohida bo'lim) =====
   botRestaurants: () => apiFetch('/admin/bot/restaurants'),
