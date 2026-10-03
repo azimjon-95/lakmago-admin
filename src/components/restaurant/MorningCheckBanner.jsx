@@ -11,12 +11,18 @@ import { getSocket } from '@/lib/socket';
  * ko'rinadi. FAQAT status === 'pending' bo'lganda ko'rinadi (ochilishdan oldin, yopilgach,
  * dam kunida yoki javob berilgach — null/yopiq).
  *
- *   🛑 Stopga quyish — Menyu sahifasiga o'tadi (har taomda Stop tugmasi);
+ *   🛑 Stopga qo‘yish — Menyu sahifasiga o'tadi (har taomda Stop tugmasi);
  *   ✅ Barchasi bor  — "bugun tekshirildi": banner ham, botdagi eslatmalar ham to'xtaydi.
  */
-export const MORNING_TEXT = 'Retoran ochilishi bilan taomlarizni rekshirib oling ish boshlashdan oldin '
-  + 'Stopdagi taomlarizni Stop listga qushib quying esizdan chiqmasin '
-  + 'mijizlarni hurmat qilaylik bugungi boshlagan ishizni olloh barokatli qilsin';
+// Matn serverdagi (services/morningChecklist.js) bilan AYNAN bir xil — bot xabari ham shunday.
+export const MORNING_TITLE = 'Eslatma';
+export const MORNING_LINES = [
+  ['🍽', 'Restoran ochilishi bilan taomlaringizni tekshirib oling.'],
+  ['🛑', 'Ish boshlashdan oldin stopdagi taomlaringizni Stop-listga qo‘shib qo‘ying — esingizdan chiqmasin.'],
+  ['🤝', 'Mijozlarimizni hurmat qilaylik.'],
+  ['🤲', 'Bugungi boshlagan ishingizni Alloh barokatli qilsin.'],
+];
+export const MORNING_TEXT = MORNING_LINES.map(([, t]) => t).join(' ');
 
 export function MorningCheckBanner() {
   const navigate = useNavigate();
@@ -71,7 +77,7 @@ export function MorningCheckBanner() {
   return (
     <section
       role="region"
-      aria-label="Ertalabki tekshiruv"
+      aria-label="Eslatma"
       data-testid="morning-banner"
       className="mx-4 mt-4 rounded-2xl border border-amber-300 bg-amber-50 p-4 shadow-sm sm:mx-6"
     >
@@ -80,8 +86,15 @@ export function MorningCheckBanner() {
           <i className="ti ti-sunrise text-xl" />
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-sm font-semibold text-amber-900">Ertalabki tekshiruv</div>
-          <p className="mt-1 text-[13px] leading-snug text-amber-900" data-testid="morning-text">{MORNING_TEXT}</p>
+          <div className="text-sm font-semibold text-amber-900" data-testid="morning-title">{MORNING_TITLE}</div>
+          <div className="mt-1.5 space-y-1.5" data-testid="morning-text">
+            {MORNING_LINES.map(([icon, text]) => (
+              <p key={text} className="flex gap-2 text-[13px] leading-snug text-amber-900">
+                <span aria-hidden="true" className="flex-none">{icon}</span>
+                <span data-testid="morning-line">{text}</span>
+              </p>
+            ))}
+          </div>
           {state?.reminderCount > 0 && (
             <div className="mt-1 text-[11px] text-amber-700" data-testid="morning-reminders">Eslatma: {state.reminderCount} marta yuborilgan</div>
           )}
@@ -97,7 +110,7 @@ export function MorningCheckBanner() {
           data-testid="morning-stop"
           className="whitespace-nowrap rounded-xl border border-amber-300 bg-white px-2 py-2.5 text-[13px] font-semibold text-amber-900 hover:bg-amber-100"
         >
-          🛑 Stopga quyish
+          🛑 Stopga qo‘yish
         </button>
         <button
           type="button"
