@@ -5,7 +5,8 @@ import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { useTempValue } from '@/hooks/useTempFlag';
 import { useAuth } from '@/store/auth';
-import { CancelledOrderInfo } from '@/components/CancelledOrderInfo';
+import { OrderFullInfo } from '@/components/OrderFullInfo';
+import { itemLine, orderSearchText, minutesBetween, durationText } from '@/lib/orderInfo';
 
 /* ═══════════════════════════════════════════════════
    Boshqaruv paneli — platforma nazorati
@@ -30,11 +31,20 @@ const STATUS = {
 };
 
 const FILTERS = [
+  ['awaiting_payment', "To'lov kutilmoqda"], // faqat bo'lsa ko'rinadi
   ['open', 'Jarayonda'],
   ['all', 'Hammasi'],
   ['delivered', 'Yetkazilgan'],
   ['cancelled', 'Bekor'],
 ];
+
+/* Ochiq buyurtma shuncha daqiqadan oshsa — kechikish belgisi */
+const LATE_MIN = 45;
+
+/* Ixcham/to'liq ko'rinish tanlovi brauzerda eslab qolinadi */
+const VIEW_KEY = 'dash:feedCompact';
+const readCompact = () => { try { return localStorage.getItem(VIEW_KEY) === '1'; } catch { return false; } };
+const saveCompact = (v) => { try { localStorage.setItem(VIEW_KEY, v ? '1' : '0'); } catch { /* yo'q */ } };
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -64,6 +74,15 @@ function delta(now, before) {
 
 export function DashboardPage() {
   const [filter, setFilter] = useState('open');
+  const [query, setQuery] = useState('');
+  const [compact, setCompact] = useState(readCompact);
+  const toggleCompact = () => setCompact((v) => { saveCompact(!v); return !v; });
+  // Kutish vaqti belgilari yangilanib tursin (30 s)
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setTick((x) => x + 1), 30_000);
+    return () => clearInterval(t);
+  }, []);
   // 3 soniya yonib turadi; ketma-ket buyurtma kelsa avvalgi
   // taymer bekor bo'ladi va ikkinchi karta to'liq yonadi
   const [flash, flashOrder] = useTempValue(3000);
@@ -218,18 +237,37 @@ export function DashboardPage() {
   }, [qc, canSeeOrders, flashOrder]);
 
   const today = stats?.today;
+  // Qidiruv: restoran, mijoz, telefon, manzil, #raqam, taom, kuryer, sabab
+  const searched = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return orders;
+    const words = q.split(/\s+/);
+    return orders.filter((o) => {
+      const t = orderSearchText(o);
+      return words.every((w) => t.includes(w));
+    });
+  }, [orders, query]);
+
   const counts = useMemo(() => ({
-    open: orders.filter((o) => OPEN_STATUSES.includes(o.status)).length,
-    all: orders.length,
-    delivered: orders.filter((o) => o.status === 'delivered').length,
-    cancelled: orders.filter((o) => o.status === 'cancelled').length,
-  }), [orders]);
+    awaiting_payment: searched.filter((o) => o.status === 'awaiting_payment').length,
+    open: searched.filter((o) => OPEN_STATUSES.includes(o.status)).length,
+    all: searched.length,
+    delivered: searched.filter((o) => o.status === 'delivered').length,
+    cancelled: searched.filter((o) => o.status === 'cancelled').length,
+  }), [searched]);
 
   const shown = useMemo(() => {
-    if (filter === 'all') return orders;
-    if (filter === 'open') return orders.filter((o) => OPEN_STATUSES.includes(o.status));
-    return orders.filter((o) => o.status === filter);
-  }, [orders, filter]);
+    if (filter === 'all') return searched;
+    if (filter === 'open') return searched.filter((o) => OPEN_STATUSES.includes(o.status));
+    return searched.filter((o) => o.status === filter);
+  }, [searched, filter]);
+
+  // Kechikayotgan ochiq buyurtmalar (diqqat banneri uchun)
+  const lateCount = useMemo(
+    () => orders.filter((o) => OPEN_STATUSES.includes(o.status) && minutesBetween(o.createdAt) >= LATE_MIN).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [orders, Math.floor(Date.now() / 30_000)],
+  );
 
   return (
     <div className="ios26 relative min-w-0 flex-1">
@@ -272,6 +310,9 @@ export function DashboardPage() {
               </span>
               <span className="block text-[12px] leading-snug text-muted">
                 Tayyorlanmoqda yoki yo'lda
+                {lateCount > 0 && (
+                  <span className="font-semibold text-red-600"> · {lateCount} tasi {LATE_MIN} daqiqadan oshdi</span>
+                )}
               </span>
             </span>
             <i className="ti ti-chevron-right flex-none text-muted" />
@@ -309,7 +350,8 @@ export function DashboardPage() {
               hint={stats?.today?.dishes ? `${som(stats.today.dishes)} ta taom` : null}>
               Bugun ko'p taom bergan muassasalar
             </SectionTitle>
-            <Leaderboard rows={stats?.todayByRestaurant} />
+            <Leaderboard rows={stats?.todayByRestaurant}
+              onPick={canSeeOrders ? (name) => { setQuery(name); setFilter('all'); } : undefined} />
           </section>
 
           {/*
@@ -323,9 +365,35 @@ export function DashboardPage() {
             <section className="min-w-0">
               <SectionTitle hint="so'nggi 100">Buyurtmalar oqimi</SectionTitle>
 
+              <div className="mb-2 flex items-center gap-1.5">
+                <label className="g flex min-w-0 flex-1 items-center gap-2 rounded-full px-3 py-1.5">
+                  <i className="ti ti-search flex-none text-[14px] text-muted" />
+                  <input
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="Restoran, mijoz, telefon, manzil, #raqam"
+                    className="min-w-0 flex-1 bg-transparent text-[13px] text-ink outline-none placeholder:text-muted"
+                    aria-label="Buyurtmalarni qidirish"
+                  />
+                  {query && (
+                    <button type="button" onClick={() => setQuery('')} aria-label="Qidiruvni tozalash"
+                      className="flex-none text-muted">
+                      <i className="ti ti-x text-[14px]" />
+                    </button>
+                  )}
+                </label>
+                <button type="button" onClick={toggleCompact}
+                  className="tap g flex flex-none items-center gap-1 rounded-full px-3 py-1.5 text-[12px] font-semibold text-muted"
+                  title={compact ? 'To‘liq ma’lumotni ko‘rsatish' : 'Ixcham ko‘rinish'}>
+                  <i className={`ti ${compact ? 'ti-layout-list' : 'ti-layout-rows'} text-[14px]`} />
+                  {compact ? 'To‘liq' : 'Ixcham'}
+                </button>
+              </div>
+
               <div className="-mx-3 mb-2.5 flex gap-1.5 overflow-x-auto px-3 pb-0.5 sm:mx-0 sm:px-0">
                 {FILTERS.map(([k, label]) => {
                   const on = filter === k;
+                  if (k === 'awaiting_payment' && !counts[k] && !on) return null;
                   return (
                     <button key={k} onClick={() => setFilter(k)}
                       className={`tap flex flex-none items-center gap-1.5 rounded-full px-3 py-1.5 text-[12.5px] font-semibold ${
@@ -340,7 +408,7 @@ export function DashboardPage() {
                 })}
               </div>
 
-              <OrderFeed orders={shown} flash={flash} filter={filter} />
+              <OrderFeed orders={shown} flash={flash} filter={filter} compact={compact} searching={Boolean(query.trim())} />
             </section>
           ) : null}
         </div>
@@ -414,7 +482,7 @@ function Kpi({ label, value, unit, icon, sub, delta: d, accent, small }) {
  * Ustunlar: taom (asosiy), buyurtma, aylanma.
  * Ulush chizig'i birinchi o'ringa nisbatan.
  */
-function Leaderboard({ rows }) {
+function Leaderboard({ rows, onPick }) {
   if (!rows) {
     return (
       <div className="g rounded-[20px] p-4">
@@ -449,7 +517,12 @@ function Leaderboard({ rows }) {
 
         return (
           <div key={r.id}
-            className="relative border-b border-black/[0.05] px-3.5 py-3 last:border-0">
+            role={onPick ? 'button' : undefined}
+            tabIndex={onPick ? 0 : undefined}
+            onClick={onPick ? () => onPick(r.name) : undefined}
+            onKeyDown={onPick ? (e) => { if (e.key === 'Enter') onPick(r.name); } : undefined}
+            title={onPick ? 'Shu muassasa buyurtmalarini ko‘rsatish' : undefined}
+            className={`relative border-b border-black/[0.05] px-3.5 py-3 last:border-0 ${onPick ? 'tap cursor-pointer' : ''}`}>
             {/* Ulush — fon chizig'i, alohida qator egallamaydi */}
             <span aria-hidden
               className="absolute inset-y-0 left-0 transition-[width] duration-700"
@@ -514,7 +587,7 @@ function Leaderboard({ rows }) {
  */
 const FEED_LIMIT = 40;
 
-export function OrderFeed({ orders, flash, filter }) {
+export function OrderFeed({ orders, flash, filter, compact = false, searching = false }) {
   const hidden = Math.max(0, orders.length - FEED_LIMIT);
   const visible = hidden ? orders.slice(0, FEED_LIMIT) : orders;
 
@@ -523,10 +596,12 @@ export function OrderFeed({ orders, flash, filter }) {
       <div className="g rounded-[20px] px-6 py-10 text-center">
         <i className="ti ti-receipt-off mb-2 block text-2xl text-muted" />
         <div className="text-[14px] font-semibold text-ink">
-          {filter === 'open' ? 'Jarayondagi buyurtma yo‘q' : 'Buyurtma yo‘q'}
+          {searching ? 'Qidiruv bo‘yicha topilmadi'
+            : filter === 'open' ? 'Jarayondagi buyurtma yo‘q' : 'Buyurtma yo‘q'}
         </div>
         <p className="mt-1 text-[12.5px] text-muted">
-          Yangi buyurtma kelganda shu yerda jonli ko'rinadi
+          {searching ? 'Boshqa so‘z bilan qidiring yoki filtrni “Hammasi”ga o‘tkazing'
+            : 'Yangi buyurtma kelganda shu yerda jonli ko‘rinadi'}
         </p>
       </div>
     );
@@ -537,6 +612,9 @@ export function OrderFeed({ orders, flash, filter }) {
       {visible.map((o) => {
         const st = STATUS[o.status] || { label: o.status, color: '#8E8E93' };
         const isFlash = flash === o._id;
+        const isOpen = OPEN_STATUSES.includes(o.status) || o.status === 'awaiting_payment';
+        const waitMin = isOpen ? minutesBetween(o.createdAt) : null;
+        const late = waitMin !== null && waitMin >= LATE_MIN && o.status !== 'awaiting_payment';
 
         return (
           <article key={o._id}
@@ -558,7 +636,7 @@ export function OrderFeed({ orders, flash, filter }) {
                 </div>
 
                 <p className="mt-1 line-clamp-2 text-[12.5px] leading-snug text-muted">
-                  {o.items?.map((i) => `${i.name} ×${i.quantity}`).join(', ')}
+                  {o.items?.map(itemLine).join(', ')}
                 </p>
               </div>
 
@@ -571,18 +649,18 @@ export function OrderFeed({ orders, flash, filter }) {
                     hour: '2-digit', minute: '2-digit',
                   })}
                 </div>
+                {waitMin !== null && (
+                  <div className={`mt-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-[1px] text-[10.5px] font-semibold tabular-nums ${
+                    late ? 'bg-red-50 text-red-700' : 'bg-black/[0.04] text-muted'}`}
+                    title="Buyurtma berilganidan beri">
+                    <i className="ti ti-hourglass text-[11px]" />{durationText(waitMin)}
+                  </div>
+                )}
               </div>
             </div>
 
-            {o.status === 'cancelled' ? (
-              // Bekor qilingan: mijoz, @username, telefon, manzil+xarita, to'lov turi, sabab
-              <CancelledOrderInfo order={o} />
-            ) : o.address && (
-              <div className="mt-2 flex items-start gap-1.5 border-t border-black/[0.05] pl-1.5 pt-2 text-[11.5px] text-muted">
-                <i className="ti ti-map-pin mt-[2px] flex-none text-[12px]" />
-                <span className="break-words">{o.address}</span>
-              </div>
-            )}
+            {/* Har bir holatda to'liq ma'lumot (bekor sababi faqat bekorda) */}
+            <OrderFullInfo order={o} compact={compact} />
           </article>
         );
       })}

@@ -78,3 +78,73 @@ export function cancelInfo(o) {
 export const orderTag = (o) => (o?.dailyNumber ? `#${o.dailyNumber}` : `#${String(o?._id || '').slice(-4).toUpperCase()}`);
 
 export const hhmm = (d) => (d ? new Date(d).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) : '');
+
+/*
+ * ─── To'liq karta uchun qo'shimcha yordamchilar (2026-10) ───
+ * Faqat QO'SHILDI — yuqoridagi funksiyalar o'zgarmagan.
+ */
+
+/** Buyurtma bosqichlari: faqat haqiqatda bo'lgan (vaqti bor) qadamlar qaytadi. */
+export function orderTimeline(o) {
+  if (!o) return [];
+  const steps = [
+    ['created', 'Yaratildi', o.createdAt],
+    ['paid', 'To‘landi', o.paymentMethod && o.paymentMethod !== 'cash' ? o.paidAt : null],
+    ['accepted', 'Qabul', o.acceptedAt],
+    ['ready', 'Tayyor', o.readyAt],
+    ['delivering', 'Yo‘lda', o.deliveringAt],
+    ['delivered', 'Yetkazildi', o.deliveredAt],
+    ['cancelled', 'Bekor', o.cancelledAt],
+  ];
+  return steps.filter(([, , at]) => at).map(([key, label, at]) => ({ key, label, at }));
+}
+
+/** Ikki vaqt orasidagi daqiqa (butun). `to` berilmasa — hozir. */
+export function minutesBetween(from, to) {
+  if (!from) return null;
+  const a = new Date(from).getTime();
+  const b = to ? new Date(to).getTime() : Date.now();
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return null;
+  return Math.max(0, Math.round((b - a) / 60000));
+}
+
+/** 75 → "1 soat 15 daq", 8 → "8 daq". */
+export function durationText(min) {
+  if (min === null || min === undefined) return '';
+  if (min < 60) return `${min} daq`;
+  const h = Math.floor(min / 60); const m = min % 60;
+  return m ? `${h} soat ${m} daq` : `${h} soat`;
+}
+
+/** Narx tarkibi — faqat noldan farqli qatorlar (so'mda, buyurtmadagi maydonlardan). */
+export function orderMoney(o) {
+  if (!o) return [];
+  const rows = [];
+  const add = (label, value, sign = 1) => {
+    const n = Number(value);
+    if (Number.isFinite(n) && n !== 0) rows.push({ label, value: n * sign });
+  };
+  add('Taomlar', o.subtotal);
+  add('Yetkazish', o.deliveryFee);
+  add('Xizmat haqi', o.serviceFee);
+  add(o.promotionName ? `Aksiya: ${o.promotionName}` : 'Aksiya', o.promotionDiscount, -1);
+  add(o.pickupDiscountPercent ? `Olib ketish −${o.pickupDiscountPercent}%` : 'Olib ketish chegirmasi', o.pickupDiscount, -1);
+  add('Bonus', o.bonusUsed, -1);
+  return rows;
+}
+
+/** Element qatori: "Lavash (katta, +pishloq) ×2". */
+export function itemLine(i) {
+  const opts = (i?.selectedOptions || []).map((s) => s?.name).filter(Boolean);
+  return `${i?.name || '—'}${opts.length ? ` (${opts.join(', ')})` : ''} ×${i?.quantity ?? 1}`;
+}
+
+/** Qidiruv uchun bitta matn (kichik harf): restoran, mijoz, telefon, manzil, belgi, taomlar. */
+export function orderSearchText(o) {
+  const c = customerOf(o);
+  return [
+    o?.restaurantName, c.name, c.username, c.phone, String(c.phone || '').replace(/\D/g, ''),
+    o?.address, orderTag(o), String(o?._id || ''), o?.courierName, o?.cancelReason,
+    ...(o?.items || []).map((i) => i?.name),
+  ].filter(Boolean).join(' ').toLowerCase();
+}
