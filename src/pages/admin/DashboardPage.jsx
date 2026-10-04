@@ -652,7 +652,9 @@ export function OrderFeed({ orders, flash, filter, compact = false, searching = 
                 {waitMin !== null && (
                   <div className={`mt-0.5 inline-flex items-center gap-0.5 rounded-full px-1.5 py-[1px] text-[10.5px] font-semibold tabular-nums ${
                     late ? 'bg-red-50 text-red-700' : 'bg-black/[0.04] text-muted'}`}
-                    title="Buyurtma berilganidan beri">
+                    title={o.status === 'awaiting_payment'
+                      ? 'To‘lov kutilmoqda — 24 soatda to‘lanmasa avtomatik bekor bo‘ladi'
+                      : 'Buyurtma berilganidan beri'}>
                     <i className="ti ti-hourglass text-[11px]" />{durationText(waitMin)}
                   </div>
                 )}

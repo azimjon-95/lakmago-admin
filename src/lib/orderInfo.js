@@ -58,9 +58,15 @@ const PAY = { cash: 'Naqd', click: 'Click', payme: 'Payme', paynet: 'Paynet', uz
 /** To'lov turi va holati. `paid` — pul haqiqatan tushgan (onlayn to'lov bekor qilingan bo'lsa muhim). */
 export function paymentInfo(o) {
   const m = o?.paymentMethod || 'cash';
+  /*
+   * Mijoz ilovasi (2026-10 gacha) naqddan boshqa HAR QANDAY tanlovni 'payme'
+   * deb yuborardi; haqiqiy tizim nomi faqat to'lov o'tganda yozilardi. Shuning
+   * uchun to'lanmagan 'payme' yozuvi aslida "karta, tizim noma'lum" degani.
+   */
+  const placeholder = m === 'payme' && !o?.isPaid;
   return {
     method: m,
-    label: PAY[m] || o?.paymentLabel || m,
+    label: placeholder ? 'Karta' : (PAY[m] || o?.paymentLabel || m),
     online: m !== 'cash',
     paid: Boolean(o?.isPaid),
   };
@@ -147,4 +153,16 @@ export function orderSearchText(o) {
     o?.address, orderTag(o), String(o?._id || ''), o?.courierName, o?.cancelReason,
     ...(o?.items || []).map((i) => i?.name),
   ].filter(Boolean).join(' ').toLowerCase();
+}
+
+/**
+ * Restoran bu buyurtmani ko'rganmi. Server qoidasi bilan bir xil
+ * (lakmago-server: services/restaurantVisibility.js):
+ * to'lov kutilayotgan yoki to'lanmay bekor bo'lgan karta buyurtmasi — ko'rmagan.
+ */
+export function restaurantSaw(o) {
+  if (!o) return false;
+  if (o.status === 'awaiting_payment') return false;
+  if (o.status === 'cancelled' && (o.paymentMethod || 'cash') !== 'cash' && !o.dailyNumber && !o.paidAt) return false;
+  return true;
 }

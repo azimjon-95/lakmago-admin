@@ -2,7 +2,7 @@ import { useState } from 'react';
 import {
   customerOf, formatPhone, telHref, validCoords, mapLinks, coordsText,
   paymentInfo, cancelInfo, orderTag, hhmm, FULFILLMENT,
-  orderTimeline, minutesBetween, durationText, orderMoney,
+  orderTimeline, minutesBetween, durationText, orderMoney, restaurantSaw,
 } from '@/lib/orderInfo';
 
 const som = (n) => Math.round(n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
@@ -124,6 +124,12 @@ export function OrderFullInfo({ order, compact = false }) {
             ) : pay.online && !cancelled ? (
               <span className="rounded-full bg-red-50 px-2 py-[2px] font-semibold text-red-700">to‘lanmagan</span>
             ) : null}
+            {!restaurantSaw(order) && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-[2px] font-semibold text-muted"
+                title="Pul yechilmagan — buyurtma restoranga yuborilmagan. To‘lov o‘tsa avtomatik yuboriladi; 24 soatda to‘lanmasa bekor bo‘ladi.">
+                <i className="ti ti-eye-off text-[12px]" />restoranga yuborilmagan
+              </span>
+            )}
             {order.timingMode === 'scheduled' && order.scheduledFor && (
               <span className="inline-flex items-center gap-1 rounded-full bg-violet-50 px-2 py-[2px] font-semibold text-violet-700">
                 <i className="ti ti-calendar-time text-[12px]" />{hhmm(order.scheduledFor)} ga
@@ -134,7 +140,9 @@ export function OrderFullInfo({ order, compact = false }) {
                 {Number(order.distanceKm).toFixed(1)} km
               </span>
             )}
-            {order.courierName && (
+            {/* courierName serverda tasodifiy tanlanadi (haqiqiy kuryer emas) —
+                faqat buyurtma haqiqatan yo'lga chiqqanda ko'rsatamiz */}
+            {order.courierName && (order.status === 'delivering' || order.status === 'delivered') && (
               <span className="inline-flex items-center gap-1 rounded-full bg-black/[0.05] px-2 py-[2px] text-ink">
                 <i className="ti ti-motorbike text-[12px] text-muted" />{order.courierName}
                 {order.etaMinutes ? <span className="text-muted">· {order.etaMinutes} daq</span> : null}
