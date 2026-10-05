@@ -359,6 +359,9 @@ export const adminApi = {
   getSupportChat: (id) => apiFetch(`/admin/support/${id}`),
   replySupport: (id, text) => apiFetch(`/admin/support/${id}/reply`, { method: 'POST', body: JSON.stringify({ text }) }),
   resolveSupport: (id, resolved = true) => apiFetch(`/admin/support/${id}/resolve`, { method: 'PATCH', body: JSON.stringify({ resolved }) }),
+  // Admin o'z javobini tahrirlash / o'chirish (mijoz ilovasi va bot xabari ham yangilanadi)
+  editSupportMessage: (id, msgId, text) => apiFetch(`/admin/support/${id}/messages/${msgId}`, { method: 'PATCH', body: JSON.stringify({ text }) }),
+  deleteSupportMessage: (id, msgId) => apiFetch(`/admin/support/${id}/messages/${msgId}`, { method: 'DELETE' }),
 
   // Buyurtmalar nazorati (kim → qaysi restoran → nima)
   getOrders: (params = '') => apiFetch(`/admin/orders${params}`),
