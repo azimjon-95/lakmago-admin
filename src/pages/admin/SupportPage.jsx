@@ -1,17 +1,30 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { Img } from '@/components/Img';
 
-// Vaqt formatlash: bugun bo'lsa soat, aks holda sana
+/*
+ * Vaqt formatlash: bugun bo'lsa soat, aks holda sana.
+ *
+ * DOIM Toshkent vaqtida — Telegram guruhidagi bot posti ham Toshkent
+ * vaqtini yozadi (services/supportGroupNotify.js). Avval qurilma vaqti
+ * ishlatilardi: boshqa mintaqadagi telefonda guruhda «19:18», panelda
+ * «17:18» chiqib, bir xabar ikki xil vaqtda ko'rinardi.
+ */
+const TZ = 'Asia/Tashkent';
+const ymd = (d) => new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 function fmtTime(d) {
+  if (!d) return '';
   const date = new Date(d);
-  const today = new Date();
-  const isToday = date.toDateString() === today.toDateString();
-  return isToday
-    ? date.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })
-    : date.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' });
+  if (Number.isNaN(date.getTime())) return '';
+  return ymd(date) === ymd(new Date())
+    ? date.toLocaleTimeString('ru-RU', { timeZone: TZ, hour: '2-digit', minute: '2-digit' })
+    : date.toLocaleDateString('ru-RU', { timeZone: TZ, day: '2-digit', month: '2-digit' });
 }
+
+// Mongo ObjectId — URL'dagi ?chat= qiymati shunga mos bo'lishi shart
+const isObjectId = (v) => typeof v === 'string' && /^[a-f\d]{24}$/i.test(v);
 
 export function SupportPage() {
   const [chats, setChats] = useState([]);
@@ -21,7 +34,17 @@ export function SupportPage() {
   const [reply, setReply] = useState('');
   const [sending, setSending] = useState(false);
   const [showResolved, setShowResolved] = useState(false);
+  const [notice, setNotice] = useState('');
   const bodyRef = useRef(null);
+  /*
+   * ?chat=<id> — Telegram guruhidagi "Xabarlar bo'limiga o'tish" tugmasi
+   * aynan shu mijoz suhbatiga olib keladi. URL suhbat bilan sinxron:
+   * sahifa yangilansa ham suhbat ochiq qoladi, mobil "orqaga" ro'yxatga qaytaradi.
+   */
+  const [searchParams, setSearchParams] = useSearchParams();
+  const chatParam = searchParams.get('chat');
+  // Tez-tez bosilganda eski javob yangisini bosib ketmasin
+  const openSeq = useRef(0);
   const audioRef = useRef(null);
 
   // Ovozli signal (yangi xabar kelganda)
@@ -48,15 +71,50 @@ export function SupportPage() {
 
   useEffect(() => { loadList(); }, [loadList]);
 
-  // Suhbatni ochish
-  const openChat = useCallback(async (id) => {
+  // Suhbatni ochish (ro'yxatdan bosilganda ham, URL'dan ham)
+  const openChat = useCallback(async (id, { fromUrl = false } = {}) => {
+    const seq = ++openSeq.current;
     setActiveId(id);
+    setNotice('');
+    // URL'ni suhbatga moslaymiz (tarixga yangi yozuv qo'shmasdan)
+    if (!fromUrl) setSearchParams({ chat: id }, { replace: true });
     try {
       const data = await adminApi.getSupportChat(id);
+      if (seq !== openSeq.current) return; // boshqa suhbat ochilib ulgurdi
       setActive(data);
+      // Havola yopilgan suhbatga olib kelsa — o'ng ro'yxat ham "Yopilgan"ga o'tadi
+      if (fromUrl) setShowResolved(Boolean(data?.isResolved));
       loadList(); // badge yangilansin
-    } catch { /* ignore */ }
-  }, [loadList]);
+    } catch (e) {
+      if (seq !== openSeq.current) return;
+      setActiveId(null);
+      setActive(null);
+      setSearchParams({}, { replace: true });
+      setNotice(e?.message?.includes('topilmadi')
+        ? 'Suhbat topilmadi — o‘chirilgan bo‘lishi mumkin'
+        : 'Suhbatni ochib bo‘lmadi. Qayta urinib ko‘ring.');
+    }
+  }, [loadList, setSearchParams]);
+
+  const closeChat = useCallback(() => {
+    openSeq.current += 1;
+    setActiveId(null);
+    setActive(null);
+    setSearchParams({}, { replace: true });
+  }, [setSearchParams]);
+
+  // URL'dagi ?chat= — Telegram tugmasidan kelganda suhbatni darhol ochamiz
+  useEffect(() => {
+    if (!chatParam) return;
+    if (!isObjectId(chatParam)) {
+      setSearchParams({}, { replace: true });
+      setNotice('Havola noto‘g‘ri — suhbat topilmadi');
+      return;
+    }
+    if (chatParam !== activeId) openChat(chatParam, { fromUrl: true });
+    // activeId ataylab yo'q: faqat URL o'zgarganda ishlaydi
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatParam]);
 
   /*
    * "Online" holati — Telegram kabi ishlaydi.
@@ -185,6 +243,15 @@ export function SupportPage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
+          {notice && (
+            <div className="mx-3 mt-3 flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
+              <i className="ti ti-alert-triangle mt-[1px] flex-none" />
+              <span className="flex-1">{notice}</span>
+              <button onClick={() => setNotice('')} aria-label="Yopish" className="flex-none opacity-70">
+                <i className="ti ti-x" />
+              </button>
+            </div>
+          )}
           {chats.length === 0 ? (
             <div className="text-center text-muted text-sm py-10 px-4">
               {showResolved ? 'Yopilgan suhbat yo‘q' : 'Yangi xabar yo‘q'}
@@ -227,7 +294,12 @@ export function SupportPage() {
       </div>
 
       {/* Suhbat oynasi — mobilda faqat suhbat tanlanganда ko'rinadi */}
-      {!active ? (
+      {!active && activeId ? (
+        // Suhbat yuklanmoqda (masalan Telegram havolasidan kelindi)
+        <div className="flex flex-1 items-center justify-center text-muted">
+          <i className="ti ti-loader-2 animate-spin text-2xl" />
+        </div>
+      ) : !active ? (
         <div className="hidden lg:flex flex-1 items-center justify-center text-muted">
           <div className="text-center">
             <i className="ti ti-message-circle text-5xl opacity-30" />
@@ -240,7 +312,7 @@ export function SupportPage() {
           <div className="px-3 sm:px-5 py-3 border-b border-line flex items-center gap-2 sm:gap-3">
             {/* Orqaga — faqat mobilda (ro'yxatga qaytish) */}
             <button
-              onClick={() => { setActiveId(null); setActive(null); }}
+              onClick={closeChat}
               className="lg:hidden w-8 h-8 rounded-lg flex items-center justify-center text-muted hover:bg-canvas flex-none"
               aria-label="Orqaga"
             >
