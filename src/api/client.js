@@ -153,3 +153,125 @@ export function uploadNetworkError(sent, total, online = typeof navigator === 'u
   }
   return Object.assign(new Error(msg), { code, status: 0 });
 }
+
+/*
+ * ═══ VIDEO'NI BO'LAKLAB YUKLASH ═══
+ * Server: middleware/adUpload.js (adUploadController).
+ *
+ * Bitta katta so'rov o'rniga 512 KB lik bo'laklar:
+ *  • nginx `client_max_body_size` (standart 1 MB) chegarasiga urilmaydi —
+ *    avval 8.9 MB video ~11% (≈1 MB) da "ulanish uzildi" bo'lardi;
+ *  • mobil internet bir lahza uzilsa — faqat o'sha bo'lak qayta ketadi
+ *    (6 martagacha, oshib boruvchi kutish bilan), boshidan emas;
+ *  • 3 ta bo'lak parallel — tezroq.
+ * Natija: `uploadId` — reklama so'roviga JSON maydon sifatida qo'shiladi.
+ */
+const CHUNK_PARALLEL = 3;
+const CHUNK_RETRY_MS = [800, 1600, 3000, 5000, 8000, 12000];
+const CHUNK_TIMEOUT_MS = 60_000;
+
+function putChunk(url, blob, { onProgress, signal }) {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url);
+    xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+    if (getToken()) xhr.setRequestHeader('Authorization', `Bearer ${getToken()}`);
+    xhr.timeout = CHUNK_TIMEOUT_MS;
+    if (xhr.upload) xhr.upload.onprogress = (e) => { if (e.lengthComputable) onProgress?.(e.loaded); };
+    const onAbort = () => xhr.abort();
+    signal?.addEventListener('abort', onAbort, { once: true });
+    const done = (fn) => (arg) => { signal?.removeEventListener('abort', onAbort); fn(arg); };
+    xhr.onload = done(() => {
+      let json = null;
+      try { json = JSON.parse(xhr.responseText); } catch { /* JSON emas */ }
+      if (xhr.status >= 200 && xhr.status < 300) { resolve(json); return; }
+      const err = new Error(json?.error || `Xato: ${xhr.status}`);
+      err.status = xhr.status;
+      err.code = json?.code;
+      err.retryAfter = Number(xhr.getResponseHeader('Retry-After')) || 0;
+      reject(err);
+    });
+    xhr.onerror = done(() => reject(Object.assign(new Error('Tarmoq xatosi'), { status: 0 })));
+    xhr.ontimeout = done(() => reject(Object.assign(new Error('Vaqt tugadi'), { status: 0 })));
+    xhr.onabort = done(() => reject(Object.assign(new Error('Bekor qilindi'), { status: -1 })));
+    xhr.send(blob);
+  });
+}
+
+// Qayta urinsa bo'ladigan xato: tarmoq, vaqt, 408/429/5xx va "bo'lak to'liq kelmadi"
+const retriable = (e) => e.status === 0 || e.status === 408 || e.status === 429 || e.status >= 500 || e.code === 'CHUNK_SIZE';
+const sleep = (ms, signal) => new Promise((resolve, reject) => {
+  const t = setTimeout(resolve, ms);
+  signal?.addEventListener('abort', () => { clearTimeout(t); reject(Object.assign(new Error('Bekor qilindi'), { status: -1 })); }, { once: true });
+});
+
+/**
+ * @param {File} file
+ * @param {{ mimeType: string, onProgress?: (0..1)=>void, signal?: AbortSignal }} opts
+ * @returns {Promise<string>} uploadId
+ */
+export async function uploadVideoChunked(file, { mimeType, onProgress, signal } = {}) {
+  const init = await apiFetch('/admin/ad-uploads', {
+    method: 'POST',
+    body: JSON.stringify({ fileName: file.name || 'video', mimeType, size: file.size }),
+  });
+  const { uploadId, chunkSize, totalChunks } = init;
+
+  const doneBytes = new Array(totalChunks).fill(0);   // har bo'lakning yuklangan qismi
+  const report = () => onProgress?.(Math.min(1, doneBytes.reduce((a, b) => a + b, 0) / file.size));
+  report();
+
+  // Bitta bo'lak butunlay yiqilsa — qolganlari ham darhol to'xtaydi
+  const ctrl = new AbortController();
+  const onOuter = () => ctrl.abort();
+  if (signal?.aborted) ctrl.abort(); else signal?.addEventListener('abort', onOuter, { once: true });
+  const inner = ctrl.signal;
+  let firstError = null;
+
+  let next = 0;
+  const worker = async () => {
+    while (next < totalChunks) {
+      const i = next++;
+      const blob = file.slice(i * chunkSize, Math.min(file.size, (i + 1) * chunkSize));
+      for (let attempt = 0; ; attempt += 1) {
+        if (inner.aborted) throw Object.assign(new Error('Bekor qilindi'), { status: -1 });
+        try {
+          await putChunk(`${API_BASE}/admin/ad-uploads/${uploadId}/chunks/${i}`, blob, {
+            signal: inner,
+            onProgress: (loaded) => { doneBytes[i] = Math.min(loaded, blob.size); report(); },
+          });
+          doneBytes[i] = blob.size;
+          report();
+          break;
+        } catch (e) {
+          doneBytes[i] = 0;
+          report();
+          if (e.status === 401) { clearToken(); throw new Error('Sessiya tugadi. Qaytadan kiring.'); }
+          if (!retriable(e) || attempt >= CHUNK_RETRY_MS.length) {
+            if (e.status === 0) {
+              throw Object.assign(new Error(typeof navigator !== 'undefined' && navigator.onLine === false
+                ? 'Internet aloqasi yo‘q. Ulanishni tekshirib, qayta urining.'
+                : 'Internet juda beqaror — video yuklanmadi. Birozdan keyin qayta urining.'), { code: 'CONNECTION_LOST', status: 0 });
+            }
+            throw e;
+          }
+          await sleep(Math.max(CHUNK_RETRY_MS[attempt], (e.retryAfter || 0) * 1000), inner);
+        }
+      }
+    }
+  };
+  const guarded = () => worker().catch((e) => {
+    if (!firstError && e.status !== -1) firstError = e;
+    ctrl.abort();
+    throw e;
+  });
+  try {
+    await Promise.all(Array.from({ length: Math.min(CHUNK_PARALLEL, totalChunks) }, guarded));
+  } catch (e) {
+    throw firstError || e;
+  } finally {
+    signal?.removeEventListener('abort', onOuter);
+  }
+  onProgress?.(1);
+  return uploadId;
+}

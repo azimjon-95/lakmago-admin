@@ -1,4 +1,4 @@
-import { apiFetch, setToken, clearToken, getToken, downloadFile, uploadForm } from './client.js';
+import { apiFetch, setToken, clearToken, getToken, downloadFile, uploadForm, uploadVideoChunked } from './client.js';
 
 // ===== Autentifikatsiya =====
 export const auth = {
@@ -340,6 +340,14 @@ export const adminApi = {
   // VIDEO bilan reklama: multipart (fayl serverga xotiraga tushadi, bazaga yozilmaydi)
   broadcastToGroupForm: (chatId, formData, opts) => uploadForm(`/admin/groups/${chatId}/broadcast`, formData, opts),
   broadcastToAllForm: (formData, opts) => uploadForm('/admin/groups/broadcast-all', formData, opts),
+  /*
+   * Video reklama — bo'laklab yuklash (nginx 1 MB chegarasi / beqaror internetga chidamli).
+   * Avval video bo'laklarda serverga, keyin reklama kichik JSON so'rov bilan (uploadId).
+   * Telegram'ga yuklash vaqt olishi mumkin — so'rov chegarasi 5 daqiqa (POST takrorlanmaydi).
+   */
+  uploadAdVideo: (file, opts) => uploadVideoChunked(file, opts),
+  broadcastVideoToGroup: (chatId, data) => apiFetch(`/admin/groups/${chatId}/broadcast`, { method: 'POST', body: JSON.stringify(data), timeoutMs: 5 * 60_000 }),
+  broadcastVideoToAll: (data) => apiFetch('/admin/groups/broadcast-all', { method: 'POST', body: JSON.stringify(data), timeoutMs: 10 * 60_000 }),
 
   // Top joylar: "Barcha restoranlar"da 1/2/3-o'ringa PIN (muddat bilan) — Mijoz jalb qilish
   // Ertalabki ochilish tekshiruvi — barcha restoranlar bo'yicha jadval

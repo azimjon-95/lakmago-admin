@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 import { VideoPicker } from '@/components/VideoPicker';
-import { validateVideo } from '@/lib/adVideo';
+import { validateVideo, videoTypeOf } from '@/lib/adVideo';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { Img } from '@/components/Img';
 
@@ -20,6 +20,12 @@ export function BroadcastComposer({ target, onClose, onSent }) {
   const [mediaKind, setMediaKind] = useState('image');
   const [videoFile, setVideoFile] = useState(null);
   const [progress, setProgress] = useState(null); // null | 0..1 (video yuklanmoqda)
+  /*
+   * Yuklangan video id'si — Telegram'ga yuborishda xato bo'lsa (masalan guruh
+   * topilmadi), qayta bosilganda video QAYTA YUKLANMAYDI. Fayl almashsa bekor bo'ladi.
+   */
+  const [uploaded, setUploaded] = useState(null); // { file, uploadId }
+  const [stage, setStage] = useState(null);       // null | 'upload' | 'telegram'
   const [sending, setSending] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -48,20 +54,52 @@ export function BroadcastComposer({ target, onClose, onSent }) {
       let r;
       if (activeVideo) {
         /*
-         * VIDEO: multipart. Fayl serverda xotirada turadi va bazaga
-         * saqlanmasdan Telegram'ga uzatiladi. Maydonlar matn sifatida ketadi.
+         * VIDEO: avval 512 KB lik bo'laklarda serverga (har bo'lak alohida, uzilsa
+         * faqat o'sha bo'lak qayta ketadi), keyin reklama kichik JSON so'rov bilan.
+         * Fayl serverda vaqtincha turadi, bazaga saqlanmaydi.
          */
-        const form = new FormData();
-        form.append('text', payload.text);
-        form.append('buttonText', payload.buttonText);
-        form.append('buttonUrl', payload.buttonUrl);
-        form.append('pin', String(pin));
-        form.append('video', activeVideo, activeVideo.name);
-        const opts = { onProgress: setProgress };
-        setProgress(0);
-        r = target.all
-          ? await adminApi.broadcastToAllForm(form, opts)
-          : await adminApi.broadcastToGroupForm(target.chatId, form, opts);
+        let uploadId = uploaded?.file === activeVideo ? uploaded.uploadId : null;
+        if (!uploadId) {
+          setStage('upload');
+          setProgress(0);
+          try {
+            uploadId = await adminApi.uploadAdVideo(activeVideo, {
+              mimeType: videoTypeOf(activeVideo),
+              onProgress: setProgress,
+            });
+          } catch (e) {
+            // Server hali yangilanmagan (bo'laklash yo'q) — eski yo'l bilan
+            if (!/404|topilmadi/i.test(e.message) || e.code) throw e;
+            uploadId = null;
+          }
+          if (uploadId) setUploaded({ file: activeVideo, uploadId });
+        }
+        setStage('telegram');
+        setProgress(1);
+        if (uploadId) {
+          const body = { text: payload.text, buttonText: payload.buttonText, buttonUrl: payload.buttonUrl, pin, uploadId };
+          try {
+            r = target.all
+              ? await adminApi.broadcastVideoToAll(body)
+              : await adminApi.broadcastVideoToGroup(target.chatId, body);
+          } catch (e) {
+            // Server bo'laklarni topmadi (muddati o'tgan) — keyingi bosishda qayta yuklanadi
+            if (/Video topilmadi|to‘liq yuklanmagan/.test(e.message)) setUploaded(null);
+            throw e;
+          }
+        } else {
+          const form = new FormData();
+          form.append('text', payload.text);
+          form.append('buttonText', payload.buttonText);
+          form.append('buttonUrl', payload.buttonUrl);
+          form.append('pin', String(pin));
+          form.append('video', activeVideo, activeVideo.name);
+          setStage('upload');
+          const opts = { onProgress: setProgress };
+          r = target.all
+            ? await adminApi.broadcastToAllForm(form, opts)
+            : await adminApi.broadcastToGroupForm(target.chatId, form, opts);
+        }
       } else {
         r = target.all
           ? await adminApi.broadcastToAll(payload)
@@ -78,18 +116,20 @@ export function BroadcastComposer({ target, onClose, onSent }) {
     } finally {
       setSending(false);
       setProgress(null);
+      setStage(null);
     }
   };
 
   // Yuborish tugmasi matni: video yuklanayotganda foiz, keyin "Telegramga yuborilmoqda"
   const sendLabel = !sending
     ? (target.all ? 'Barcha guruhlarga yuborish' : 'Yuborish')
+    : stage === 'telegram' ? 'Telegramga yuborilmoqda...'
     : progress === null ? 'Yuborilmoqda...'
     : progress < 1 ? `Video yuklanmoqda ${Math.round(progress * 100)}%`
     : 'Telegramga yuborilmoqda...';
 
   return (
-    <div onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+    <div onClick={sending ? undefined : onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-3 sm:p-4">
       <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-2xl w-full max-w-3xl max-h-[92vh] overflow-hidden flex flex-col">
         {/* Sarlavha */}
         <div className="px-6 py-4 border-b border-line flex items-center justify-between">
@@ -99,12 +139,12 @@ export function BroadcastComposer({ target, onClose, onSent }) {
               {target.all ? 'Barcha faol guruhlarga' : `Guruh: ${target.title || target.chatId}`}
             </p>
           </div>
-          <button onClick={onClose} className="text-muted hover:text-ink"><i className="ti ti-x text-xl" /></button>
+          <button onClick={onClose} disabled={sending} className="text-muted hover:text-ink disabled:opacity-40" aria-label="Yopish"><i className="ti ti-x text-xl" /></button>
         </div>
 
-        <div className="flex-1 overflow-y-auto grid md:grid-cols-2 gap-0">
-          {/* CHAP: tahrirlash */}
-          <div className="p-6 border-r border-line grid gap-4 content-start">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden grid grid-cols-1 md:grid-cols-2 gap-0">
+          {/* CHAP: tahrirlash. min-w-0 — uzun fayl nomi ustunni kengaytirib, oynani yonga surib yubormasin */}
+          <div className="min-w-0 p-4 sm:p-6 md:border-r border-line grid grid-cols-1 gap-4 content-start">
             {/* Media turi: rasm YOKI video */}
             <div role="tablist" aria-label="Media turi" className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-canvas border border-line">
               {[['image', 'ti-photo', 'Rasm'], ['video', 'ti-video', 'Video']].map(([k, icon, label]) => (
@@ -148,7 +188,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
               <p className="text-[11px] text-muted mt-1">HTML formatlash: &lt;b&gt;qalin&lt;/b&gt;, &lt;i&gt;kursiv&lt;/i&gt;, emoji 🍽🔥⚡️</p>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
                 <label className="block text-sm font-medium text-ink mb-1.5">Tugma matni</label>
                 <input value={buttonText} onChange={(e) => setButtonText(e.target.value)} placeholder="🍽 Buyurtma berish" className="w-full px-3 py-2 rounded-xl border border-line bg-canvas text-ink outline-none focus:border-brand-400 text-sm" />
@@ -168,7 +208,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
           </div>
 
           {/* O'NG: jonli Telegram preview */}
-          <div className="p-6 bg-canvas">
+          <div className="min-w-0 p-4 sm:p-6 bg-canvas">
             <div className="text-xs text-muted mb-3">Telegram ko'rinishi:</div>
             <div className="bg-[#EFEAE2] rounded-xl p-3 min-h-[200px]" style={{ backgroundImage: 'radial-gradient(circle, rgba(0,0,0,0.02) 1px, transparent 1px)', backgroundSize: '16px 16px' }}>
               {/* Telegram xabar puffagi */}
@@ -210,7 +250,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
 
         {/* Yuborish */}
         <div className="px-6 py-4 border-t border-line flex gap-3">
-          <button onClick={onClose} className="px-5 py-2.5 border border-line text-muted rounded-xl hover:bg-canvas">Bekor</button>
+          <button onClick={onClose} disabled={sending} className="px-5 py-2.5 border border-line text-muted rounded-xl hover:bg-canvas disabled:opacity-40">Bekor</button>
           <button onClick={send} disabled={!canSend} className="flex-1 bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors disabled:opacity-50">
             {sendLabel}
           </button>
