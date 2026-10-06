@@ -89,7 +89,7 @@ function Shell({ children }) {
       <NotificationCenter />
 
       {/* Kontent. Mobilda aynan shu maydon suriladi. */}
-      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-none lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
         {/* Pastki menyu fixed — oxirgi element uning ostida
             qolib ketmasligi uchun bo'shliq qoldiramiz */}
         <div className="w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0">

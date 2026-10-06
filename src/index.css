@@ -12,6 +12,76 @@ body {
   overflow-x: hidden;
 }
 
+/* ═══════════════════ MOBIL: SKROLL VA ZOOM (2026-10) ═══════════════════
+ *
+ * 1) "REZINA" EFFEKT YO'Q. iOS'da sahifa eng tepada turganda yana pastga
+ *    tortilsa, kontent pastga sirg'alib tepada katta bo'sh joy paydo
+ *    bo'lardi (overscroll bounce). `overscroll-behavior: none` — skroll
+ *    chegarada QATTIQ to'xtaydi: tepada ham, pastda ham. Asosiy skroll
+ *    konteyner (App.jsx <main>) va barcha ichki skroll bloklarga (modal,
+ *    ro'yxat, chat) tegishli; ichki blok oxiriga yetganda sahifa ham
+ *    ergashib siljimaydi.
+ *
+ * 2) MAYDONGA BOSGANDA ZOOM YO'Q. iOS 16px dan kichik shriftli input'ga
+ *    fokus berilganda sahifani avtomatik kattalashtiradi va qaytarmaydi.
+ *    Telefonda (barmoq bilan boshqariladigan qurilmada) barcha yozish
+ *    maydonlari kamida 16px — kattaroq (text-lg va h.k.) o'zgarmaydi.
+ *    Qo'shimcha himoya: index.html'da maximum-scale=1 (iOS barmoq bilan
+ *    kattalashtirishni baribir ruxsat beradi — faqat avtomatik zoom yo'qoladi).
+ */
+html,
+body {
+  height: 100%;
+  overscroll-behavior: none;
+  /* Telefon burilganda iOS matnni o'zboshimcha kattalashtirmasin */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+@media (max-width: 1023px), (pointer: coarse) {
+  main,
+  [class*='overflow-y-auto'],
+  [class*='overflow-auto'],
+  [class*='overflow-y-scroll'] {
+    overscroll-behavior-y: none;
+  }
+}
+
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not(.text-lg):not(.text-xl):not(.text-2xl):not(.text-3xl):not(.text-4xl),
+  textarea:not(.text-lg):not(.text-xl):not(.text-2xl),
+  select:not(.text-lg):not(.text-xl):not(.text-2xl) {
+    font-size: 16px !important;
+  }
+
+  /* Bosilganda kulrang "chaqnash" yo'q; ikki marta bosishda zoom yo'q, bosish darhol ishlaydi */
+  html { -webkit-tap-highlight-color: transparent; }
+  a, button, input, select, textarea, label, [role='button'], [role='tab'] {
+    touch-action: manipulation;
+  }
+
+  /* iOS input'lariga ichki soya/yumaloqlik qo'shmasin — dizayndagi ko'rinish saqlansin.
+     Sana/vaqt maydonlari (Ish vaqti 08:30) TEGILMAYDI — iOS'da appearance:none
+     ularning qiymatini yashirib, balandligini buzadi. */
+  input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='color']):not([type='file']):not([type='date']):not([type='time']):not([type='datetime-local']):not([type='month']):not([type='week']),
+  textarea,
+  select {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+  /* appearance: none select'ning o'qini olib tashlaydi — qaytaramiz */
+  select:not([multiple]) {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236B6B66' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 12px;
+    padding-right: 2rem !important;
+  }
+}
+
+/* Sichqonchasiz bosishda fokus ramkasi chiqmasin; klaviatura bilan — chiqadi */
+:focus:not(:focus-visible) { outline: none; }
+
 @keyframes fade-in {
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: translateY(0); }
