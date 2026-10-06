@@ -30,6 +30,8 @@ export const panelApi = {
   cancelAd: (id) => apiFetch(`/panel/ads/${id}`, { method: 'DELETE' }),
 
   getProfile: () => apiFetch('/panel/me'),
+  // Lokma Market — do'kon mahsulot kategoriyalari (server: constants/marketCategories.js)
+  getMarketCategories: () => apiFetch('/market/categories'),
   // Dine-in
   downloadFile,
   getDineInConfig: () => apiFetch('/panel/dine-in'),

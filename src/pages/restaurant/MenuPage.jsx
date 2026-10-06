@@ -9,6 +9,7 @@ import { Img } from '@/components/Img';
 import { catalogCategoryLabel } from '@/constants/catalogCategories';
 import { OptionGroupsEditor, validateOptionGroups, serializeOptionGroups } from '@/components/OptionGroupsEditor';
 import { isVariantGroup } from '@/lib/dishPricing';
+import { StoreMenuPage } from './StoreMenuPage';
 
 // Taom kategoriyalari — barcha muassasalar uchun umumiy.
 // Restoran, kafe, bar, choyxona — hammasi shu ro'yxatdan tanlaydi.
@@ -41,7 +42,26 @@ const DISH_CATEGORIES = [
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
+/*
+ * Muassasa DO'KON bo'lsa (Magazin / Oziq-ovqat do'koni / Meva-sabzavot —
+ * server `isStore` beradi) — menyu o'rniga mahsulotlar sahifasi
+ * (StoreMenuPage): o'z kategoriyalari, birlik (kg/dona/l), qadoq, brend.
+ * Restoranlar uchun avvalgi menyu sahifasi O'ZGARMAGAN (FoodMenuPage).
+ */
 export function RestaurantMenuPage() {
+  const [kind, setKind] = useState(null); // null | 'store' | 'food'
+  useEffect(() => {
+    let alive = true;
+    panelApi.getProfile()
+      .then((p) => { if (alive) setKind(p?.isStore ? 'store' : 'food'); })
+      .catch(() => { if (alive) setKind('food'); });
+    return () => { alive = false; };
+  }, []);
+  if (!kind) return <div className="flex-1 p-6 text-sm text-muted">Yuklanmoqda...</div>;
+  return kind === 'store' ? <StoreMenuPage /> : <FoodMenuPage />;
+}
+
+function FoodMenuPage() {
   const [dishes, setDishes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
