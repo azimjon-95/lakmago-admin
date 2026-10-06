@@ -6,7 +6,13 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
 
-const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '' };
+const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '', placement: 'home' };
+
+// Banner qayerda chiqadi — server: Banner.placement
+const PLACEMENTS = [
+  { value: 'home', label: 'Bosh sahifa', icon: 'ti-home' },
+  { value: 'market', label: 'Lokma Market', icon: 'ti-basket' },
+];
 const BG_PRESETS = ['#411E00', '#993C1D', '#1E3A2F', '#2C2140', '#0E2A3A', '#3A1E2E'];
 
 export function BannersPage() {
@@ -39,7 +45,7 @@ export function BannersPage() {
 
   const openNew = () => { setForm(EMPTY); setEditing('new'); };
   const openEdit = (b) => {
-    setForm({ title: b.title || '', eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift', hasButton: b.hasButton || false, linkUrl: b.linkUrl || '' });
+    setForm({ title: b.title || '', eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift', hasButton: b.hasButton || false, linkUrl: b.linkUrl || '', placement: b.placement || 'home' });
     setEditing(b);
   };
 
@@ -150,6 +156,24 @@ export function BannersPage() {
               )}
             </div>
 
+            {/* 0. Qayerda chiqadi */}
+            <div className="mb-4">
+              <label className="block text-xs text-muted mb-1">Qayerda ko'rinadi</label>
+              <div className="grid grid-cols-2 gap-2">
+                {PLACEMENTS.map((p) => (
+                  <button
+                    key={p.value}
+                    type="button"
+                    onClick={() => setForm({ ...form, placement: p.value })}
+                    className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-medium transition-colors ${
+                      form.placement === p.value ? 'border-brand-400 bg-brand-100 text-brand-text' : 'border-line text-muted hover:bg-canvas'}`}
+                  >
+                    <i className={`ti ${p.icon}`} /> {p.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* 1. Rasm — asosiy */}
             <div className="mb-4">
               <ImageUpload
@@ -222,6 +246,13 @@ function BannerCard({ banner: b, onEdit, onDelete, showOwner }) {
       <div className="flex-1 min-w-0">
         {b.eyebrow && <div className="text-[11px] text-brand-600 font-medium">{b.eyebrow}</div>}
         <div className="text-sm font-medium text-ink truncate">{b.title}</div>
+        {b.kind === 'platform' && (
+          <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium ${
+            b.placement === 'market' ? 'bg-green-50 text-green-700' : 'bg-canvas text-muted'}`}>
+            <i className={`ti ${b.placement === 'market' ? 'ti-basket' : 'ti-home'} text-[11px]`} />
+            {b.placement === 'market' ? 'Lokma Market' : 'Bosh sahifa'}
+          </span>
+        )}
         {showOwner && <div className="text-xs text-muted mt-0.5"><i className="ti ti-building-store text-[11px]" /> {b.restaurantName || 'Restoran'}</div>}
       </div>
       <div className="flex items-center gap-2 flex-none">
