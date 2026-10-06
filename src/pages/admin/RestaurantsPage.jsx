@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { KIND_LABEL } from './restaurantMeta';
@@ -7,12 +7,17 @@ import { confirm, confirmWithReason } from '@/components/ui/confirm';
 import { Expandable } from '@/components/Expandable';
 
 
+
+// Do'kon kategoriyalari — server services/storeRules.js bilan bir xil
+const STORE_CATEGORIES = ['magazin_oziq', 'magazin_meva', 'magazin'];
+
 export function RestaurantsPage() {
   const [list, setList] = useState([]);
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState(null);
   const [q, setQ] = useState('');
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -124,9 +129,20 @@ export function RestaurantsPage() {
    */
   const norm = (s) => String(s || '').toLowerCase().trim();
   const query = norm(q);
+  /*
+   * Ikki bo'lim: Restoranlar (standart) va Market (do'konlar).
+   * Do'kon qoidasi server bilan BIR XIL (lakmago-server services/storeRules.js):
+   * turi "Magazin" (kind='shop') yoki kategoriyasi oziq-ovqat do'koni / meva-sabzavot.
+   * Tanlangan bo'lim URL'da (?tab=market) — orqaga qaytganda saqlanadi.
+   */
+  const isStoreRow = (r) => r.kind === 'shop' || STORE_CATEGORIES.includes(r.category);
+  const tab = searchParams.get('tab') === 'market' ? 'market' : 'food';
+  const setTab = (next) => setSearchParams(next === 'market' ? { tab: 'market' } : {}, { replace: true });
+  const storeCount = list.filter(isStoreRow).length;
+  const tabList = list.filter((r) => (tab === 'market' ? isStoreRow(r) : !isStoreRow(r)));
   const filtered = query
-    ? list.filter((r) => norm(r.name).includes(query) || norm(r.ownerLogin).includes(query))
-    : list;
+    ? tabList.filter((r) => norm(r.name).includes(query) || norm(r.ownerLogin).includes(query))
+    : tabList;
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0">
@@ -175,18 +191,42 @@ export function RestaurantsPage() {
         </label>
       </div>
 
+      {/* Bo'limlar: Restoranlar | Market */}
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-grid sm:w-auto">
+        {[
+          { key: 'food', label: 'Restoranlar', icon: 'ti-tools-kitchen-2', count: list.length - storeCount },
+          { key: 'market', label: 'Market', icon: 'ti-basket', count: storeCount },
+        ].map((x) => (
+          <button
+            key={x.key}
+            type="button"
+            onClick={() => setTab(x.key)}
+            className={`flex items-center justify-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+              tab === x.key ? 'bg-brand-400 text-brand-text shadow-sm' : 'text-muted hover:text-ink hover:bg-canvas'}`}
+          >
+            <i className={`ti ${x.icon} text-base`} />
+            {x.label}
+            <span className={`rounded-full px-1.5 text-[11px] tabular-nums ${tab === x.key ? 'bg-white/40' : 'bg-canvas'}`}>
+              {loading ? '…' : x.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {err && <div className="mb-4 text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{err}</div>}
 
       {loading ? (
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
       ) : (
         <div className="grid gap-3">
-          {list.length === 0 && (
+          {tabList.length === 0 && (
             <div className="text-center text-muted text-sm py-12 border border-dashed border-line rounded-xl">
-              Hozircha muassasa yo'q. "Yangi qo'shish" tugmasini bosing.
+              {tab === 'market'
+                ? 'Hozircha do‘kon yo‘q. Qo‘shishda turini "Magazin" yoki kategoriyasini "Oziq-ovqat do‘koni" tanlang.'
+                : 'Hozircha restoran yo‘q. "Yangi qo‘shish" tugmasini bosing.'}
             </div>
           )}
-          {list.length > 0 && filtered.length === 0 && (
+          {tabList.length > 0 && filtered.length === 0 && (
             <div className="text-center text-muted text-sm py-12 border border-dashed border-line rounded-xl">
               <i className="ti ti-search-off text-2xl mb-2 block" />
               "{q}" bo'yicha hech narsa topilmadi
