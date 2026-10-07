@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { NavLink, useLocation } from "react-router-dom";
+import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/store/auth";
 import { useStoppedCount } from "@/hooks/useStoppedCount";
@@ -198,6 +198,55 @@ const restaurantNav = [
 
 
 // =======================
+// TO'YXONALAR MENYUSI (alohida server — lokma-toyxonalar-server)
+// =======================
+const weddingNav = [
+  { to: "/weddings", icon: "ti-layout-dashboard", label: "Boshqaruv", end: true },
+  { to: "/weddings/venues", icon: "ti-building-castle", label: "To'yxonalar" },
+  { to: "/weddings/bookings", icon: "ti-calendar-event", label: "Bronlar" },
+  { to: "/weddings/payments", icon: "ti-receipt", label: "Oylik to'lovlar" },
+  { to: "/weddings/videographers", icon: "ti-video", label: "Videochilar" },
+  { to: "/weddings/corteges", icon: "ti-car", label: "Kortejlar" },
+];
+
+/*
+ * SOHA TANLASH: "Restoran / Do'konlar" (LokmaGo) yoki "To'yxonalar".
+ * Soha URL'dan aniqlanadi (/weddings/* — to'yxonalar), shuning uchun
+ * sahifa yangilansa ham, havola ulashilsa ham to'g'ri soha ochiladi.
+ * Tanlanganda o'sha sohaning bosh sahifasiga o'tiladi — boshqa sohaning
+ * sahifalari yuklanmaydi, ularning ma'lumoti so'ralmaydi.
+ */
+const DOMAINS = [
+  { key: "lokma", label: "Restoran / Do'konlar", icon: "ti-tools-kitchen-2", home: "/" },
+  { key: "wedding", label: "To'yxonalar", icon: "ti-building-castle", home: "/weddings" },
+];
+
+function DomainSwitch({ domain, onPick }) {
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-[14px] bg-white/[0.07] p-1" role="tablist" aria-label="Soha">
+      {DOMAINS.map((d) => {
+        const on = d.key === domain;
+        return (
+          <button
+            key={d.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            onClick={() => onPick(d)}
+            className={`flex items-center justify-center gap-1.5 rounded-[10px] px-2 py-2 text-[12.5px] font-semibold leading-tight transition-colors ${
+              on ? "bg-brand-400 text-brand-text shadow-sm" : "text-white/60 hover:text-white active:bg-white/10"}`}
+          >
+            <i className={`ti ${d.icon} text-[15px]`} />
+            <span className="truncate">{d.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+
+// =======================
 // COMPONENT
 // =======================
 
@@ -219,7 +268,17 @@ const isAdminLike = isAdmin || isStaff;
 // Dine-in tasdiqlanmaguncha zal bo'limlari ko'rinmaydi
 const {isActive: dineInActive}=useDineInStatus(!isAdminLike);
 
-const nav = (isAdminLike ? adminNav : restaurantNav)
+// Soha (faqat admin uchun): URL /weddings/* bo'lsa — to'yxonalar
+const loc = useLocation();
+const navigateTo = useNavigate();
+const domain = isAdmin && loc.pathname.startsWith("/weddings") ? "wedding" : "lokma";
+const pickDomain = (d) => {
+  if (d.key === domain) return;
+  try { localStorage.setItem("admin_domain", d.key); } catch { /* bloklangan */ }
+  navigateTo(d.home);
+};
+
+const nav = (domain === "wedding" ? weddingNav : isAdminLike ? adminNav : restaurantNav)
   .filter((item) => !item.dineInOnly || dineInActive)
   // Xodim (staff): faqat serverdan kelgan allowedPages ro'yxatidagi
   // sahifalar, va hech qachon adminOnly (Xodimlar) bandi
@@ -676,7 +735,11 @@ border-white/10
 
 </div>
 
-
+{isAdmin && (
+  <div className="px-4 pt-4">
+    <DomainSwitch domain={domain} onPick={pickDomain} />
+  </div>
+)}
 
 
 <div className="
@@ -807,6 +870,12 @@ border-white/10
           <i className="ti ti-x text-base"/>
         </button>
       </div>
+
+      {isAdmin && (
+        <div className="flex-none px-4 pb-3">
+          <DomainSwitch domain={domain} onPick={(d) => { setOpen(false); pickDomain(d); }} />
+        </div>
+      )}
 
       {/* Bandlar — bitta guruhlangan ro'yxat, orasida ingichka
           ajratgich. Ikonka ustunidan keyin boshlanadi. */}

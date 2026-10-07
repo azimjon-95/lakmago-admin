@@ -377,3 +377,44 @@ export const adminApi = {
   getOrders: (params = '') => apiFetch(`/admin/orders${params}`),
   getLiveOrders: () => apiFetch('/admin/orders/live'),
 };
+
+
+/*
+ * ═══ LOKMA TO'YXONALARI — ALOHIDA SERVER (lokma-toyxonalar-server) ═══
+ * So'rovlar lakmago-server orqali proksilanadi: /api/admin/wedding/* →
+ * to'yxona serveri /api/admin/* (admin kaliti brauzerga chiqmaydi).
+ * LokmaGo ma'lumotlari bilan hech qachon aralashmaydi.
+ */
+const W = '/admin/wedding';
+const wq = (params = {}) => {
+  const qs = new URLSearchParams(Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== ''));
+  return qs.toString() ? `?${qs}` : '';
+};
+const wjson = (method, body) => ({ method, body: JSON.stringify(body ?? {}) });
+
+export const weddingApi = {
+  stats: () => apiFetch(`${W}/stats`),
+  // To'yxonalar
+  venues: (params) => apiFetch(`${W}/venues${wq(params)}`),
+  venue: (id) => apiFetch(`${W}/venues/${id}`),
+  createVenue: (d) => apiFetch(`${W}/venues`, wjson('POST', d)),
+  updateVenue: (id, d) => apiFetch(`${W}/venues/${id}`, wjson('PATCH', d)),
+  blockVenue: (id, reason) => apiFetch(`${W}/venues/${id}/block`, wjson('POST', { reason })),
+  unblockVenue: (id) => apiFetch(`${W}/venues/${id}/unblock`, wjson('POST')),
+  // Oylik to'lovlar
+  subscriptions: () => apiFetch(`${W}/subscriptions`),
+  payments: (params) => apiFetch(`${W}/payments${wq(params)}`),
+  addPayment: (d) => apiFetch(`${W}/payments`, wjson('POST', d)),
+  deletePayment: (id) => apiFetch(`${W}/payments/${id}`, { method: 'DELETE' }),
+  // Bronlar
+  bookings: (params) => apiFetch(`${W}/bookings${wq(params)}`),
+  confirmBooking: (id) => apiFetch(`${W}/bookings/${id}/confirm`, wjson('POST')),
+  cancelBooking: (id, reason) => apiFetch(`${W}/bookings/${id}/cancel`, wjson('POST', { reason })),
+  // Videochilar / Kortejlar
+  vendors: (type) => apiFetch(`${W}/vendors${wq({ type })}`),
+  createVendor: (d) => apiFetch(`${W}/vendors`, wjson('POST', d)),
+  updateVendor: (id, d) => apiFetch(`${W}/vendors/${id}`, wjson('PATCH', d)),
+  blockVendor: (id, reason) => apiFetch(`${W}/vendors/${id}/block`, wjson('POST', { reason })),
+  unblockVendor: (id) => apiFetch(`${W}/vendors/${id}/unblock`, wjson('POST')),
+  deleteVendor: (id) => apiFetch(`${W}/vendors/${id}`, { method: 'DELETE' }),
+};

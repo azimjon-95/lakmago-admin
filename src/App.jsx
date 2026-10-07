@@ -18,6 +18,13 @@ import { MorningCheckBanner } from '@/components/restaurant/MorningCheckBanner';
  * ko'rinadigan ekran, uni kechiktirish mantiqsiz.
  */
 const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage').then((m) => ({ default: m.DashboardPage })));
+// ── To'yxonalar sohasi (alohida server) — faqat admin, faqat tanlanganda yuklanadi
+const WeddingDashboardPage = lazy(() => import('@/pages/wedding/WeddingDashboardPage').then((m) => ({ default: m.WeddingDashboardPage })));
+const WeddingVenuesPage = lazy(() => import('@/pages/wedding/VenuesPage').then((m) => ({ default: m.VenuesPage })));
+const WeddingVenueFormPage = lazy(() => import('@/pages/wedding/VenueFormPage').then((m) => ({ default: m.VenueFormPage })));
+const WeddingBookingsPage = lazy(() => import('@/pages/wedding/BookingsPage').then((m) => ({ default: m.WeddingBookingsPage })));
+const WeddingPaymentsPage = lazy(() => import('@/pages/wedding/PaymentsPage').then((m) => ({ default: m.PaymentsPage })));
+const WeddingVendorsPage = lazy(() => import('@/pages/wedding/VendorsPage').then((m) => ({ default: m.VendorsPage })));
 const RestaurantsPage = lazy(() => import('@/pages/admin/RestaurantsPage').then((m) => ({ default: m.RestaurantsPage })));
 const CreateRestaurantLayout = lazy(() => import('@/pages/admin/create-restaurant/context').then((m) => ({ default: m.CreateRestaurantLayout })));
 const Step1Basic = lazy(() => import('@/pages/admin/create-restaurant/Step1Basic').then((m) => ({ default: m.Step1Basic })));
@@ -119,11 +126,25 @@ function Guarded({ page, children }) {
   return <Navigate to="/" replace />;
 }
 
+// To'yxonalar sohasi — faqat administrator (xodimlarga ochilmaydi)
+function AdminOnly({ children }) {
+  const user = useAuth((s) => s.user);
+  return user?.role === 'admin' ? children : <Navigate to="/" replace />;
+}
+
 function AdminRoutes() {
   return (
     <Shell>
       <Routes>
         <Route path="/" element={<DashboardPage />} />
+        {/* To'yxonalar sohasi — LokmaGo ma'lumotlari bilan aralashmaydi */}
+        <Route path="/weddings" element={<AdminOnly><WeddingDashboardPage /></AdminOnly>} />
+        <Route path="/weddings/venues" element={<AdminOnly><WeddingVenuesPage /></AdminOnly>} />
+        <Route path="/weddings/venues/:id" element={<AdminOnly><WeddingVenueFormPage /></AdminOnly>} />
+        <Route path="/weddings/bookings" element={<AdminOnly><WeddingBookingsPage /></AdminOnly>} />
+        <Route path="/weddings/payments" element={<AdminOnly><WeddingPaymentsPage /></AdminOnly>} />
+        <Route path="/weddings/videographers" element={<AdminOnly><WeddingVendorsPage key="video" type="video" /></AdminOnly>} />
+        <Route path="/weddings/corteges" element={<AdminOnly><WeddingVendorsPage key="cortege" type="cortege" /></AdminOnly>} />
         <Route path="/restaurants" element={<Guarded page="restaurants"><RestaurantsPage /></Guarded>} />
         <Route path="/restaurants/new" element={<Guarded page="restaurants"><CreateRestaurantLayout /></Guarded>}>
           <Route index element={<Navigate to="asosiy" replace />} />
