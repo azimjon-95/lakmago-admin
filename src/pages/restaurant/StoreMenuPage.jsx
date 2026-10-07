@@ -5,6 +5,7 @@ import { MoneyInput } from '@/components/form/NumberInput';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
+import { StoreCatalogPicker } from './StoreCatalogPicker';
 
 /*
  * ═══ DO'KON MAHSULOTLARI (Lokma Market) ═══
@@ -29,6 +30,7 @@ export function StoreMenuPage() {
   const [q, setQ] = useState('');
   const [cat, setCat] = useState('all');
   const [busyId, setBusyId] = useState(null);
+  const [catalogOpen, setCatalogOpen] = useState(false);
 
   const load = useCallback(async () => {
     try { setProducts(await panelApi.getDishes()); }
@@ -115,13 +117,25 @@ export function StoreMenuPage() {
             {products.length} ta mahsulot{stopped ? ` · ${stopped} tasi tugagan (STOP)` : ''} · Lokma Market'da ko'rinadi
           </p>
         </div>
-        <button
-          onClick={() => setForm({})}
-          disabled={!meta}
-          className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
-        >
-          <i className="ti ti-plus" /> Mahsulot qo'shish
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Umumiy katalogdan — Market maydonlari avtomatik to'ldiriladi */}
+          <button
+            onClick={() => setCatalogOpen(true)}
+            disabled={!meta}
+            title="Umumiy katalogdagi tayyor mahsulotlar"
+            className="border border-line text-muted font-medium px-3 py-2.5 rounded-xl hover:bg-canvas transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+          >
+            <i className="ti ti-package" />
+            <span className="hidden sm:inline">Katalogdan</span>
+          </button>
+          <button
+            onClick={() => setForm({})}
+            disabled={!meta}
+            className="bg-brand-400 text-brand-text font-medium px-4 py-2.5 rounded-xl hover:bg-brand-600 hover:text-white transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+          >
+            <i className="ti ti-plus" /> Mahsulot qo'shish
+          </button>
+        </div>
       </div>
 
       {metaErr && (
@@ -224,6 +238,14 @@ export function StoreMenuPage() {
             </div>
           </div>
         ))
+      )}
+
+      {catalogOpen && meta && (
+        <StoreCatalogPicker
+          meta={meta}
+          onClose={() => setCatalogOpen(false)}
+          onAdded={() => { setCatalogOpen(false); load(); }}
+        />
       )}
 
       {form && meta && (
