@@ -6,8 +6,21 @@ import { useLockScroll } from '@/hooks/useLockScroll';
  */
 export const som = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
-export const SESSION_LABEL = { morning: 'Ertalab', day: 'Kunduzi', evening: 'Kechqurun' };
-export const EVENT_LABEL = { nahorgi_osh: 'Nahorgi osh', nikoh: 'Nikoh', kunduzgi: 'Kunduzgi', kechki: 'Kechki' };
+// Seanslar — server lib/sessions.ts bilan bir xil (kodlar bazada saqlanadi)
+export const SESSION_LABEL = { morning: 'Nahorgi osh', day: "Nikoh to'yi", evening: 'Kunduzgi / Vecher', special: 'Maxsus tadbir' };
+export const SESSION_HINT = {
+  morning: 'Ertalabki osh',
+  day: 'Kunduzgi nikoh marosimi',
+  evening: "Asosiy to'y kechasi",
+  special: 'Konsert, shou, majlis — plandan tashqari',
+};
+export const SESSION_ICON = { morning: 'ti-sunrise', day: 'ti-sun', evening: 'ti-moon-stars', special: 'ti-confetti' };
+export const EVENT_LABEL = { nahorgi_osh: 'Nahorgi osh', nikoh: 'Nikoh', kunduzgi: 'Kunduzgi', kechki: 'Kechki', tadbir: 'Tadbir (konsert, shou)' };
+export const PRICING_MODE = {
+  per_guest: { label: 'Mehmon boshiga', hint: 'Menyu narxi × mehmonlar × koeffitsient' },
+  fixed: { label: 'Aniq narx', hint: 'Seans uchun bitta narx, mehmon soniga bog‘liq emas' },
+  negotiable: { label: 'Kelishiladi', hint: 'Narx yo‘q, onlayn bron qilinmaydi — egasi qo‘lda band qiladi' },
+};
 export const BOOKING_STATUS = {
   pending: { label: 'Kutilmoqda', cls: 'bg-amber-50 text-amber-700' },
   confirmed: { label: 'Tasdiqlangan', cls: 'bg-green-50 text-green-700' },

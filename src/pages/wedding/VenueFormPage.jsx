@@ -6,6 +6,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import {
   PageHeader, ErrorBox, Section, Field, Badge, SubBadge, VENUE_STATUS, SESSION_LABEL, EVENT_LABEL,
+  SESSION_HINT, SESSION_ICON, PRICING_MODE,
   PAY_METHOD, som, fmtDate,
 } from './common';
 import { PaymentModal } from './PaymentModal';
@@ -23,10 +24,15 @@ const EMPTY = {
   name: '', slug: '', district: '', address: '', phone: '', description: '',
   lat: '', lng: '', photos: [], amenities: [], parking_spots: 0,
   halls: [{ name: 'Asosiy zal', capacity_min: 150, capacity_max: 500 }],
+  /*
+   * 3 asosiy seans + maxsus tadbir. Narx turi har seansda alohida:
+   * mehmon boshiga / aniq narx / kelishiladi (server lib/sessions.ts).
+   */
   sessions: [
-    { code: 'morning', on: true, start_time: '06:00', end_time: '10:00', event_types: ['nahorgi_osh'], price_factor: 0.6, min_guests: 100 },
-    { code: 'day', on: true, start_time: '12:00', end_time: '16:00', event_types: ['nikoh', 'kunduzgi'], price_factor: 0.8, min_guests: 100 },
-    { code: 'evening', on: true, start_time: '18:00', end_time: '23:00', event_types: ['kechki'], price_factor: 1, min_guests: 150 },
+    { code: 'morning', on: true, start_time: '06:00', end_time: '10:00', event_types: ['nahorgi_osh'], price_factor: 0.6, min_guests: 100, pricing_mode: 'per_guest', fixed_price: 0, note: '' },
+    { code: 'day', on: true, start_time: '12:00', end_time: '16:00', event_types: ['nikoh', 'kunduzgi'], price_factor: 0.8, min_guests: 100, pricing_mode: 'per_guest', fixed_price: 0, note: '' },
+    { code: 'evening', on: true, start_time: '18:00', end_time: '23:00', event_types: ['kechki'], price_factor: 1, min_guests: 150, pricing_mode: 'per_guest', fixed_price: 0, note: '' },
+    { code: 'special', on: false, start_time: '10:00', end_time: '22:00', event_types: ['tadbir'], price_factor: 1, min_guests: 1, pricing_mode: 'negotiable', fixed_price: 0, note: 'Konsert, shou, majlislar — narx kelishiladi' },
   ],
   menu_packages: [{ name: 'Standart', items_text: '', price_per_guest: 150000 }],
   weekend_factor: 1.15, deposit_percent: 30, guests_min: 150, status: 'active',
@@ -104,6 +110,7 @@ export function VenueFormPage() {
     for (const s of ss) {
       if (!/^\d{2}:\d{2}$/.test(s.start_time) || !/^\d{2}:\d{2}$/.test(s.end_time)) return `${SESSION_LABEL[s.code]}: vaqt noto'g'ri`;
       if (!s.event_types.length) return `${SESSION_LABEL[s.code]}: tadbir turini tanlang`;
+      if (s.pricing_mode === 'fixed' && !(Number(s.fixed_price) > 0)) return `${SESSION_LABEL[s.code]}: aniq narxni kiriting`;
     }
     if (!f.menu_packages.length) return 'Kamida bitta menyu paketi kerak';
     for (const m of f.menu_packages) if (!m.name.trim() || !(m.price_per_guest >= 0)) return 'Menyu paketi noto‘g‘ri';
@@ -121,7 +128,11 @@ export function VenueFormPage() {
       photos: f.photos.filter(Boolean), amenities: f.amenities, parking_spots: Number(f.parking_spots) || 0,
       halls: f.halls.map((h) => ({ name: h.name.trim(), capacity_min: Number(h.capacity_min), capacity_max: Number(h.capacity_max) })),
       sessions: f.sessions.filter((s) => s.on).map(({ on, ...s }) => ({
-        ...s, price_factor: Number(s.price_factor), min_guests: Number(s.min_guests),
+        code: s.code, start_time: s.start_time, end_time: s.end_time, event_types: s.event_types,
+        price_factor: Number(s.price_factor) || 1, min_guests: Number(s.min_guests) || 1,
+        pricing_mode: s.pricing_mode || 'per_guest',
+        fixed_price: s.pricing_mode === 'fixed' ? Number(s.fixed_price) || 0 : 0,
+        note: (s.note || '').trim(),
       })),
       menu_packages: f.menu_packages.map((m) => ({ name: m.name.trim(), items_text: m.items_text || '', price_per_guest: Number(m.price_per_guest) || 0 })),
       weekend_factor: Number(f.weekend_factor), deposit_percent: Number(f.deposit_percent), guests_min: Number(f.guests_min),
@@ -251,34 +262,10 @@ export function VenueFormPage() {
         {!isNew && <p className="text-[11px] text-muted mt-1">Zalni o'chirish bronlar tarixiga ta'sir qilmaydi, lekin uning kalendari yo'qoladi.</p>}
       </Section>
 
-      <Section title="Seanslar" icon="ti-clock">
-        {f.sessions.map((s, i) => (
-          <div key={s.code} className={`rounded-xl border p-3 mb-2 ${s.on ? 'border-line' : 'border-dashed border-line opacity-60'}`}>
-            <label className="flex items-center gap-2 font-medium text-sm text-ink mb-2">
-              <input type="checkbox" checked={s.on} onChange={(e) => setArr('sessions', i, { on: e.target.checked })} />
-              {SESSION_LABEL[s.code]}
-            </label>
-            {s.on && (
-              <>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  <Field label="Boshlanish" className="mb-0"><input className={inp} type="time" value={s.start_time} onChange={(e) => setArr('sessions', i, { start_time: e.target.value })} /></Field>
-                  <Field label="Tugash" className="mb-0"><input className={inp} type="time" value={s.end_time} onChange={(e) => setArr('sessions', i, { end_time: e.target.value })} /></Field>
-                  <Field label="Narx koeffitsienti" className="mb-0"><input className={inp} type="number" step="0.05" min="0.1" max="5" value={s.price_factor} onChange={(e) => setArr('sessions', i, { price_factor: e.target.value })} /></Field>
-                  <Field label="Min. mehmon" className="mb-0"><input className={inp} type="number" min="1" value={s.min_guests} onChange={(e) => setArr('sessions', i, { min_guests: e.target.value })} /></Field>
-                </div>
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {Object.entries(EVENT_LABEL).map(([k, l]) => {
-                    const on = s.event_types.includes(k);
-                    return (
-                      <button key={k} type="button" onClick={() => setArr('sessions', i, { event_types: on ? s.event_types.filter((x) => x !== k) : [...s.event_types, k] })}
-                        className={`px-2.5 py-1 rounded-full border text-[11px] font-medium ${on ? 'border-brand-400 bg-brand-100 text-brand-text' : 'border-line text-muted'}`}>{l}</button>
-                    );
-                  })}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+      <Section title="Seanslar" icon="ti-clock" right={<span className="text-[11px] text-muted">{f.sessions.filter((x) => x.on).length} ta yoqilgan</span>}>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {f.sessions.map((s, i) => <SessionCard key={s.code} s={s} onChange={(patch) => setArr('sessions', i, patch)} />)}
+        </div>
       </Section>
 
       <Section title="Menyu paketlari" icon="ti-tools-kitchen-2" right={
@@ -358,3 +345,104 @@ export function VenueFormPage() {
   );
 }
 
+
+
+/*
+ * Seans kartasi — telefonga moslangan: hamma maydon to'liq kenglikda,
+ * vaqtlar ikki ustunda (min-w-0 — iOS vaqt maydoni kartadan chiqib ketmaydi),
+ * narx turi segment tugma bilan, faqat kerakli maydonlar ko'rinadi.
+ */
+function SessionCard({ s, onChange }) {
+  const mode = s.pricing_mode || 'per_guest';
+  return (
+    <div className={`min-w-0 rounded-2xl border p-3.5 transition-colors ${s.on ? 'border-line bg-surface' : 'border-dashed border-line bg-canvas/60'}`}>
+      <button type="button" onClick={() => onChange({ on: !s.on })} className="flex w-full items-center gap-3 text-left">
+        <span className={`flex h-10 w-10 flex-none items-center justify-center rounded-xl ${s.on ? 'bg-brand-100 text-brand-text' : 'bg-canvas text-muted'}`}>
+          <i className={`ti ${SESSION_ICON[s.code]} text-xl`} />
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className={`block text-[15px] font-semibold ${s.on ? 'text-ink' : 'text-muted'}`}>{SESSION_LABEL[s.code]}</span>
+          <span className="block truncate text-xs text-muted">{SESSION_HINT[s.code]}</span>
+        </span>
+        {/* Yoqish/o'chirish */}
+        <span className={`relative h-6 w-11 flex-none rounded-full transition-colors ${s.on ? 'bg-green-500' : 'bg-black/15'}`}>
+          <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${s.on ? 'left-[22px]' : 'left-0.5'}`} />
+        </span>
+      </button>
+
+      {s.on && (
+        <div className="mt-3 space-y-3">
+          <div className="grid grid-cols-2 gap-2">
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs font-medium text-ink">Boshlanish</span>
+              <input className="inp w-full min-w-0 text-center" type="time" value={s.start_time} onChange={(e) => onChange({ start_time: e.target.value })} />
+            </label>
+            <label className="min-w-0">
+              <span className="mb-1 block text-xs font-medium text-ink">Tugash</span>
+              <input className="inp w-full min-w-0 text-center" type="time" value={s.end_time} onChange={(e) => onChange({ end_time: e.target.value })} />
+            </label>
+          </div>
+
+          <div>
+            <span className="mb-1 block text-xs font-medium text-ink">Narx</span>
+            <div className="grid grid-cols-3 gap-1 rounded-xl bg-canvas p-1">
+              {Object.entries(PRICING_MODE).map(([k, m]) => (
+                <button key={k} type="button" onClick={() => onChange({ pricing_mode: k })}
+                  className={`rounded-lg px-1 py-2 text-[12px] font-semibold leading-tight ${mode === k ? 'bg-white text-ink shadow-sm' : 'text-muted'}`}>
+                  {m.label}
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[11px] text-muted">{PRICING_MODE[mode].hint}</p>
+          </div>
+
+          {mode === 'per_guest' && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="min-w-0">
+                <span className="mb-1 block text-xs font-medium text-ink">Koeffitsient</span>
+                <input className="inp w-full min-w-0" type="number" inputMode="decimal" step="0.05" min="0.1" max="5" value={s.price_factor} onChange={(e) => onChange({ price_factor: e.target.value })} />
+              </label>
+              <label className="min-w-0">
+                <span className="mb-1 block text-xs font-medium text-ink">Min. mehmon</span>
+                <input className="inp w-full min-w-0" type="number" inputMode="numeric" min="1" value={s.min_guests} onChange={(e) => onChange({ min_guests: e.target.value })} />
+              </label>
+            </div>
+          )}
+          {mode === 'fixed' && (
+            <div className="grid grid-cols-2 gap-2">
+              <label className="min-w-0">
+                <span className="mb-1 block text-xs font-medium text-ink">Seans narxi (so'm)</span>
+                <MoneyInput value={s.fixed_price || null} onChange={(v) => onChange({ fixed_price: v || 0 })} placeholder="25 000 000" />
+              </label>
+              <label className="min-w-0">
+                <span className="mb-1 block text-xs font-medium text-ink">Min. mehmon</span>
+                <input className="inp w-full min-w-0" type="number" inputMode="numeric" min="1" value={s.min_guests} onChange={(e) => onChange({ min_guests: e.target.value })} />
+              </label>
+            </div>
+          )}
+          {mode === 'negotiable' && (
+            <label className="block">
+              <span className="mb-1 block text-xs font-medium text-ink">Mijozga izoh</span>
+              <input className="inp w-full" value={s.note || ''} maxLength={200} onChange={(e) => onChange({ note: e.target.value })} placeholder="Narx kelishiladi — qo'ng'iroq qiling" />
+            </label>
+          )}
+
+          <div>
+            <span className="mb-1 block text-xs font-medium text-ink">Tadbir turlari</span>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(EVENT_LABEL).map(([k, l]) => {
+                const on = s.event_types.includes(k);
+                return (
+                  <button key={k} type="button" onClick={() => onChange({ event_types: on ? s.event_types.filter((x) => x !== k) : [...s.event_types, k] })}
+                    className={`rounded-full border px-3 py-1.5 text-xs font-medium ${on ? 'border-brand-400 bg-brand-100 text-brand-text' : 'border-line text-muted'}`}>
+                    {on && <i className="ti ti-check mr-0.5" />}{l}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
