@@ -16,9 +16,11 @@ export function RestaurantProfilePage() {
   const [saving, setSaving] = useState(false);
   const [msg, flashMsg, setMsg] = useTempValue();
   const [mapOpen, setMapOpen] = useState(false);
+  const [isStore, setIsStore] = useState(false); // do'kon: stol bron / zal narxi yo'q
 
   useEffect(() => {
     panelApi.getProfile()
+      .then((r) => { setIsStore(Boolean(r.isStore)); return r; })
       .then((r) => setForm({
         name: r.name || '',
         cuisine: r.cuisine || '',
@@ -74,6 +76,7 @@ export function RestaurantProfilePage() {
       // Bo'sh raqamlar 0 sifatida yuboriladi
       // Radius alohida obyektda saqlanadi, qolgani to'g'ridan-to'g'ri
       const { maxDistanceKm, pricingMode, freeKm, perKm, basePrice, ...rest } = form;
+      if (isStore) { rest.reservationEnabled = false; } // do'konda stol bron bo'lmaydi
 
       const payload = {
         ...rest,
@@ -255,7 +258,7 @@ export function RestaurantProfilePage() {
           */}
           <Field
             label="Yetkazish uchun narx ustamasi"
-            hint="Yetkazishda taom narxi shu foizga oshadi. Zal va bronda narx o'zgarmaydi."
+            hint={isStore ? 'Yetkazishda mahsulot narxi shu foizga oshadi.' : "Yetkazishda taom narxi shu foizga oshadi. Zal va bronda narx o'zgarmaydi."}
           >
             <div className="flex flex-wrap gap-2">
               {[0, 1, 2, 3, 5, 7, 10].map((p) => (
@@ -283,7 +286,7 @@ export function RestaurantProfilePage() {
 
             {Number(form.deliveryMarkupPercent) > 0 && (
               <div className="mt-2 rounded-lg bg-canvas px-3 py-2 text-xs text-muted">
-                Zalda <b className="text-ink">10 000</b> so&apos;m bo&apos;lgan taom
+                {isStore ? 'Do‘konda' : 'Zalda'} <b className="text-ink">10 000</b> so&apos;m bo&apos;lgan {isStore ? 'mahsulot' : 'taom'}
                 yetkazishda{' '}
                 <b className="text-brand-600">
                   {Math.round(10000 * (1 + Number(form.deliveryMarkupPercent) / 100))
@@ -524,7 +527,8 @@ export function RestaurantProfilePage() {
           )}
         </Section>
 
-        {/* Bron */}
+        {/* Bron — faqat restoranlar uchun (do'konda stol yo'q) */}
+        {!isStore && (
         <Section title="Stol bron qilish" icon="ti-calendar-plus">
           <Toggle
             checked={form.reservationEnabled}
@@ -545,6 +549,7 @@ export function RestaurantProfilePage() {
             </Field>
           )}
         </Section>
+        )}
       </div>
 
       {msg && (

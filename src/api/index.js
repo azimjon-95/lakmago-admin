@@ -32,6 +32,8 @@ export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
   // Lokma Market — do'kon mahsulot kategoriyalari (server: constants/marketCategories.js)
   getMarketCategories: () => apiFetch('/market/categories'),
+  // Do'kon uchun unikal shtrix-kod (hech narsa saqlanmaydi)
+  generateBarcode: () => apiFetch('/panel/barcode', { method: 'POST' }),
   // Dine-in
   downloadFile,
   getDineInConfig: () => apiFetch('/panel/dine-in'),

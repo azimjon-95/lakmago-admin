@@ -6,6 +6,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
 import { StoreCatalogPicker } from './StoreCatalogPicker';
+import { BarcodeField } from './BarcodeField';
 
 /*
  * ═══ DO'KON MAHSULOTLARI (Lokma Market) ═══
@@ -56,7 +57,7 @@ export function StoreMenuPage() {
     return products.filter((p) => {
       if (cat !== 'all' && (p.marketCategory || '_') !== cat) return false;
       if (!term) return true;
-      return [p.name, p.brand, p.barcode].filter(Boolean).join(' ').toLowerCase().includes(term);
+      return [p.name, p.barcode].filter(Boolean).join(' ').toLowerCase().includes(term);
     });
   }, [products, q, cat]);
 
@@ -151,7 +152,7 @@ export function StoreMenuPage() {
             <input
               value={q}
               onChange={(e) => setQ(e.target.value)}
-              placeholder="Nom, brend yoki shtrix-kod"
+              placeholder="Nom yoki shtrix-kod"
               className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none"
             />
             {q && <button onClick={() => setQ('')} className="text-muted" aria-label="Tozalash"><i className="ti ti-x" /></button>}
@@ -203,7 +204,7 @@ export function StoreMenuPage() {
                       )}
                     </div>
                     <div className="text-xs text-muted truncate mt-0.5">
-                      {[p.brand, p.packSize, p.barcode && `#${p.barcode}`].filter(Boolean).join(' · ') || '—'}
+                      {[p.packSize, p.barcode && `#${p.barcode}`].filter(Boolean).join(' · ') || '—'}
                     </div>
                     <div className="mt-0.5 text-sm font-semibold text-ink">
                       {som(p.price)} so'm <span className="text-xs font-normal text-muted">/ {unitLabel(p.unit)}</span>
@@ -285,7 +286,6 @@ function ProductForm({ product, meta, onClose, onSaved }) {
     oldPrice: product?.oldPrice ?? null,
     unit: product?.unit || 'dona',
     packSize: product?.packSize || '',
-    brand: product?.brand || '',
     barcode: product?.barcode || '',
   });
   const [err, setErr] = useState(null);
@@ -318,7 +318,6 @@ function ProductForm({ product, meta, onClose, onSaved }) {
         price: Number(f.price),
         unit: f.unit,
         packSize: f.packSize.trim(),
-        brand: f.brand.trim(),
         barcode: f.barcode.trim(),
         prepMinutes: 5, // tayyor mahsulot — yig'ish vaqti
         ...(f.imageUrl ? { imageUrl: f.imageUrl, images: [f.imageUrl] } : {}),
@@ -378,18 +377,11 @@ function ProductForm({ product, meta, onClose, onSaved }) {
           <MoneyInput value={f.oldPrice} onChange={(v) => set('oldPrice', v)} placeholder="15 000" />
         </Field>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Qadoq hajmi">
-            <input value={f.packSize} onChange={(e) => set('packSize', e.target.value)} placeholder="1 l, 900 g" maxLength={40} className="inp" />
-          </Field>
-          <Field label="Brend">
-            <input value={f.brand} onChange={(e) => set('brand', e.target.value)} placeholder="Musaffo" maxLength={80} className="inp" />
-          </Field>
-        </div>
-
-        <Field label="Shtrix-kod" hint="Ixtiyoriy — qidiruvda va kassa bilan moslashda yordam beradi">
-          <input value={f.barcode} onChange={(e) => set('barcode', e.target.value)} inputMode="numeric" placeholder="4780000000000" maxLength={32} className="inp" />
+        <Field label="Qadoq hajmi">
+          <input value={f.packSize} onChange={(e) => set('packSize', e.target.value)} placeholder="1 l, 900 g" maxLength={40} className="inp" />
         </Field>
+
+        <BarcodeField value={f.barcode} onChange={(v) => set('barcode', v)} />
 
         <Field label="Tavsif">
           <textarea value={f.description} onChange={(e) => set('description', e.target.value)} rows={2}

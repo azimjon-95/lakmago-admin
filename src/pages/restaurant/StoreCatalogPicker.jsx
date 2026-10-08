@@ -4,6 +4,7 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { MoneyInput } from '@/components/form/NumberInput';
 import { Img } from '@/components/Img';
 import { catalogCategoryLabel } from '@/constants/catalogCategories';
+import { BarcodeField } from './BarcodeField';
 
 /*
  * ═══ DO'KON: UMUMIY KATALOGDAN QO'SHISH ═══
@@ -66,7 +67,7 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
         ) : (
           <>
             <div className="px-5 py-3 border-b border-line flex-none">
-              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sut, guruch, Coca-Cola, brend..." className="inp" />
+              <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Sut, guruch, Coca-Cola..." className="inp" />
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
               {loading ? (
@@ -110,7 +111,7 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
                                 {p.name}{p.volume && <span className="text-muted font-normal"> · {p.volume}</span>}
                               </div>
                               <div className="text-xs text-muted truncate">
-                                {[p.brand, p.suggestedPrice > 0 && `~${som(p.suggestedPrice)} so'm`].filter(Boolean).join(' · ') || '\u00a0'}
+                                {[p.suggestedPrice > 0 && `~${som(p.suggestedPrice)} so'm`].filter(Boolean).join(' · ') || '\u00a0'}
                               </div>
                             </div>
                             {p.alreadyAdded
@@ -139,7 +140,6 @@ function AddForm({ product, meta, onBack, onAdded }) {
     price: product.suggestedPrice || null,
     oldPrice: null,
     packSize: product.volume || '',
-    brand: product.brand || '',
     barcode: '',
   });
   const [err, setErr] = useState(null);
@@ -163,7 +163,6 @@ function AddForm({ product, meta, onBack, onAdded }) {
         marketCategory: f.marketCategory,
         unit: f.unit,
         packSize: f.packSize.trim(),
-        brand: f.brand.trim(),
         barcode: f.barcode.trim(),
       });
       onAdded();
@@ -212,18 +211,11 @@ function AddForm({ product, meta, onBack, onAdded }) {
         <MoneyInput value={f.oldPrice} onChange={(v) => set('oldPrice', v)} placeholder="Bo'sh — chegirma yo'q" />
       </Field>
 
-      <div className="grid grid-cols-2 gap-3">
-        <Field label="Qadoq hajmi">
-          <input value={f.packSize} onChange={(e) => set('packSize', e.target.value)} placeholder="1 l, 900 g" maxLength={40} className="inp" />
-        </Field>
-        <Field label="Brend">
-          <input value={f.brand} onChange={(e) => set('brand', e.target.value)} placeholder="Musaffo" maxLength={80} className="inp" />
-        </Field>
-      </div>
-
-      <Field label="Shtrix-kod" hint="Ixtiyoriy">
-        <input value={f.barcode} onChange={(e) => set('barcode', e.target.value)} inputMode="numeric" placeholder="4780000000000" maxLength={32} className="inp" />
+      <Field label="Qadoq hajmi">
+        <input value={f.packSize} onChange={(e) => set('packSize', e.target.value)} placeholder="1 l, 900 g" maxLength={40} className="inp" />
       </Field>
+
+      <BarcodeField value={f.barcode} onChange={(v) => set('barcode', v)} />
 
       {f.price > 0 && (
         <div className="mb-3 rounded-xl bg-canvas px-3 py-2 text-xs text-muted">

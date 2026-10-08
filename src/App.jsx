@@ -183,6 +183,9 @@ function AdminRoutes() {
 
 // Restoran uchun himoyalangan sahifalar
 function RestaurantRoutes() {
+  // Do'kon (Market): Dine-in va stol bron sahifalari yo'q — URL orqali ham ochilmaydi
+  const isStore = useAuth((s) => Boolean(s.restaurant?.isStore));
+  const FoodOnly = ({ children }) => (isStore ? <Navigate to="/" replace /> : children);
   return (
     <Shell>
       {/* Ertalabki ochilish tekshiruvi: faqat 'pending' bo'lganda, sahifa tepasida */}
@@ -195,13 +198,13 @@ function RestaurantRoutes() {
         <Route path="/profile" element={<RestaurantProfilePage />} />
         <Route path="/telegram" element={<TelegramStaffPage />} />
         <Route path="/stop-list" element={<StopListPage />} />
-        <Route path="/dine-in" element={<DineInPage />} />
-        <Route path="/dine-in-live" element={<DineInLivePage />} />
-        <Route path="/dine-in-history" element={<DineInHistoryPage />} />
-        <Route path="/kiosk-links" element={<KioskLinksPage />} />
+        <Route path="/dine-in" element={<FoodOnly><DineInPage /></FoodOnly>} />
+        <Route path="/dine-in-live" element={<FoodOnly><DineInLivePage /></FoodOnly>} />
+        <Route path="/dine-in-history" element={<FoodOnly><DineInHistoryPage /></FoodOnly>} />
+        <Route path="/kiosk-links" element={<FoodOnly><KioskLinksPage /></FoodOnly>} />
         <Route path="/menu-transfer" element={<MenuTransferPage />} />
         <Route path="/promotion" element={<PromotionPage />} />
-        <Route path="/reservations" element={<ReservationsPage />} />
+        <Route path="/reservations" element={<FoodOnly><ReservationsPage /></FoodOnly>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Shell>

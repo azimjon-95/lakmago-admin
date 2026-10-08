@@ -146,29 +146,34 @@ const restaurantNav = [
   },
   {
     to:"/dine-in-live",
+    foodOnly:true,
     icon:"ti-bell-ringing",
     label:"Zal buyurtmalari",
     dineInOnly:true
   },
   {
     to:"/dine-in",
+    foodOnly:true,
     icon:"ti-armchair",
     label:"Dine-in"
   },
   {
     to:"/dine-in-history",
+    foodOnly:true,
     icon:"ti-history",
     label:"Zal tarixi",
     dineInOnly:true
   },
   {
     to:"/kiosk-links",
+    foodOnly:true,
     icon:"ti-device-tablet",
     label:"Kiosk linklar",
     dineInOnly:true
   },
   {
     to:"/reservations",
+    foodOnly:true,
     icon:"ti-calendar-check",
     label:"Bronlar"
   },
@@ -290,8 +295,11 @@ const pickDomain = (d) => {
 };
 
 const isOwner = user?.role === "venue_owner";
+// Do'kon (Market) — Dine-in, zal va stol bron bo'limlari yo'q (server: isStore)
+const isStoreVenue = user?.role === "restaurant" && Boolean(restaurant?.isStore);
 const nav = (isOwner ? ownerNav : domain === "wedding" ? weddingNav : isAdminLike ? adminNav : restaurantNav)
   .filter((item) => !item.dineInOnly || dineInActive)
+  .filter((item) => !(item.foodOnly && isStoreVenue))
   // Xodim (staff): faqat serverdan kelgan allowedPages ro'yxatidagi
   // sahifalar, va hech qachon adminOnly (Xodimlar) bandi
   .filter((item) => {
