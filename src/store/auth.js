@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { auth, panelApi } from '@/api';
 import { getToken } from '@/api/client';
+import { resetOwnerVenue } from '@/pages/owner/useOwnerVenue';
 
 // Panel autentifikatsiya holati (admin yoki restoran)
 export const useAuth = create((set, get) => ({
@@ -47,6 +48,7 @@ export const useAuth = create((set, get) => ({
 
   logout: () => {
     auth.logout();
+    resetOwnerVenue(); // to'yxona egasi keshi — keyingi foydalanuvchiga o'tmasin
     set({ user: null, restaurant: null, status: 'guest' });
   },
 

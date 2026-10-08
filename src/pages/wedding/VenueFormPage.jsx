@@ -300,6 +300,8 @@ export function VenueFormPage() {
         </div>
       </Section>
 
+      {!isNew && <OwnerAccount venueId={id} />}
+
       <Section title="Oylik to'lov" icon="ti-receipt" right={!isNew && (
         <button onClick={() => setPayOpen(true)} className="text-sm bg-green-600 text-white px-3 py-1.5 rounded-lg"><i className="ti ti-plus" /> To'lov qabul qilish</button>
       )}>
@@ -444,5 +446,79 @@ function SessionCard({ s, onChange }) {
         </div>
       )}
     </div>
+  );
+}
+
+
+/*
+ * To'yxona egasining kirish ma'lumoti. Egasi LokmaGo admin panelining
+ * oddiy login sahifasidan kiradi va faqat o'z to'yxonasi CRM'ini ko'radi
+ * (kalendar, bronlar, kirim-chiqim, ishchilar). Parol to'yxona serverida
+ * xeshlangan holda saqlanadi, bu yerda ko'rsatilmaydi — faqat yangilanadi.
+ */
+function OwnerAccount({ venueId }) {
+  const [acc, setAcc] = useState(undefined);
+  const [f, setF] = useState({ login: '', password: '', active: true });
+  const [msg, setMsg] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    weddingApi.venueAccount(venueId)
+      .then((r) => { const a = r?.login ? r : null; setAcc(a); if (a) setF({ login: a.login, password: '', active: a.active }); })
+      .catch(() => setAcc(null));
+  }, [venueId]);
+
+  const genPassword = () => {
+    const abc = 'abcdefghjkmnpqrstuvwxyz23456789';
+    const arr = new Uint32Array(10); crypto.getRandomValues(arr);
+    setF((x) => ({ ...x, password: Array.from(arr, (n) => abc[n % abc.length]).join('') }));
+  };
+
+  const save = async () => {
+    if (!/^[a-z0-9._-]{3,40}$/i.test(f.login)) { setMsg({ err: 'Login: kamida 3 belgi, lotin harf, raqam, . _ -' }); return; }
+    if (!acc && f.password.length < 6) { setMsg({ err: 'Parol kamida 6 belgi' }); return; }
+    if (f.password && f.password.length < 6) { setMsg({ err: 'Parol kamida 6 belgi' }); return; }
+    setSaving(true); setMsg(null);
+    try {
+      const r = await weddingApi.setVenueAccount(venueId, { login: f.login.trim(), active: f.active, ...(f.password ? { password: f.password } : {}) });
+      setAcc(r);
+      setMsg({ ok: f.password ? `Saqlandi. Egasiga yuboring — login: ${r.login}, parol: ${f.password}` : 'Saqlandi' });
+      setF((x) => ({ ...x, password: '' }));
+    } catch (e) { setMsg({ err: e.message }); }
+    finally { setSaving(false); }
+  };
+
+  return (
+    <Section title="Egasi uchun kirish (CRM)" icon="ti-key" right={acc && (
+      <Badge cls={acc.active ? 'bg-green-50 text-green-700' : 'bg-canvas text-muted'}>{acc.active ? 'Faol' : "O'chirilgan"}</Badge>
+    )}>
+      {acc === undefined ? <p className="text-xs text-muted">Yuklanmoqda...</p> : (
+        <>
+          <p className="text-[11px] text-muted mb-2">
+            Egasi admin panelning oddiy login sahifasidan kiradi va faqat o'z to'yxonasining kalendari, bronlari, kirim-chiqimi va ishchilarini ko'radi.
+            {acc?.last_login_at && ` Oxirgi kirish: ${new Date(acc.last_login_at).toLocaleString('ru-RU')}.`}
+          </p>
+          <div className="grid sm:grid-cols-2 gap-x-3">
+            <Field label="Login"><input className="inp" value={f.login} onChange={(e) => setF((x) => ({ ...x, login: e.target.value.toLowerCase() }))} autoComplete="off" placeholder="navroz" /></Field>
+            <Field label={acc ? 'Yangi parol (o‘zgartirish uchun)' : 'Parol'}>
+              <div className="flex gap-1.5">
+                <input className="inp" value={f.password} onChange={(e) => setF((x) => ({ ...x, password: e.target.value }))} autoComplete="new-password" placeholder={acc ? "o'zgarmaydi" : 'kamida 6 belgi'} />
+                <button type="button" onClick={genPassword} className="px-3 rounded-lg border border-line text-sm flex-none" title="Tasodifiy parol"><i className="ti ti-dice-5" /></button>
+              </div>
+            </Field>
+          </div>
+          {acc && (
+            <label className="flex items-center gap-2 text-sm mb-3">
+              <input type="checkbox" checked={f.active} onChange={(e) => setF((x) => ({ ...x, active: e.target.checked }))} /> Kirishga ruxsat
+            </label>
+          )}
+          {msg?.err && <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-2">{msg.err}</div>}
+          {msg?.ok && <div className="text-sm text-green-700 bg-green-50 rounded-lg px-3 py-2 mb-2 select-all">{msg.ok}</div>}
+          <button onClick={save} disabled={saving} className="px-4 py-2 rounded-xl bg-ink text-white text-sm font-medium disabled:opacity-50">
+            {saving ? 'Saqlanmoqda...' : acc ? 'Saqlash' : 'Akkaunt yaratish'}
+          </button>
+        </>
+      )}
+    </Section>
   );
 }

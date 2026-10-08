@@ -417,4 +417,30 @@ export const weddingApi = {
   blockVendor: (id, reason) => apiFetch(`${W}/vendors/${id}/block`, wjson('POST', { reason })),
   unblockVendor: (id) => apiFetch(`${W}/vendors/${id}/unblock`, wjson('POST')),
   deleteVendor: (id) => apiFetch(`${W}/vendors/${id}`, { method: 'DELETE' }),
+  // To'yxona egasi akkaunti (login/parol)
+  venueAccount: (id) => apiFetch(`${W}/venues/${id}/account`),
+  setVenueAccount: (id, d) => apiFetch(`${W}/venues/${id}/account`, wjson('PUT', d)),
+};
+
+/*
+ * ═══ TO'YXONA EGASI (CRM) ═══ — role 'venue_owner'.
+ * /api/owner/wedding/* → to'yxona serveri /api/owner/* (to'yxona ID tokendan).
+ */
+const O = '/owner/wedding';
+export const ownerApi = {
+  me: () => apiFetch(`${O}/me`),
+  calendar: (month) => apiFetch(`${O}/calendar${wq({ month })}`),
+  reservations: (params) => apiFetch(`${O}/reservations${wq(params)}`),
+  reservation: (id) => apiFetch(`${O}/reservations/${id}`),
+  booking: (id) => apiFetch(`${O}/bookings/${id}`),
+  createReservation: (d) => apiFetch(`${O}/reservations`, wjson('POST', d)),
+  updateReservation: (id, d) => apiFetch(`${O}/reservations/${id}`, wjson('PATCH', d)),
+  deleteReservation: (id) => apiFetch(`${O}/reservations/${id}`, { method: 'DELETE' }),
+  financeSummary: (month) => apiFetch(`${O}/finance/summary${wq({ month })}`),
+  transactions: (params) => apiFetch(`${O}/transactions${wq(params)}`),
+  addTransaction: (d) => apiFetch(`${O}/transactions`, wjson('POST', d)),
+  deleteTransaction: (id) => apiFetch(`${O}/transactions/${id}`, { method: 'DELETE' }),
+  employees: () => apiFetch(`${O}/employees`),
+  addEmployee: (d) => apiFetch(`${O}/employees`, wjson('POST', d)),
+  updateEmployee: (id, d) => apiFetch(`${O}/employees/${id}`, wjson('PATCH', d)),
 };

@@ -25,6 +25,11 @@ const WeddingVenueFormPage = lazy(() => import('@/pages/wedding/VenueFormPage').
 const WeddingBookingsPage = lazy(() => import('@/pages/wedding/BookingsPage').then((m) => ({ default: m.WeddingBookingsPage })));
 const WeddingPaymentsPage = lazy(() => import('@/pages/wedding/PaymentsPage').then((m) => ({ default: m.PaymentsPage })));
 const WeddingVendorsPage = lazy(() => import('@/pages/wedding/VendorsPage').then((m) => ({ default: m.VendorsPage })));
+// ── To'yxona egasi (CRM) — role 'venue_owner'
+const OwnerCalendarPage = lazy(() => import('@/pages/owner/OwnerCalendarPage').then((m) => ({ default: m.OwnerCalendarPage })));
+const OwnerReservationsPage = lazy(() => import('@/pages/owner/OwnerReservationsPage').then((m) => ({ default: m.OwnerReservationsPage })));
+const OwnerFinancePage = lazy(() => import('@/pages/owner/OwnerFinancePage').then((m) => ({ default: m.OwnerFinancePage })));
+const OwnerEmployeesPage = lazy(() => import('@/pages/owner/OwnerEmployeesPage').then((m) => ({ default: m.OwnerEmployeesPage })));
 const RestaurantsPage = lazy(() => import('@/pages/admin/RestaurantsPage').then((m) => ({ default: m.RestaurantsPage })));
 const CreateRestaurantLayout = lazy(() => import('@/pages/admin/create-restaurant/context').then((m) => ({ default: m.CreateRestaurantLayout })));
 const Step1Basic = lazy(() => import('@/pages/admin/create-restaurant/Step1Basic').then((m) => ({ default: m.Step1Basic })));
@@ -203,6 +208,33 @@ function RestaurantRoutes() {
   );
 }
 
+/*
+ * To'yxona egasi — faqat o'z CRM sahifalari. Boshqa har qanday yo'l
+ * kalendarga qaytadi (LokmaGo bo'limlariga o'tib bo'lmaydi; server ham
+ * 'venue_owner' tokeniga faqat /api/owner/wedding/* ni ochadi).
+ * Bildirishnoma markazi (LokmaGo buyurtmalari) bu yerda yo'q.
+ */
+function OwnerRoutes() {
+  return (
+    <div className="flex h-[100dvh] flex-col overflow-hidden bg-canvas lg:block lg:h-auto lg:min-h-screen lg:overflow-visible">
+      <Sidebar />
+      <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-none lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
+        <div className="w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0">
+          <Suspense fallback={<PageLoading />}>
+            <Routes>
+              <Route path="/" element={<OwnerCalendarPage />} />
+              <Route path="/reservations" element={<OwnerReservationsPage />} />
+              <Route path="/finance" element={<OwnerFinancePage />} />
+              <Route path="/employees" element={<OwnerEmployeesPage />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 function AppInner() {
   const status = useAuth((s) => s.status);
   const user = useAuth((s) => s.user);
@@ -231,6 +263,7 @@ function AppInner() {
   // Kirgan — rolga qarab
   if (user?.role === 'admin' || user?.role === 'staff') return <AdminRoutes />;
   if (user?.role === 'restaurant') return <RestaurantRoutes />;
+  if (user?.role === 'venue_owner') return <OwnerRoutes />;
 
   return <div className="p-10 text-center text-muted">Noma'lum rol</div>;
 }

@@ -216,6 +216,17 @@ const weddingNav = [
  * Tanlanganda o'sha sohaning bosh sahifasiga o'tiladi — boshqa sohaning
  * sahifalari yuklanmaydi, ularning ma'lumoti so'ralmaydi.
  */
+/*
+ * TO'YXONA EGASI (role 'venue_owner') — faqat o'z to'yxonasi CRM'i.
+ * Boshqa hech qanday bo'lim ko'rinmaydi; server ham ruxsat bermaydi.
+ */
+const ownerNav = [
+  { to: "/", icon: "ti-calendar-month", label: "Kalendar", end: true },
+  { to: "/reservations", icon: "ti-list-check", label: "Bronlar" },
+  { to: "/finance", icon: "ti-report-money", label: "Kirim-chiqim" },
+  { to: "/employees", icon: "ti-users", label: "Ishchilar" },
+];
+
 const DOMAINS = [
   { key: "lokma", label: "Restoran / Do'konlar", icon: "ti-tools-kitchen-2", home: "/" },
   { key: "wedding", label: "To'yxonalar", icon: "ti-building-castle", home: "/weddings" },
@@ -266,7 +277,7 @@ const isStaff = user?.role==="staff";
 const isAdminLike = isAdmin || isStaff;
 
 // Dine-in tasdiqlanmaguncha zal bo'limlari ko'rinmaydi
-const {isActive: dineInActive}=useDineInStatus(!isAdminLike);
+const {isActive: dineInActive}=useDineInStatus(user?.role==="restaurant");
 
 // Soha (faqat admin uchun): URL /weddings/* bo'lsa — to'yxonalar
 const loc = useLocation();
@@ -278,7 +289,8 @@ const pickDomain = (d) => {
   navigateTo(d.home);
 };
 
-const nav = (domain === "wedding" ? weddingNav : isAdminLike ? adminNav : restaurantNav)
+const isOwner = user?.role === "venue_owner";
+const nav = (isOwner ? ownerNav : domain === "wedding" ? weddingNav : isAdminLike ? adminNav : restaurantNav)
   .filter((item) => !item.dineInOnly || dineInActive)
   // Xodim (staff): faqat serverdan kelgan allowedPages ro'yxatidagi
   // sahifalar, va hech qachon adminOnly (Xodimlar) bandi
@@ -295,8 +307,8 @@ const primaryNav = nav.slice(0, MOBILE_TABS);
 const moreNav = nav.slice(MOBILE_TABS);
 
 
-const {count: stoppedCount}=useStoppedCount(!isAdminLike);
-const {count: transferCount}=usePendingTransfers(!isAdminLike);
+const {count: stoppedCount}=useStoppedCount(user?.role==="restaurant");
+const {count: transferCount}=usePendingTransfers(user?.role==="restaurant");
 
 // "Ko'proq" ichidagi bildirishnomalar yig'indisi
 const moreBadge = moreNav.reduce((sum, item) => {
@@ -337,6 +349,8 @@ return ()=>{
 const title =
 isAdmin
 ?"Administrator"
+:user?.role==="venue_owner"
+?(user?.firstName || "To'yxona")
 :isStaff
 ?(user?.firstName || "Xodim")
 :restaurant?.name || "Restoran";
@@ -346,6 +360,8 @@ isAdmin
 const subtitle =
 isAdmin
 ?"Dastur egasi"
+:user?.role==="venue_owner"
+?"To'yxona boshqaruvi"
 :isStaff
 ?(user?.departmentLabel || "Xodim")
 :"Restoran paneli";
@@ -356,6 +372,8 @@ const initials =
 (
 isAdmin
 ?"AD"
+:user?.role==="venue_owner"
+?(user?.firstName || "TO")
 :isStaff
 ?(user?.firstName || "X")
 :(restaurant?.name || "R")
