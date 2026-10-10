@@ -21,6 +21,19 @@ const STATUS = {
   approved: { label: 'Bekor qilindi', cls: 'bg-red-50 text-red-600' },
   rejected: { label: 'Rad etildi', cls: 'bg-canvas text-muted' },
 };
+// POST rejim (standart): buyurtma restoran tomonidan darhol bekor qilingan, admin faqat baholaydi
+const POST_STATUS = {
+  pending: { label: 'Ko‘rib chiqilmagan', cls: 'bg-amber-50 text-amber-700' },
+  approved: { label: 'Mijoz voz kechgan', cls: 'bg-red-50 text-red-600' },
+  rejected: { label: 'Asossiz', cls: 'bg-canvas text-muted' },
+};
+const stOf = (i) => (i.mode === 'post' ? POST_STATUS : STATUS)[i.status];
+const CODE_LABEL = {
+  no_answer: 'Javob bermadi', not_confirmed: 'Tasdiqlamadi',
+  refused_not_needed: 'Kerak emas dedi', refused_changed_mind: 'Fikrini o‘zgartirdi', refused_no_answer: 'Javob bermadi (qabuldan keyin)',
+  refused_refused_at_door: 'Eshik oldida qabul qilmadi', refused_wrong_address: 'Manzil noto‘g‘ri', refused_other: 'Boshqa (voz kechdi)',
+  out: 'Taom tugagan', busy: 'Oshxona band', far: 'Uzoq', closing: 'Yopilish', other: 'Boshqa',
+};
 const ORDER_STATUS = { accepted: 'Qabul qilingan', preparing: 'Tayyorlanmoqda', ready: 'Tayyor', delivering: "Yo'lda" };
 const fullName = (s = {}) => [s.firstName, s.lastName].filter(Boolean).join(' ') || 'Mijoz';
 
@@ -36,7 +49,7 @@ export function IncidentsPage() {
   const load = useCallback(async () => {
     setErr(null);
     try {
-      if (tab === 'restricted') return;
+      if (tab === 'restricted' || tab === 'stats') return;
       const r = await adminApi.incidents(tab === 'all' ? '' : tab === 'done' ? '' : 'pending');
       const list = tab === 'done' ? r.items.filter((i) => i.status !== 'pending') : r.items;
       setItems(list); setPending(r.pending);
@@ -61,15 +74,15 @@ export function IncidentsPage() {
         <p className="mt-0.5 text-xs text-muted sm:text-sm">Qabul qilingan buyurtmadan voz kechgan mijozlar: bekor qilish, naqdni o‘chirish, bloklash</p>
       </div>
 
-      <div className="mb-4 grid grid-cols-3 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-grid">
-        {[['pending', `Kutilmoqda${pending ? ` (${pending})` : ''}`], ['done', 'Hal qilingan'], ['restricted', 'Cheklanganlar']].map(([k, l]) => (
+      <div className="mb-4 grid grid-cols-4 gap-1 rounded-xl border border-line bg-surface p-1 sm:inline-grid">
+        {[['pending', `Ko‘rib chiqish${pending ? ` (${pending})` : ''}`], ['done', 'Hal qilingan'], ['stats', 'Tahlil'], ['restricted', 'Cheklanganlar']].map(([k, l]) => (
           <button key={k} onClick={() => setTab(k)} className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-medium sm:text-sm ${tab === k ? 'bg-brand-400 text-brand-text' : 'text-muted hover:bg-canvas'}`}>{l}</button>
         ))}
       </div>
 
       {err && <div className="mb-4 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">{err}</div>}
 
-      {tab === 'restricted' ? <RestrictedList /> : loading ? (
+      {tab === 'stats' ? <StatsView /> : tab === 'restricted' ? <RestrictedList /> : loading ? (
         <div className="py-10 text-center text-sm text-muted">Yuklanmoqda...</div>
       ) : items.length === 0 ? (
         <div className="rounded-xl border border-dashed border-line px-4 py-12 text-center text-sm text-muted">
@@ -85,7 +98,7 @@ export function IncidentsPage() {
                   <div className="truncate font-medium text-ink">{fullName(i.snapshot)}{i.snapshot?.username ? <span className="font-normal text-muted"> · @{i.snapshot.username}</span> : null}</div>
                   <div className="truncate text-xs text-muted">{i.restaurantName} · {i.orderLabel} · {som(i.order?.total)} so'm · {i.order?.paymentMethod === 'cash' ? 'Naqd' : 'Karta'}</div>
                 </div>
-                <span className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS[i.status].cls}`}>{STATUS[i.status].label}</span>
+                <span className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-medium ${stOf(i).cls}`}>{stOf(i).label}</span>
               </div>
               <div className="mt-1.5 text-sm text-ink"><i className="ti ti-message-report text-muted" /> {i.reason}{i.note ? ` — ${i.note}` : ''}</div>
               <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
@@ -109,7 +122,8 @@ function IncidentSheet({ id, onClose, onDone }) {
   const [data, setData] = useState(null);
   const [photo, setPhoto] = useState(null);
   const [err, setErr] = useState(null);
-  const [disableCash, setDisableCash] = useState(true);
+  // Avtomatik jazo yo'q (TZ): cheklov faqat admin o'zi belgilasa
+  const [disableCash, setDisableCash] = useState(false);
   const [block, setBlock] = useState(false);
   const [message, setMessage] = useState('');
   const [note, setNote] = useState('');
@@ -124,11 +138,14 @@ function IncidentSheet({ id, onClose, onDone }) {
 
   const decide = async (approve) => {
     if (approve && (disableCash || block) && message.trim().length < 5) { setErr('Mijozga ko‘rsatiladigan sababni yozing'); return; }
+    const post = data?.incident?.mode === 'post';
     const ok = await confirm({
-      title: approve ? 'Buyurtma bekor qilinsinmi?' : 'So‘rov rad etilsinmi?',
+      title: post
+        ? (approve ? 'Mijoz voz kechgan deb belgilansinmi?' : 'Holat asossiz deb belgilansinmi?')
+        : (approve ? 'Buyurtma bekor qilinsinmi?' : 'So‘rov rad etilsinmi?'),
       content: approve
         ? [disableCash && 'mijozning naqd to‘lovi o‘chiriladi', block && 'mijoz bloklanadi'].filter(Boolean).join(', ') || 'Mijozga cheklov qo‘yilmaydi'
-        : 'Buyurtma bekor qilinmaydi, restoran davom ettiradi',
+        : post ? 'Mijozga hech qanday chora ko‘rilmaydi' : 'Buyurtma bekor qilinmaydi, restoran davom ettiradi',
       tone: approve ? 'danger' : 'warning',
     });
     if (!ok) return;
@@ -209,7 +226,7 @@ function IncidentSheet({ id, onClose, onDone }) {
                   {data.history.map((h) => (
                     <div key={h._id} className="flex justify-between gap-2 py-0.5 text-xs">
                       <span className="text-ink">{h.restaurantName} · {h.orderLabel} — {h.reason}</span>
-                      <span className={`flex-none ${h.status === 'approved' ? 'text-red-600' : 'text-muted'}`}>{STATUS[h.status].label} · {dt(h.createdAt)}</span>
+                      <span className={`flex-none ${h.status === 'approved' ? 'text-red-600' : 'text-muted'}`}>{stOf(h).label} · {dt(h.createdAt)}</span>
                     </div>
                   ))}
                 </Block>
@@ -217,9 +234,14 @@ function IncidentSheet({ id, onClose, onDone }) {
 
               {inc.status === 'pending' ? (
                 <div className="rounded-2xl border border-line p-3">
-                  <div className="mb-2 text-sm font-semibold text-ink">Qaror</div>
-                  <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={disableCash} onChange={(e) => setDisableCash(e.target.checked)} /> 💵 Naqd to‘lovni o‘chirish (keyin faqat karta bilan)</label>
-                  <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} /> ⛔ Mijozni bloklash (LokmaGo’dan foydalana olmaydi)</label>
+                  <div className="mb-1 text-sm font-semibold text-ink">Qaror</div>
+                  {inc.mode === 'post' && <p className="mb-2 text-xs text-muted">Buyurtma restoran tomonidan allaqachon bekor qilingan. Holatni baholang; cheklov — faqat zarur bo‘lsa.</p>}
+                  {data?.settings?.restrictionsEnabled !== false ? (
+                    <>
+                      <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={disableCash} onChange={(e) => setDisableCash(e.target.checked)} /> 💵 Naqd to‘lovni o‘chirish (keyin faqat karta bilan)</label>
+                      <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} /> ⛔ Mijozni bloklash (LokmaGo’dan foydalana olmaydi)</label>
+                    </>
+                  ) : <p className="text-xs text-muted">Mijoz cheklovlari o‘chirilgan (sozlama).</p>}
                   {(disableCash || block) && (
                     <div className="mt-2">
                       <label className="mb-1 block text-xs font-medium text-ink">Mijozga ko‘rsatiladigan sabab</label>
@@ -231,7 +253,7 @@ function IncidentSheet({ id, onClose, onDone }) {
                 </div>
               ) : (
                 <div className={`rounded-2xl p-3 text-sm ${inc.status === 'approved' ? 'bg-red-50 text-red-700' : 'bg-canvas text-muted'}`}>
-                  <b>{STATUS[inc.status].label}</b> · {inc.decision?.by} · {dt(inc.decision?.at)}
+                  <b>{stOf(inc).label}</b> · {inc.decision?.by} · {dt(inc.decision?.at)}
                   {inc.decision?.cashDisabled && <div>💵 Naqd to‘lov o‘chirildi</div>}
                   {inc.decision?.blocked && <div>⛔ Mijoz bloklandi</div>}
                   {inc.decision?.customerMessage && <div className="mt-1 text-xs">Mijozga: “{inc.decision.customerMessage}”</div>}
@@ -243,9 +265,11 @@ function IncidentSheet({ id, onClose, onDone }) {
         </div>
         {inc?.status === 'pending' && (
           <div className="flex gap-2 border-t border-line px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-            <button onClick={() => decide(false)} disabled={busy} className="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium text-ink disabled:opacity-50">❌ Rad etish</button>
+            <button onClick={() => decide(false)} disabled={busy} className="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium text-ink disabled:opacity-50">
+              {inc.mode === 'post' ? 'ℹ️ Asossiz' : '❌ Rad etish'}
+            </button>
             <button onClick={() => decide(true)} disabled={busy} className="flex-[1.4] rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-              {busy ? 'Saqlanmoqda...' : '✅ Bekor qilishni tasdiqlash'}
+              {busy ? 'Saqlanmoqda...' : inc.mode === 'post' ? '🧾 Mijoz voz kechgan' : '✅ Bekor qilishni tasdiqlash'}
             </button>
           </div>
         )}
@@ -318,5 +342,56 @@ function RestrictedList() {
         })}
       </div>
     </>
+  );
+}
+
+/* TAHLIL — takroran bekor bo'lgan buyurtmalar (jazo emas, qaror admin qo'lida) */
+function StatsView() {
+  const [days, setDays] = useState(30);
+  const [data, setData] = useState(null);
+  const [err, setErr] = useState(null);
+  useEffect(() => {
+    setData(null); setErr(null);
+    adminApi.cancellationStats(days, 2).then(setData).catch((e) => setErr(e.message));
+  }, [days]);
+  return (
+    <div>
+      <div className="mb-3 flex items-center gap-2 text-sm">
+        <span className="text-muted">Davr:</span>
+        {[7, 30, 90].map((d) => (
+          <button key={d} onClick={() => setDays(d)} className={`rounded-lg border px-3 py-1.5 text-xs ${days === d ? 'border-brand-400 bg-brand-100 text-brand-text' : 'border-line text-muted'}`}>{d} kun</button>
+        ))}
+      </div>
+      <p className="mb-3 text-xs text-muted">Kamida 2 ta buyurtmasi sabab bilan bekor bo‘lgan mijozlar. Bu tahlil — avtomatik chora ko‘rilmaydi.</p>
+      {err && <div className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{err}</div>}
+      {!data && !err && <div className="py-10 text-center text-sm text-muted">Yuklanmoqda...</div>}
+      {data && data.items.length === 0 && <div className="rounded-xl border border-dashed border-line px-4 py-12 text-center text-sm text-muted">Takroriy holat yo‘q</div>}
+      <div className="grid gap-2 lg:grid-cols-2">
+        {data?.items.map((r) => (
+          <div key={String(r.user._id)} className="rounded-xl border border-line bg-surface p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <div className="truncate font-medium text-ink">{fullName(r.user)}{r.user.username ? <span className="font-normal text-muted"> · @{r.user.username}</span> : null}</div>
+                <div className="text-xs text-muted">
+                  {r.user.phone || '—'}{r.user.phoneVerified ? ' ✓' : ''} · {r.restaurants.join(', ')}
+                </div>
+              </div>
+              <div className="flex-none text-right">
+                <div className="text-lg font-semibold text-red-600">{r.cancelled}</div>
+                <div className="text-[11px] text-muted">/ {r.totalOrders} buyurtma</div>
+              </div>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {Object.entries(r.byCode).map(([c, n]) => (
+                <span key={c} className="rounded-full bg-canvas px-2 py-0.5 text-[11px] text-ink">{CODE_LABEL[c] || c}: <b>{n}</b></span>
+              ))}
+              {r.user.cashDisabled?.active && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700">💵 naqd o‘chirilgan</span>}
+              {r.user.status === 'BLOCKED' && <span className="rounded-full bg-red-50 px-2 py-0.5 text-[11px] text-red-600">⛔ bloklangan</span>}
+            </div>
+            <div className="mt-1 text-[11px] text-muted">Oxirgisi: {dt(r.lastAt)}</div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

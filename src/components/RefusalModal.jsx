@@ -13,13 +13,18 @@ const som = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,
 export function RefusalModal({ order, onClose, onSent }) {
   useLockScroll();
   const [reasons, setReasons] = useState([]);
+  // false (standart, TZ) — darhol bekor qilinadi; true — admin tasdig'ini kutadi
+  const [approvalRequired, setApprovalRequired] = useState(false);
   const [code, setCode] = useState('');
   const [note, setNote] = useState('');
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    panelApi.refusalReasons().then(setReasons).catch((e) => setErr(e.message));
+    panelApi.refusalReasons().then((r) => {
+      // Eski server massiv qaytarardi; yangisi { reasons, approvalRequired }
+      if (Array.isArray(r)) { setReasons(r); setApprovalRequired(true); } else { setReasons(r.reasons || []); setApprovalRequired(Boolean(r.approvalRequired)); }
+    }).catch((e) => setErr(e.message));
   }, []);
 
   const send = async () => {
@@ -43,10 +48,16 @@ export function RefusalModal({ order, onClose, onSent }) {
           <button onClick={onClose} className="text-muted hover:text-ink" aria-label="Yopish"><i className="ti ti-x text-xl" /></button>
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
-          <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-            <i className="ti ti-info-circle" /> Buyurtma darhol bekor qilinmaydi. So‘rov <b>LokmaGo adminiga</b> boradi — u tasdiqlasa bekor qilinadi.
-            Qaror chiqquncha taomni bermang.
-          </div>
+          {approvalRequired ? (
+            <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
+              <i className="ti ti-info-circle" /> Buyurtma darhol bekor qilinmaydi. So‘rov <b>LokmaGo adminiga</b> boradi — u tasdiqlasa bekor qilinadi.
+              Qaror chiqquncha taomni bermang.
+            </div>
+          ) : (
+            <div className="mb-3 rounded-xl bg-red-50 px-3 py-2.5 text-xs leading-relaxed text-red-700">
+              <i className="ti ti-info-circle" /> Buyurtma <b>darhol bekor qilinadi</b>. Sabab qayd etiladi va holat LokmaGo adminiga ma’lumot uchun yuboriladi.
+            </div>
+          )}
           <div className="space-y-2">
             {reasons.map((r) => (
               <label key={r.value} className={`flex cursor-pointer items-center gap-3 rounded-xl border px-3 py-3 text-sm ${code === r.value ? 'border-red-300 bg-red-50 text-red-700' : 'border-line text-ink'}`}>
@@ -66,7 +77,7 @@ export function RefusalModal({ order, onClose, onSent }) {
         <div className="flex gap-2 border-t border-line px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <button onClick={onClose} className="rounded-xl border border-line px-4 py-2.5 text-muted">Bekor</button>
           <button onClick={send} disabled={saving} className="flex-1 rounded-xl bg-red-600 py-2.5 font-semibold text-white disabled:opacity-50">
-            {saving ? 'Yuborilmoqda...' : 'Adminga yuborish'}
+            {saving ? 'Yuborilmoqda...' : approvalRequired ? 'Adminga yuborish' : 'Buyurtmani bekor qilish'}
           </button>
         </div>
       </div>

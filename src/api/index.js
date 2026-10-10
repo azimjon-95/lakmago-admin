@@ -224,6 +224,7 @@ export const adminApi = {
     return URL.createObjectURL(await res.blob());
   },
   restrictedCustomers: () => apiFetch('/admin/restricted-customers'),
+  cancellationStats: (days = 30, min = 2) => apiFetch(`/admin/cancellation-stats?days=${days}&min=${min}`),
   setCustomerRestrictions: (id, d) => apiFetch(`/admin/customers/${id}/restrictions`, { method: 'PATCH', body: JSON.stringify(d) }),
 
   // ===== Dine-in =====
