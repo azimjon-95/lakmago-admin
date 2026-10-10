@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { RefusalModal } from '@/components/RefusalModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
@@ -204,6 +205,8 @@ export function RestaurantOrdersPage() {
   // Kuryerga yuborish — modal ochiladi, haqiqiy yuborish shu
   // modal ichida (CourierDispatchModal)
   const [dispatchingOrder, setDispatchingOrder] = useState(null);
+  // "Mijoz rad etdi" oynasi
+  const [refusing, setRefusing] = useState(null);
 
   // Faol buyurtmalar tepada, yakunlangan/bekor pastda
   const active = orders.filter((o) => !['delivered', 'cancelled'].includes(o.status));
@@ -250,7 +253,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onDispatch={setDispatchingOrder} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onDispatch={setDispatchingOrder} onRefuse={setRefusing} />
             ))}
           </div>
 
@@ -273,6 +276,16 @@ export function RestaurantOrdersPage() {
         </>
       )}
 
+      {refusing && (
+        <RefusalModal
+          order={refusing}
+          onClose={() => setRefusing(null)}
+          onSent={(r) => {
+            setOrders((prev) => prev.map((x) => (x._id === refusing._id ? { ...x, cancelRequest: r.cancelRequest } : x)));
+            setRefusing(null);
+          }}
+        />
+      )}
       {dispatchingOrder && (
         <CourierDispatchModal
           order={dispatchingOrder}
@@ -293,12 +306,16 @@ export function RestaurantOrdersPage() {
  * "To'lov qabul qilindi" tugmasi YO'Q: naqd to'lov buyurtma yakunlanganda server
  * tomonidan AVTOMATIK "to'langan" bo'ladi.
  */
-export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispatch }) {
+export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispatch, onRefuse }) {
   const isCash = o.paymentMethod === 'cash';
   const needsCashConfirm = o.status === 'pending' && isCash;
   const customerPhone = o.phone || o.customer?.phone || '';
   const meta = metaOf(o);
-  const canCancel = ['pending', 'accepted', 'preparing'].includes(o.status);
+  // To'g'ridan-to'g'ri bekor qilish faqat qabul qilinmagan buyurtmaga (rad etish).
+  // Qabul qilingandan keyin — "Mijoz rad etdi" (LokmaGo admini tasdiqlaydi).
+  const canCancel = o.status === 'pending';
+  const canRefuse = ['accepted', 'preparing', 'ready', 'delivering'].includes(o.status);
+  const refusePending = o.cancelRequest?.status === 'pending';
   // Qancha vaqt o'tgani — daqiqa/soat/kun bilan
   const elapsedMin = Math.floor((Date.now() - new Date(o.createdAt).getTime()) / 60000);
   const elapsed = elapsedMin < 60
@@ -612,6 +629,21 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
               Bekor
             </button>
           )}
+          {canRefuse && !refusePending && onRefuse && (
+            <button onClick={() => onRefuse(o)} title="Mijoz buyurtmadan voz kechdi" className="flex-none rounded-xl border border-red-200 px-3 py-3 text-sm text-red-600 hover:bg-red-50">
+              <i className="ti ti-user-x" /> <span className="hidden sm:inline">Mijoz rad etdi</span>
+            </button>
+          )}
+        </div>
+      )}
+      {canRefuse && refusePending && (
+        <div className="mx-4 mb-3 flex items-center gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-800">
+          <i className="ti ti-hourglass" /> Bekor qilish so‘rovi yuborilgan — LokmaGo admini ko‘rib chiqmoqda
+        </div>
+      )}
+      {canRefuse && o.cancelRequest?.status === 'rejected' && (
+        <div className="mx-4 mb-3 rounded-xl bg-canvas px-3 py-2 text-xs text-muted">
+          <i className="ti ti-info-circle" /> Admin bekor qilishni rad etdi — buyurtmani davom ettiring
         </div>
       )}
       {/*

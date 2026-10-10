@@ -186,6 +186,9 @@ export const panelApi = {
   },
   updateOrderStatus: (id, status) =>
     apiFetch(`/panel/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  // "Mijoz rad etdi" — qabul qilingan buyurtmani bekor qilish so'rovi (LokmaGo admini hal qiladi)
+  refusalReasons: () => apiFetch('/panel/refusal-reasons'),
+  cancelRequest: (id, d) => apiFetch(`/panel/orders/${id}/cancel-request`, { method: 'POST', body: JSON.stringify(d) }),
 
   getReservations: () => apiFetch('/panel/reservations'),
   updateReservationStatus: (id, status, reason = '') =>
@@ -208,6 +211,19 @@ export const panelApi = {
 
 // ===== Admin paneli API (role: admin) =====
 export const adminApi = {
+  // ── Muammoli mijozlar (mijoz buyurtmadan voz kechdi) ──
+  incidents: (status) => apiFetch(`/admin/incidents${status ? `?status=${status}` : ''}`),
+  incident: (id) => apiFetch(`/admin/incidents/${id}`),
+  decideIncident: (id, d) => apiFetch(`/admin/incidents/${id}/decide`, { method: 'POST', body: JSON.stringify(d) }),
+  // Rasm token bilan olinadi (<img src> sarlavha yubora olmaydi) → blob URL
+  incidentPhotoUrl: async (id) => {
+    const res = await fetch(`${import.meta.env.VITE_API_URL ?? '/api'}/admin/incidents/${id}/photo`, { headers: { Authorization: `Bearer ${getToken()}` } });
+    if (!res.ok) return null;
+    return URL.createObjectURL(await res.blob());
+  },
+  restrictedCustomers: () => apiFetch('/admin/restricted-customers'),
+  setCustomerRestrictions: (id, d) => apiFetch(`/admin/customers/${id}/restrictions`, { method: 'PATCH', body: JSON.stringify(d) }),
+
   // ===== Dine-in =====
   getDineInRequests: () => apiFetch('/admin/dine-in'),
   setDineInStatus: (id, status, reason) => apiFetch(`/admin/dine-in/${id}`, { method: 'PATCH', body: JSON.stringify({ status, reason }) }),

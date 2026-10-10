@@ -50,6 +50,12 @@ const adminNav = [
     page: "notifications",
   },
   {
+    to: "/incidents",
+    icon: "ti-user-x",
+    label: "Muammoli mijozlar",
+    page: "orders",
+  },
+  {
     to: "/groups",
     icon: "ti-brand-telegram",
     label: "Guruhlar",

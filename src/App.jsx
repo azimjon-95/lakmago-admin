@@ -17,6 +17,7 @@ import { MorningCheckBanner } from '@/components/restaurant/MorningCheckBanner';
  * yuklanadi. Login sahifasi ataylab lazy EMAS — u birinchi
  * ko'rinadigan ekran, uni kechiktirish mantiqsiz.
  */
+const IncidentsPage = lazy(() => import('@/pages/admin/IncidentsPage').then((m) => ({ default: m.IncidentsPage })));
 const DashboardPage = lazy(() => import('@/pages/admin/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 // ── To'yxonalar sohasi (alohida server) — faqat admin, faqat tanlanganda yuklanadi
 const WeddingDashboardPage = lazy(() => import('@/pages/wedding/WeddingDashboardPage').then((m) => ({ default: m.WeddingDashboardPage })));
@@ -151,6 +152,8 @@ function AdminRoutes() {
         <Route path="/weddings/videographers" element={<AdminOnly><WeddingVendorsPage key="video" type="video" /></AdminOnly>} />
         <Route path="/weddings/corteges" element={<AdminOnly><WeddingVendorsPage key="cortege" type="cortege" /></AdminOnly>} />
         <Route path="/restaurants" element={<Guarded page="restaurants"><RestaurantsPage /></Guarded>} />
+        {/* Muammoli mijozlar — buyurtmadan voz kechish so'rovlari, naqd o'chirish, bloklash */}
+        <Route path="/incidents" element={<Guarded page="orders"><IncidentsPage /></Guarded>} />
         <Route path="/restaurants/new" element={<Guarded page="restaurants"><CreateRestaurantLayout /></Guarded>}>
           <Route index element={<Navigate to="asosiy" replace />} />
           <Route path="asosiy" element={<Step1Basic />} />
