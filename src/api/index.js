@@ -184,8 +184,10 @@ export const panelApi = {
     const qs = q.toString();
     return apiFetch(`/panel/billing/ledger${qs ? `?${qs}` : ''}`);
   },
-  updateOrderStatus: (id, status) =>
-    apiFetch(`/panel/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify({ status }) }),
+  // reason — faqat rad etishda (kutilayotgan buyurtma): constants/rejectReasons kodi
+  updateOrderStatus: (id, status, reason) =>
+    apiFetch(`/panel/orders/${id}/status`, { method: 'PATCH', body: JSON.stringify(reason ? { status, reason } : { status }) }),
+  rejectReasons: () => apiFetch('/panel/reject-reasons'),
   // "Mijoz rad etdi" — qabul qilingan buyurtmani bekor qilish so'rovi (LokmaGo admini hal qiladi)
   refusalReasons: () => apiFetch('/panel/refusal-reasons'),
   cancelRequest: (id, d) => apiFetch(`/panel/orders/${id}/cancel-request`, { method: 'POST', body: JSON.stringify(d) }),

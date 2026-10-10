@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { RefusalModal } from '@/components/RefusalModal';
+import { RejectReasonModal } from '@/components/RejectReasonModal';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { panelApi } from '@/api';
 import { getSocket, joinRestaurant } from '@/lib/socket';
@@ -195,11 +196,17 @@ export function RestaurantOrdersPage() {
 
   
 
-  const cancel = async (o) => {
-    if (!await confirm({ title: 'Buyurtma bekor qilinsinmi?' })) return;
+  /*
+   * Rad etish (qabul qilinmagan buyurtma) — sabab tanlanadi va buyurtmaga yoziladi
+   * ("Mijoz telefonga javob bermadi", "Mijoz tasdiqlamadi" va h.k. — restoran boti bilan bir xil ro'yxat).
+   */
+  const [rejecting, setRejecting] = useState(null);
+  const cancel = (o) => setRejecting(o);
+  const doReject = async (o, reason) => {
+    setRejecting(null);
     setOrders((prev) => prev.map((x) => (x._id === o._id ? { ...x, status: 'cancelled' } : x)));
     resolveNotification('order', o._id, 'CANCELLED');
-    try { await panelApi.updateOrderStatus(o._id, 'cancelled'); } catch { load(); }
+    try { await panelApi.updateOrderStatus(o._id, 'cancelled', reason); } catch { load(); }
   };
 
   // Kuryerga yuborish — modal ochiladi, haqiqiy yuborish shu
@@ -276,6 +283,9 @@ export function RestaurantOrdersPage() {
         </>
       )}
 
+      {rejecting && (
+        <RejectReasonModal order={rejecting} onClose={() => setRejecting(null)} onPick={(reason) => doReject(rejecting, reason)} />
+      )}
       {refusing && (
         <RefusalModal
           order={refusing}
