@@ -155,38 +155,70 @@ function IconBtn({ icon, label, onClick, disabled, danger }) {
   );
 }
 
-/* ── Tahrirlovchi: chapda forma, o'ngda jonli ko'rinish (mobilda ko'rinish tepada) ── */
+/*
+ * ── Tahrirlovchi ──
+ * TELEFONDA: butun ekran, 3 qadam (1 Dizayn · 2 Matn · 3 Sozlama), pastda "Keyingi"; tepada "Ko'rish" —
+ * mijoz ko'radigan oyna to'liq ekranda. Har qadamda kam narsa, hech narsa yon tomonga chiqib ketmaydi.
+ * KOMPYUTERDA: chapda forma (hamma qadam ketma-ket), o'ngda jonli ko'rinish.
+ * Yon tomonga siljib ketmaslik uchun: grid ustuni minmax(0,1fr), har maydon min-w-0, sana maydonlari
+ * to'liq kenglikda (iOS ularga katta o'z kengligini beradi), forma 16px shriftda (iPhone yaqinlashtirmasin).
+ */
+const STEPS = [['design', 'Dizayn'], ['text', 'Matn'], ['setup', 'Sozlama']];
+const FIELD = 'inp !w-full min-w-0 max-w-full !text-base sm:!text-sm';
+
 function Editor({ initial, activeCount, onClose, onSaved }) {
   const isNew = !initial.id;
   const [f, setF] = useState({ ...EMPTY, ...initial });
   const [linkMode, setLinkMode] = useState(() => (LINKS.some(([v]) => v === (initial.link || '')) ? (initial.link || '') : 'custom'));
+  const [step, setStep] = useState(0);
+  const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const titleRef = useRef(null);
+  const bodyRef = useRef(null);
   const set = (k) => (v) => setF((s) => ({ ...s, [k]: v }));
 
+  const imageOnly = f.template === 'image';
   const titleLen = visibleLen(f.title);
   const footerLen = visibleLen(f.footer);
   const canActivate = f.active || initial.active || activeCount < MAX_ACTIVE;
-  const imageOnly = f.template === 'image';
-  const invalid = (imageOnly ? !f.imageUrl : titleLen < 3) || titleLen > LIMIT.title || footerLen > LIMIT.footer || (linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link));
+  const link = linkMode === 'custom' ? f.link.trim() : linkMode;
+  const linkBad = linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link);
+
+  // Har qadam uchun nima yetishmayapti (foydalanuvchiga tushunarli matn)
+  const problems = {
+    design: imageOnly && !f.imageUrl ? '“Faqat rasm” uchun rasm yuklang' : null,
+    text: !imageOnly && titleLen < 3 ? 'Sarlavhani yozing (kamida 3 belgi)'
+      : titleLen > LIMIT.title ? `Sarlavha ${LIMIT.title} belgidan oshmasin`
+      : footerLen > LIMIT.footer ? `Pastki yozuv ${LIMIT.footer} belgidan oshmasin`
+      : linkBad ? 'Havola noto‘g‘ri: /market kabi yo‘l yoki https:// manzil yozing' : null,
+    setup: null,
+  };
+  const firstBad = STEPS.findIndex(([k]) => problems[k]);
+  const stepLabel = (k) => (k === 'text' && imageOnly ? 'Havola' : STEPS.find((x) => x[0] === k)[1]);
+
+  const go = (n) => { setErr(null); setStep(n); requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0 })); };
+  const next = () => {
+    const k = STEPS[step][0];
+    if (problems[k]) { setErr(problems[k]); return; }
+    go(Math.min(2, step + 1));
+  };
 
   // Tanlangan so'zni *...* bilan o'rash (urg'u rangi)
   const accent = () => {
     const el = titleRef.current; if (!el) return;
     const { selectionStart: a, selectionEnd: b, value } = el;
-    if (a === b) return;
-    const next = `${value.slice(0, a)}*${value.slice(a, b).replace(/\*/g, '')}*${value.slice(b)}`;
-    set('title')(next);
+    if (a === b) { setErr('Avval sarlavhadagi so‘zni belgilang, keyin tugmani bosing'); return; }
+    setErr(null);
+    set('title')(`${value.slice(0, a)}*${value.slice(a, b).replace(/\*/g, '')}*${value.slice(b)}`);
     requestAnimationFrame(() => { el.focus(); el.setSelectionRange(b + 2, b + 2); });
   };
 
   const save = async () => {
+    if (firstBad >= 0) { go(firstBad); setErr(problems[STEPS[firstBad][0]]); return; }
     setBusy(true); setErr(null);
     const body = {
-      ...pick(f),
-      link: linkMode === 'custom' ? f.link.trim() : linkMode,
-      active: Boolean(f.active),
+      ...pick(f), link, active: Boolean(f.active),
       startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : null,
       endsAt: f.endsAt ? new Date(f.endsAt).toISOString() : null,
     };
@@ -196,115 +228,179 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
     } catch (e) { setErr(e.message); setBusy(false); }
   };
 
+  const showStep = (n) => (step === n ? 'block' : 'hidden sm:block');
+  const last = step === 2;
+  const previewPromo = { ...f, link, title: f.title || (imageOnly ? '' : 'Sarlavha shu yerda chiqadi') };
+
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true">
-      <div className="flex max-h-[96dvh] w-full max-w-4xl flex-col overflow-hidden rounded-t-3xl bg-surface sm:rounded-3xl">
-        <div className="flex items-center justify-between border-b border-line px-4 py-3 sm:px-5">
-          <h2 className="text-base font-semibold text-ink">{isNew ? 'Yangi reklama oynasi' : 'Oynani tahrirlash'}</h2>
-          <button onClick={onClose} aria-label="Yopish" className="text-muted"><i className="ti ti-x text-xl" /></button>
+      <div className="flex h-[100dvh] w-full min-w-0 max-w-4xl flex-col overflow-hidden bg-surface sm:h-auto sm:max-h-[92vh] sm:rounded-3xl">
+        {/* Sarlavha */}
+        <div className="flex flex-none items-center gap-2 border-b border-line px-3 py-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5">
+          <button onClick={onClose} aria-label="Yopish" className="flex h-10 w-10 flex-none items-center justify-center rounded-full text-ink active:bg-canvas sm:hidden"><i className="ti ti-arrow-left text-xl" /></button>
+          <h2 className="min-w-0 flex-1 truncate text-base font-semibold text-ink">{isNew ? 'Yangi reklama oynasi' : 'Oynani tahrirlash'}</h2>
+          <button onClick={() => setPreview(true)} className="flex h-10 flex-none items-center gap-1.5 rounded-full bg-canvas px-3.5 text-sm font-medium text-ink active:opacity-70 sm:hidden"><i className="ti ti-eye" /> Ko‘rish</button>
+          <button onClick={onClose} aria-label="Yopish" className="hidden text-muted sm:block"><i className="ti ti-x text-xl" /></button>
         </div>
 
-        <div className="grid flex-1 gap-5 overflow-y-auto p-4 sm:grid-cols-[1fr_300px] sm:p-5">
-          {/* Jonli ko'rinish */}
-          <div className="order-first sm:order-last">
-            <div className="sm:sticky sm:top-0">
-              <div className="mx-auto w-[220px] sm:w-full">
-                <PromoCard promo={{ ...f, link: linkMode === 'custom' ? f.link : linkMode, title: f.title || 'Sarlavha shu yerda chiqadi', imageUrl: f.imageUrl }} preview />
+        {/* Qadamlar (faqat telefonda) */}
+        <div className="flex flex-none gap-1.5 border-b border-line px-3 py-2.5 sm:hidden" role="tablist">
+          {STEPS.map(([k], i) => {
+            const on = step === i; const bad = problems[k] && i < step;
+            return (
+              <button key={k} role="tab" aria-selected={on} onClick={() => go(i)}
+                className={`flex min-w-0 flex-1 items-center justify-center gap-1.5 rounded-xl py-2.5 text-sm font-semibold ${on ? 'bg-brand-400 text-brand-text' : 'bg-canvas text-muted'}`}>
+                <span className={`flex h-5 w-5 flex-none items-center justify-center rounded-full text-[11px] ${on ? 'bg-white/70 text-ink' : bad ? 'bg-red-500 text-white' : i < step ? 'bg-green-500 text-white' : 'bg-white text-muted'}`}>{bad ? '!' : i < step ? '✓' : i + 1}</span>
+                <span className="truncate">{stepLabel(k)}</span>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Tarkib */}
+        <div ref={bodyRef} className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain p-4 sm:p-5">
+          <div className="grid min-w-0 grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1fr)_300px]">
+            {/* Jonli ko'rinish: kompyuterda o'ngda; telefonda 1-qadamda katta, 2-qadamda kichik */}
+            <div className={`min-w-0 sm:order-last ${step === 2 ? 'hidden sm:block' : ''}`}>
+              <div className="sm:sticky sm:top-0">
+                <div className={`mx-auto sm:w-full ${step === 0 ? 'w-[min(40vw,150px)]' : 'w-[120px]'}`}>
+                  <PromoCard promo={previewPromo} preview />
+                </div>
+                <p className="mt-2 text-center text-[11px] leading-snug text-muted">Mijoz aynan shunday ko‘radi.{!imageOnly && ' Matn uzun bo‘lsa, shrift o‘zi kichrayadi.'}</p>
               </div>
-              <p className="mt-2 text-center text-[11px] text-muted">Mijoz aynan shunday ko‘radi. Matn uzun bo‘lsa, shrift o‘zi kichrayib, kartaga sig‘adi.</p>
             </div>
-          </div>
 
-          <div className="space-y-4">
-            <fieldset>
-              <legend className="mb-1.5 text-sm font-medium text-ink">Dizayn</legend>
-              <div className="grid grid-cols-4 gap-2">
-                {TEMPLATES.map(([k, l, d]) => (
-                  <button key={k} type="button" onClick={() => set('template')(k)} title={d}
-                    className={`rounded-xl border p-1.5 text-left transition ${f.template === k ? 'border-brand-400 ring-2 ring-brand-400/40' : 'border-line'}`}>
-                    <div className="pointer-events-none mx-auto w-full max-w-[64px]"><PromoCard promo={{ template: k, title: 'Aa *Bb*', footer: 'Cc', imageUrl: f.imageUrl }} preview /></div>
-                    <div className="mt-1 text-center text-xs font-medium text-ink">{l}</div>
-                  </button>
-                ))}
+            <div className="min-w-0 space-y-5">
+              {/* 1. DIZAYN */}
+              <div className={`min-w-0 space-y-5 ${showStep(0)}`}>
+                <fieldset className="min-w-0">
+                  <legend className="mb-2 text-sm font-semibold text-ink">1. Dizaynni tanlang</legend>
+                  <div className="grid grid-cols-4 gap-1.5 sm:gap-2.5">
+                    {TEMPLATES.map(([k, l, d]) => (
+                      <button key={k} type="button" onClick={() => set('template')(k)} aria-pressed={f.template === k}
+                        className={`min-w-0 rounded-2xl border p-1.5 text-left transition active:scale-[0.98] sm:p-2 ${f.template === k ? 'border-brand-400 bg-brand-400/10 ring-2 ring-brand-400/50' : 'border-line'}`}>
+                        <div className="pointer-events-none mx-auto w-full max-w-[64px]"><PromoCard promo={{ template: k, title: 'Aa *Bb*', footer: 'Cc', imageUrl: f.imageUrl }} preview /></div>
+                        <div className="mt-1.5 text-center text-xs font-semibold leading-tight text-ink sm:text-sm">{l}</div>
+                        <div className="hidden text-center text-[11px] leading-tight text-muted sm:block">{d}</div>
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <div className="min-w-0">
+                  <ImageUpload
+                    key={imageOnly ? 'cover' : 'art'}
+                    value={f.imageUrl}
+                    onChange={set('imageUrl')}
+                    folder="banners"
+                    label={imageOnly ? 'Rasm — butun oynani qoplaydi' : 'Rasm (shaffof PNG eng chiroyli chiqadi)'}
+                    aspect={imageOnly ? '2/3' : '1/1'}
+                  />
+                  <p className="mt-1.5 text-[11px] leading-snug text-muted">
+                    {imageOnly ? 'Tavsiya: 2:3 nisbat (masalan 1080×1620). Boshqacha bo‘lsa chetlari kesiladi. Matn va ramka ko‘rsatilmaydi — yozuvlarni rasmning o‘ziga joylang.' : 'Rasm bo‘sh bo‘lsa, idish belgisi ko‘rinadi.'}
+                  </p>
+                </div>
               </div>
-            </fieldset>
 
-            <ImageUpload
-              key={imageOnly ? 'cover' : 'art'}
-              value={f.imageUrl}
-              onChange={set('imageUrl')}
-              folder="banners"
-              label={imageOnly ? "Rasm — butun oynani qoplaydi (2:3 nisbat, masalan 1080×1620)" : 'Rasm (shaffof PNG eng chiroyli chiqadi)'}
-              aspect={imageOnly ? '2/3' : '1/1'}
-            />
-            {imageOnly && <p className="-mt-2 text-[11px] text-muted">Rasm 2:3 bo‘lmasa, chetlari kesiladi (markaz saqlanadi). Matn va ramka ko‘rsatilmaydi — kerakli yozuvlarni rasmning o‘ziga joylang.</p>}
+              {/* 2. MATN */}
+              <div className={`min-w-0 space-y-5 ${showStep(1)}`}>
+                {!imageOnly && (
+                  <>
+                    <label className="block min-w-0">
+                      <span className="mb-1.5 flex items-center justify-between gap-2 text-sm font-semibold text-ink">
+                        2. Sarlavha
+                        <span className={`text-xs font-normal ${titleLen > LIMIT.title ? 'text-red-600' : 'text-muted'}`}>{titleLen}/{LIMIT.title}</span>
+                      </span>
+                      <textarea ref={titleRef} rows={3} className={`${FIELD} resize-none`} value={f.title} onChange={(e) => set('title')(e.target.value)}
+                        placeholder={'100 000 so‘mlik\ntaom buyurtma qiling\n1 litr *Coca-Cola Bonus!*'} />
+                      <span className="mt-2 block text-xs leading-snug text-muted">
+                        Yangi qator uchun Enter bosing. Rangli so‘z: uni belgilang va quyidagi tugmani bosing.
+                      </span>
+                      <button type="button" onClick={accent} className="mt-2 flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-line bg-white text-sm font-semibold text-ink active:bg-canvas">
+                        <i className="ti ti-brush" /> Belgilangan so‘zni rangli qilish
+                      </button>
+                    </label>
 
-            {!imageOnly && (<>
-            <label className="block">
-              <span className="mb-1 flex items-center justify-between text-sm font-medium text-ink">
-                Sarlavha
-                <span className={`text-xs ${titleLen > LIMIT.title ? 'text-red-600' : 'text-muted'}`}>{titleLen}/{LIMIT.title}</span>
-              </span>
-              <textarea ref={titleRef} rows={3} className="inp resize-none" value={f.title} onChange={(e) => set('title')(e.target.value)}
-                placeholder="100 000 so‘mlik taom buyurtma qiling 1 litr *Coca-Cola Bonus!*" />
-              <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted">
-                <span>*yulduzcha* ichidagi so‘zlar urg‘u rangida chiqadi (ko‘pi bilan 2 ta). Yangi qator — Enter.</span>
-                <button type="button" onClick={accent} className="flex-none rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-ink">Belgilanganni ajratish</button>
-              </span>
-            </label>
+                    <label className="block min-w-0">
+                      <span className="mb-1.5 flex items-center justify-between gap-2 text-sm font-semibold text-ink">
+                        <span>Pastki yozuv <span className="font-normal text-muted">(ixtiyoriy)</span></span>
+                        <span className={`text-xs font-normal ${footerLen > LIMIT.footer ? 'text-red-600' : 'text-muted'}`}>{footerLen}/{LIMIT.footer}</span>
+                      </span>
+                      <input className={FIELD} value={f.footer} onChange={(e) => set('footer')(e.target.value)} placeholder="*LokmaGo* bilan buyurtma qiling — sovg‘a oling!" />
+                    </label>
+                  </>
+                )}
 
-            <label className="block">
-              <span className="mb-1 flex items-center justify-between text-sm font-medium text-ink">
-                <span>Pastki yozuv <span className="font-normal text-muted">(ixtiyoriy)</span></span>
-                <span className={`text-xs ${footerLen > LIMIT.footer ? 'text-red-600' : 'text-muted'}`}>{footerLen}/{LIMIT.footer}</span>
-              </span>
-              <input className="inp" value={f.footer} onChange={(e) => set('footer')(e.target.value)} placeholder="*LokmaGo* bilan buyurtma qiling — sovg‘a oling!" />
-            </label>
-            </>)}
-
-            <label className="block">
-              <span className="mb-1 block text-sm font-medium text-ink">{imageOnly ? 'Rasm bosilganda' : 'Pastki yozuv bosilganda'}</span>
-              <select className="inp" value={linkMode} onChange={(e) => { setLinkMode(e.target.value); if (e.target.value !== 'custom') set('link')(e.target.value); }}>
-                {LINKS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-              {linkMode === 'custom' && (
-                <input className="inp mt-2" value={f.link} onChange={(e) => set('link')(e.target.value)} placeholder="/restaurant/… yoki https://…" />
-              )}
-            </label>
-
-            <fieldset>
-              <legend className="mb-1.5 text-sm font-medium text-ink">Har bir mijozga</legend>
-              <div className="grid grid-cols-2 gap-1 rounded-xl border border-line p-1">
-                {[['daily', 'Kuniga bir marta'], ['once', 'Faqat bir marta']].map(([v, l]) => (
-                  <button key={v} type="button" onClick={() => set('frequency')(v)} className={`rounded-lg py-2 text-sm font-medium ${f.frequency === v ? 'bg-brand-400 text-brand-text' : 'text-muted'}`}>{l}</button>
-                ))}
+                <label className="block min-w-0">
+                  <span className="mb-1.5 block text-sm font-semibold text-ink">{imageOnly ? 'Rasm bosilganda nima bo‘lsin?' : 'Pastki yozuv bosilganda nima bo‘lsin?'}</span>
+                  <select className={FIELD} value={linkMode} onChange={(e) => { setLinkMode(e.target.value); if (e.target.value !== 'custom') set('link')(e.target.value); }}>
+                    {LINKS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  {linkMode === 'custom' && (
+                    <input className={`${FIELD} mt-2 ${linkBad ? '!border-red-400' : ''}`} value={f.link} onChange={(e) => set('link')(e.target.value)} placeholder="/restaurant/… yoki https://…" inputMode="url" autoCapitalize="none" autoCorrect="off" />
+                  )}
+                </label>
               </div>
-            </fieldset>
 
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block"><span className="mb-1 block text-sm font-medium text-ink">Boshlanish</span><input type="datetime-local" className="inp" value={f.startsAt} onChange={(e) => set('startsAt')(e.target.value)} /></label>
-              <label className="block"><span className="mb-1 block text-sm font-medium text-ink">Tugash</span><input type="datetime-local" className="inp" value={f.endsAt} onChange={(e) => set('endsAt')(e.target.value)} /></label>
+              {/* 3. SOZLAMA */}
+              <div className={`min-w-0 space-y-5 ${showStep(2)}`}>
+                <fieldset className="min-w-0">
+                  <legend className="mb-2 text-sm font-semibold text-ink">3. Har bir mijozga necha marta?</legend>
+                  <div className="grid grid-cols-2 gap-1 rounded-xl border border-line p-1">
+                    {[['daily', 'Kuniga bir marta'], ['once', 'Faqat bir marta']].map(([v, l]) => (
+                      <button key={v} type="button" onClick={() => set('frequency')(v)} aria-pressed={f.frequency === v}
+                        className={`min-w-0 rounded-lg px-1 py-3 text-sm font-semibold ${f.frequency === v ? 'bg-brand-400 text-brand-text' : 'text-muted'}`}>{l}</button>
+                    ))}
+                  </div>
+                </fieldset>
+
+                <fieldset className="min-w-0">
+                  <legend className="mb-2 text-sm font-semibold text-ink">Qachon ko‘rsatilsin? <span className="font-normal text-muted">(ixtiyoriy)</span></legend>
+                  <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2">
+                    <label className="block min-w-0"><span className="mb-1 block text-xs text-muted">Boshlanishi</span><input type="datetime-local" className={FIELD} value={f.startsAt} onChange={(e) => set('startsAt')(e.target.value)} /></label>
+                    <label className="block min-w-0"><span className="mb-1 block text-xs text-muted">Tugashi</span><input type="datetime-local" className={FIELD} value={f.endsAt} onChange={(e) => set('endsAt')(e.target.value)} /></label>
+                  </div>
+                  <p className="mt-1.5 text-[11px] leading-snug text-muted">Bo‘sh qoldirsangiz — yoqilgan paytdan to o‘chirilguncha ko‘rsatiladi.</p>
+                </fieldset>
+
+                <div className="flex items-center justify-between gap-3 rounded-2xl bg-canvas px-4 py-3.5">
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold text-ink">Mijozlarga ko‘rsatish</div>
+                    <div className="text-xs leading-snug text-muted">{canActivate ? (f.active ? 'Saqlangach darhol hamma mijozga chiqadi' : 'O‘chiq: qoralama bo‘lib saqlanadi') : `Allaqachon ${MAX_ACTIVE} ta oyna yoqilgan`}</div>
+                  </div>
+                  <Switch on={f.active} disabled={!canActivate} onChange={() => set('active')(!f.active)} />
+                </div>
+              </div>
+
+              {err && <div role="alert" className="rounded-xl bg-red-50 px-3.5 py-3 text-sm leading-snug text-red-700">{err}</div>}
             </div>
-            <p className="-mt-2 text-[11px] text-muted">Bo‘sh qoldirsangiz — yoqilgan paytdan to o‘chirilguncha.</p>
-
-            <div className="flex items-center justify-between gap-3 rounded-xl bg-canvas px-3 py-3">
-              <div>
-                <div className="text-sm font-medium text-ink">Barcha mijozlarga ko‘rsatish</div>
-                <div className="text-[11px] text-muted">{canActivate ? 'O‘chirib saqlasangiz — qoralama bo‘lib qoladi' : `Allaqachon ${MAX_ACTIVE} ta oyna yoqilgan`}</div>
-              </div>
-              <Switch on={f.active} disabled={!canActivate} onChange={() => set('active')(!f.active)} />
-            </div>
-            {err && <div className="rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">{err}</div>}
           </div>
         </div>
 
-        <div className="flex gap-2 border-t border-line px-4 py-3 sm:px-5">
-          <button onClick={onClose} className="rounded-xl border border-line px-4 py-2.5 text-sm text-muted">Bekor qilish</button>
-          <button onClick={save} disabled={busy || invalid} className="flex-1 rounded-xl bg-brand-400 py-2.5 text-sm font-semibold text-brand-text disabled:opacity-40">
+        {/* Tugmalar */}
+        <div className="flex flex-none gap-2 border-t border-line bg-surface px-3 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] sm:px-5">
+          {step > 0
+            ? <button onClick={() => go(step - 1)} className="h-12 flex-none rounded-xl border border-line px-5 text-sm font-semibold text-ink sm:hidden">Orqaga</button>
+            : <button onClick={onClose} className="h-12 flex-none rounded-xl border border-line px-5 text-sm font-semibold text-muted sm:hidden">Bekor</button>}
+          <button onClick={onClose} className="hidden h-12 flex-none rounded-xl border border-line px-5 text-sm font-semibold text-muted sm:block">Bekor qilish</button>
+          {/* Telefonda: oxirgi qadamda (yoki mavjud oynani tahrirlayotganda har qadamda) — Saqlash; aks holda Keyingi */}
+          {!last && isNew ? (
+            <button onClick={next} className="h-12 min-w-0 flex-1 rounded-xl bg-brand-400 text-sm font-semibold text-brand-text active:opacity-80 sm:hidden">Keyingi <i className="ti ti-arrow-right" /></button>
+          ) : null}
+          <button onClick={save} disabled={busy}
+            className={`h-12 min-w-0 flex-1 rounded-xl bg-brand-400 text-sm font-semibold text-brand-text active:opacity-80 disabled:opacity-40 ${!last && isNew ? 'hidden sm:block' : ''}`}>
             {busy ? 'Saqlanmoqda...' : 'Saqlash'}
           </button>
         </div>
       </div>
+
+      {/* To'liq ekran ko'rinish (telefon) */}
+      {preview && (
+        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-4 bg-black/75 p-5" role="dialog" aria-label="Ko‘rinish" onClick={() => setPreview(false)}>
+          <div className="w-[min(82vw,360px)]" style={{ maxHeight: 'calc(100dvh - 120px)' }}><PromoCard promo={previewPromo} preview /></div>
+          <button className="h-11 rounded-full bg-white/15 px-6 text-sm font-semibold text-white">Yopish</button>
+        </div>
+      )}
     </div>
   );
 }
