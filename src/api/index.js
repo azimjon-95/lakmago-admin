@@ -343,6 +343,14 @@ export const adminApi = {
   // Daromad hisobi
   getRevenue: () => apiFetch('/admin/revenue'),
 
+  // Reklama oynalari (mijoz ilovasi ochilganda navbat bilan)
+  getPromoModals: () => apiFetch('/admin/promo-modals'),
+  createPromoModal: (d) => apiFetch('/admin/promo-modals', { method: 'POST', body: JSON.stringify(d) }),
+  updatePromoModal: (id, d) => apiFetch(`/admin/promo-modals/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
+  reshowPromoModal: (id) => apiFetch(`/admin/promo-modals/${id}/reshow`, { method: 'POST' }),
+  reorderPromoModals: (ids) => apiFetch('/admin/promo-modals/reorder', { method: 'POST', body: JSON.stringify({ ids }) }),
+  deletePromoModal: (id) => apiFetch(`/admin/promo-modals/${id}`, { method: 'DELETE' }),
+
   // Banner boshqaruvi
   getBanners: () => apiFetch('/admin/banners'),
   createBanner: (data) => apiFetch('/admin/banners', { method: 'POST', body: JSON.stringify(data) }),
