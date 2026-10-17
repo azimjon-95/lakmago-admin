@@ -1,0 +1,123 @@
+/* ═══ Reklama oynasi kartasi — mijoz ilovasi va admin oldindan ko'rishi uchun umumiy ═══
+ * O'lchamlar karta eniga nisbatan (%) — har qanday ekranda bir xil kompozitsiya.
+ * Ranglar LokmaGo brendi: to'q sariq #F2661A, qora, oq.
+ */
+.pm-card {
+  --pm-orange: #F2661A;
+  --pm-orange-deep: #C83F06;
+  --pm-black: #000;
+  --pm-cream: #FFF2E2;
+  position: relative;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  container-type: inline-size; /* cqw — kesim va naqshlar karta eniga nisbatan */
+  border-radius: 28px;
+  overflow: hidden;
+  isolation: isolate;
+  font-family: 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif;
+  color: var(--pm-black);
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.pm-card *, .pm-card *::before, .pm-card *::after { box-sizing: border-box; }
+
+/* ── umumiy joylashuv ── */
+.pm-titlebox {
+  position: absolute; left: 8%; right: 8%; top: 10.5%; height: 23%;
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+}
+.pm-title {
+  margin: 0; width: 100%; max-height: 100%;
+  font-weight: 900; line-height: 1.04; letter-spacing: -0.035em; text-align: center;
+  white-space: pre-line; overflow-wrap: anywhere; text-wrap: balance;
+}
+.pm-imgbox {
+  position: absolute; left: 5%; right: 5%; top: 34%; bottom: 20.5%;
+  display: flex; align-items: center; justify-content: center; z-index: 1;
+}
+.pm-acc { white-space: nowrap; }
+.pm-img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 14px 18px rgba(0, 0, 0, 0.18)); pointer-events: none; }
+.pm-img--empty { font-size: 72px; filter: none; opacity: 0.35; }
+
+.pm-foot {
+  position: absolute; left: 7%; right: 7%; bottom: 5%; height: 13.5%;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 0 6%; border: 0; z-index: 3; font: inherit; color: inherit;
+}
+button.pm-foot { cursor: pointer; }
+button.pm-foot:active { transform: scale(0.98) rotate(var(--pm-tilt, 0deg)); }
+.pm-footbox { flex: 1; min-width: 0; height: 100%; display: flex; align-items: center; justify-content: center; }
+.pm-foottext { display: block; max-height: 100%; font-weight: 800; line-height: 1.15; text-align: center; overflow-wrap: anywhere; text-wrap: balance; white-space: pre-line; }
+.pm-foot-go { flex: none; }
+
+.pm-close {
+  position: absolute; top: 12px; right: 12px; z-index: 5;
+  width: 32px; height: 32px; border-radius: 50%; border: 0;
+  display: grid; place-items: center; cursor: pointer;
+  background: rgba(0, 0, 0, 0.07); color: #000;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+  transition: transform 0.15s ease;
+}
+.pm-close:active { transform: scale(0.88); }
+.pm-close:focus-visible, button.pm-foot:focus-visible { outline: 3px solid #4C8DFF; outline-offset: 2px; }
+
+/* nuqtali (halftone) naqsh — chap va o'ng chetda */
+.pm-dots { position: absolute; top: 34%; width: 16%; height: 26%; z-index: 0; opacity: 0.55;
+  background-image: radial-gradient(currentColor 0.32cqw, transparent 0.38cqw); background-size: 2cqw 2cqw; }
+.pm-dots--l { left: 0; -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
+.pm-dots--r { right: 0; -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
+
+/* ══ 1. BRUSH — asosiy reklama rasmi kabi ══ */
+.pm-brushart { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+.pm-t-brush { background: #fff; }
+.pm-t-brush .pm-acc { color: var(--pm-orange); }
+.pm-t-brush .pm-dots { color: #1a1a1a; }
+.pm-t-brush .pm-foot {
+  --pm-tilt: -2.2deg;
+  background: var(--pm-black); color: #fff; border-radius: 16px; transform: rotate(var(--pm-tilt));
+  box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.5);
+}
+.pm-t-brush .pm-foot .pm-acc { color: var(--pm-orange); }
+
+/* ══ 2. COUPON — chegirma chiptasi ══ */
+.pm-t-coupon {
+  background:
+    linear-gradient(170deg, #FF7B2C 0%, var(--pm-orange) 48%, var(--pm-orange-deep) 100%);
+  color: #fff;
+  /* Teshik (perforatsiya) chizig'i yonidagi yarim doira kesimlar */
+  /* Kesim radiusi karta eniga nisbatan — PromoCard JS orqali o'rnatadi (cqw elementning o'zida ishlamaydi) */
+  --pm-notch: 16px;
+  -webkit-mask: radial-gradient(circle var(--pm-notch) at 0 79%, transparent calc(var(--pm-notch) - 0.5px), #000 var(--pm-notch)) left / 51% 100% no-repeat,
+                radial-gradient(circle var(--pm-notch) at 100% 79%, transparent calc(var(--pm-notch) - 0.5px), #000 var(--pm-notch)) right / 51% 100% no-repeat;
+  mask: radial-gradient(circle var(--pm-notch) at 0 79%, transparent calc(var(--pm-notch) - 0.5px), #000 var(--pm-notch)) left / 51% 100% no-repeat,
+        radial-gradient(circle var(--pm-notch) at 100% 79%, transparent calc(var(--pm-notch) - 0.5px), #000 var(--pm-notch)) right / 51% 100% no-repeat;
+}
+.pm-t-coupon .pm-title { color: #fff; text-shadow: 0 2px 0 rgba(0, 0, 0, 0.08); }
+.pm-t-coupon .pm-acc { color: var(--pm-black); background: var(--pm-cream); padding: 0 0.18em; border-radius: 0.18em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+.pm-t-coupon .pm-imgbox { bottom: 23%; }
+.pm-perf { position: absolute; left: 7%; right: 7%; top: 79%; height: 0; border-top: 2.5px dashed rgba(255, 255, 255, 0.75); z-index: 1; }
+.pm-t-coupon .pm-foot { left: 0; right: 0; bottom: 0; height: 19.5%; padding: 0 9%; background: var(--pm-cream); color: var(--pm-black); border-radius: 0; }
+.pm-t-coupon .pm-foot .pm-acc { color: var(--pm-orange-deep); }
+.pm-t-coupon .pm-close { background: rgba(0, 0, 0, 0.18); color: #fff; }
+
+/* ══ 3. SUNBURST — nurlar ══ */
+.pm-t-sunburst { background: radial-gradient(120% 80% at 50% 58%, #FF8A2A 0%, var(--pm-orange) 38%, var(--pm-orange-deep) 100%); color: #fff; }
+.pm-rays {
+  position: absolute; left: 50%; top: 58%; width: 190%; aspect-ratio: 1; transform: translate(-50%, -50%);
+  background: repeating-conic-gradient(from 0deg, rgba(255, 255, 255, 0.16) 0deg 7deg, transparent 7deg 20deg);
+  -webkit-mask-image: radial-gradient(circle, #000 18%, transparent 62%); mask-image: radial-gradient(circle, #000 18%, transparent 62%);
+  z-index: 0; animation: pm-spin 60s linear infinite;
+}
+@keyframes pm-spin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+.pm-t-sunburst .pm-title { color: #fff; text-shadow: 0 3px 0 rgba(120, 30, 0, 0.35); }
+.pm-t-sunburst .pm-acc { color: #fff; background: var(--pm-black); padding: 0 0.2em; border-radius: 0.22em; -webkit-box-decoration-break: clone; box-decoration-break: clone; text-shadow: none; }
+.pm-t-sunburst .pm-dots { color: #fff; opacity: 0.35; }
+.pm-t-sunburst .pm-foot { background: #fff; color: var(--pm-black); border-radius: 999px; box-shadow: 0 12px 26px -10px rgba(80, 20, 0, 0.6); }
+.pm-t-sunburst .pm-foot .pm-acc { color: var(--pm-orange-deep); }
+.pm-t-sunburst .pm-close { background: rgba(0, 0, 0, 0.2); color: #fff; }
+
+.pm-foot--bare .pm-foottext { font-size: 15px; }
+
+@media (prefers-reduced-motion: reduce) { .pm-rays { animation: none; } }

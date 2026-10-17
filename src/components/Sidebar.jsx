@@ -46,6 +46,13 @@ const adminNav = [
     page: "banners",
   },
   {
+    // Mijoz ilovasi ochilganda chiqadigan reklama oynalari (navbat bilan, kuniga bir marta)
+    to: "/promo-modals",
+    icon: "ti-sparkles",
+    label: "Reklama oynalari",
+    page: "banners",
+  },
+  {
     to: "/support",
     icon: "ti-message-circle",
     label: "Xabarlar",
