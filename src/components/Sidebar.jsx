@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
 
 import { useAuth } from "@/store/auth";
+import { useOwnerInbox } from "@/store/ownerInbox";
+import { OwnerBell } from "@/pages/owner/inbox/OwnerBell";
 import { useStoppedCount } from "@/hooks/useStoppedCount";
 import { usePendingTransfers } from "@/hooks/usePendingTransfers";
 import { useDineInStatus } from "@/hooks/useDineInStatus";
@@ -233,7 +235,7 @@ const weddingNav = [
  */
 const ownerNav = [
   { to: "/", icon: "ti-calendar-month", label: "Kalendar", end: true },
-  { to: "/reservations", icon: "ti-list-check", label: "Bronlar" },
+  { to: "/reservations", icon: "ti-list-check", label: "Bronlar", badge: "inbox" },
   { to: "/finance", icon: "ti-report-money", label: "Kirim-chiqim" },
   { to: "/employees", icon: "ti-users", label: "Ishchilar" },
 ];
@@ -321,6 +323,8 @@ const primaryNav = nav.slice(0, MOBILE_TABS);
 const moreNav = nav.slice(MOBILE_TABS);
 
 
+// To'yxona egasi: javob kutayotgan yangi mijoz so'rovlari soni (boshqa rollarda 0)
+const inboxCount = useOwnerInbox((s) => s.summary.counts.new);
 const {count: stoppedCount}=useStoppedCount(user?.role==="restaurant");
 const {count: transferCount}=usePendingTransfers(user?.role==="restaurant");
 
@@ -328,6 +332,7 @@ const {count: transferCount}=usePendingTransfers(user?.role==="restaurant");
 const moreBadge = moreNav.reduce((sum, item) => {
   if (item.badge === "stopped") return sum + stoppedCount;
   if (item.badge === "transfers") return sum + transferCount;
+  if (item.badge === "inbox") return sum + inboxCount;
   return sum;
 }, 0);
 
@@ -513,6 +518,18 @@ item.badge==="stopped" && stoppedCount>0 &&
 <span className="badge">
 
 {stoppedCount}
+
+</span>
+}
+
+
+
+{
+item.badge==="inbox" && inboxCount>0 &&
+
+<span className="badge">
+
+{inboxCount}
 
 </span>
 }
@@ -826,13 +843,16 @@ border-white/10
 <header className="lg:hidden sticky top-0 z-30 flex items-center justify-between gap-3 px-4 py-3 bg-sidebar/85 backdrop-blur-xl border-b border-white/10">
   <Brand/>
 
-  <button
-    onClick={()=>setOpen(true)}
-    aria-label="Menyu"
-    className="w-9 h-9 rounded-full bg-white/8 text-white flex items-center justify-center active:scale-90 transition-transform"
-  >
-    <i className="ti ti-dots text-lg"/>
-  </button>
+  <div className="flex items-center gap-2">
+    {isOwner && <OwnerBell dark />}
+    <button
+      onClick={()=>setOpen(true)}
+      aria-label="Menyu"
+      className="w-9 h-9 rounded-full bg-white/8 text-white flex items-center justify-center active:scale-90 transition-transform"
+    >
+      <i className="ti ti-dots text-lg"/>
+    </button>
+  </div>
 </header>
 
 
@@ -847,6 +867,7 @@ border-white/10
         badge={
           item.badge==="stopped" ? stoppedCount
           : item.badge==="transfers" ? transferCount
+          : item.badge==="inbox" ? inboxCount
           : 0
         }
       />

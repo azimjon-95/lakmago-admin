@@ -3,6 +3,8 @@ import { ownerApi } from '@/api';
 import { PageHeader, ErrorBox, Empty, Badge, SESSION_LABEL, som, todayIso } from '@/pages/wedding/common';
 import { ReservationForm } from './ReservationForm';
 import { useOwnerVenue } from './useOwnerVenue';
+import { OwnerRequests } from './inbox/OwnerRequests';
+import { useOwnerInbox } from '@/store/ownerInbox';
 
 /*
  * Bronlar ro'yxati (egasi kiritganlari): kelayotganlar, qidiruv,
@@ -14,7 +16,30 @@ const STATUS = {
   closed: { label: 'Yopiq', cls: 'bg-gray-100 text-gray-600' },
 };
 
+/*
+ * "Bronlar": ikki bo'lim.
+ *   So'rovlar — mijoz ilovasidan kelgan bronlar (yangi → kelishildi → avans → tasdiqlandi / rad etish);
+ *   Kalendar bronlari — egasi o'zi kiritgan bronlar (avvalgi ro'yxat, o'zgarmagan).
+ */
 export function OwnerReservationsPage() {
+  const [tab, setTab] = useState('requests');
+  const newCount = useOwnerInbox((s) => s.summary.counts.new);
+  return (
+    <div className="min-w-0 flex-1 p-3 sm:p-6">
+      <div className="mb-4 grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1">
+        {[['requests', "Mijoz so'rovlari"], ['calendar', 'Kalendar bronlari']].map(([k, l]) => (
+          <button key={k} onClick={() => setTab(k)} className={`relative rounded-lg py-2.5 text-sm font-semibold ${tab === k ? 'bg-brand-400 text-brand-text' : 'text-muted'}`}>
+            {l}
+            {k === 'requests' && newCount > 0 && <span className="ml-1.5 inline-flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1.5 text-[11px] font-bold leading-[18px] text-white">{newCount}</span>}
+          </button>
+        ))}
+      </div>
+      {tab === 'requests' ? <OwnerRequests /> : <CalendarBookings />}
+    </div>
+  );
+}
+
+function CalendarBookings() {
   const { venue } = useOwnerVenue();
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -36,8 +61,8 @@ export function OwnerReservationsPage() {
   const debt = list.reduce((s, r) => s + Math.max(0, (r.total_price || 0) - paidOf(r)), 0);
 
   return (
-    <div className="flex-1 p-3 sm:p-6 min-w-0">
-      <PageHeader title="Bronlar" subtitle={!past && debt > 0 ? `Mijozlardan olinadigan qoldiq: ${som(debt)} so'm` : undefined} />
+    <div className="min-w-0">
+      <PageHeader title="Kalendar bronlari" subtitle={!past && debt > 0 ? `Mijozlardan olinadigan qoldiq: ${som(debt)} so'm` : undefined} />
       <div className="flex gap-2 mb-3">
         <input className="inp flex-1" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Mijoz, telefon, izoh" />
         <div className="grid grid-cols-2 gap-1 rounded-xl border border-line bg-surface p-1 flex-none">

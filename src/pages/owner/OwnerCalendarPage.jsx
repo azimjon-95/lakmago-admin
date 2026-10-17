@@ -1,3 +1,4 @@
+import { useOwnerInbox } from '@/store/ownerInbox';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { ownerApi } from '@/api';
 import { ErrorBox, SESSION_LABEL, SESSION_ICON, som, thisMonth, todayIso } from '@/pages/wedding/common';
@@ -28,6 +29,7 @@ function shiftMonth(ym, n) {
 }
 
 export function OwnerCalendarPage() {
+  const openBooking = useOwnerInbox((s) => s.openBooking);
   const { venue } = useOwnerVenue();
   const [month, setMonth] = useState(thisMonth());
   const [data, setData] = useState(null);
@@ -158,7 +160,7 @@ export function OwnerCalendarPage() {
           entryOf={(s) => map.get(`${day}|${hallId}|${s}`)}
           past={day < today}
           onClose={() => setDay(null)}
-          onPick={(session, entry) => setForm({ session, entry })}
+          onPick={(session, entry) => (entry?.kind === 'booking' ? openBooking(entry.id) : setForm({ session, entry }))}
           onPrev={() => setDay((d) => shiftDay(d, -1))}
           onNext={() => setDay((d) => shiftDay(d, 1))}
         />
@@ -212,7 +214,7 @@ function DaySheet({ date, hall, sessions, entryOf, past, onClose, onPick, onPrev
                   <i className={`ti ${SESSION_ICON[s]} text-lg`} />
                   <span className="font-semibold">{SESSION_LABEL[s]}</span>
                   <span className="ml-auto rounded-full bg-white/70 px-2 py-0.5 text-[11px] font-semibold">
-                    {e?.kind === 'booking' ? 'Ilovadan · ' : ''}{st.label}
+                    {e?.kind === 'booking' ? 'Ilovadan · ' : ''}{e?.kind === 'booking' && e.stage === 'new' ? "Yangi so'rov" : e?.kind === 'booking' && e.stage === 'agreed' ? 'Kelishildi' : st.label}
                   </span>
                 </div>
                 {e ? (
