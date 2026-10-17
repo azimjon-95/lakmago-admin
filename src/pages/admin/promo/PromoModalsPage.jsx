@@ -15,6 +15,7 @@ const TEMPLATES = [
   ['brush', "Cho'tka", "Oq fon, to'q sariq zarbalar, qora lenta"],
   ['coupon', 'Kupon', 'Chegirma chiptasi, uzib olinadigan pastki qism'],
   ['sunburst', 'Nurlar', "To'q sariq nurlar, oq sarlavha"],
+  ['image', 'Faqat rasm', "Matnsiz: rasm butun oynani chetdan-chetgacha qoplaydi"],
 ];
 const LINKS = [['', 'Faqat yopiladi'], ['/', 'Bosh sahifa'], ['/market', 'Market'], ['custom', 'Boshqa havola']];
 const MAX_ACTIVE = 5;
@@ -108,7 +109,7 @@ export function PromoModalsPage() {
                     <span className="text-xs font-semibold text-muted">{i + 1}-navbat · {TEMPLATES.find((t) => t[0] === p.template)?.[1]}</span>
                     <Switch on={p.active} disabled={busyId === p.id || (!p.active && activeCount >= MAX_ACTIVE)} onChange={() => toggle(p)} />
                   </div>
-                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink">{p.title.replace(/\*/g, '')}</p>
+                  <p className="mt-1 line-clamp-2 text-sm font-semibold text-ink">{p.template === 'image' ? (p.title ? p.title.replace(/\*/g, '') : 'Faqat rasm') : p.title.replace(/\*/g, '')}</p>
                   {p.footer && <p className="line-clamp-1 text-xs text-muted">{p.footer.replace(/\*/g, '')}</p>}
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                     <span className={`rounded-full px-2 py-0.5 font-medium ${cls}`}>{label}</span>
@@ -167,7 +168,8 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
   const titleLen = visibleLen(f.title);
   const footerLen = visibleLen(f.footer);
   const canActivate = f.active || initial.active || activeCount < MAX_ACTIVE;
-  const invalid = titleLen < 3 || titleLen > LIMIT.title || footerLen > LIMIT.footer || (linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link));
+  const imageOnly = f.template === 'image';
+  const invalid = (imageOnly ? !f.imageUrl : titleLen < 3) || titleLen > LIMIT.title || footerLen > LIMIT.footer || (linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link));
 
   // Tanlangan so'zni *...* bilan o'rash (urg'u rangi)
   const accent = () => {
@@ -216,19 +218,28 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
           <div className="space-y-4">
             <fieldset>
               <legend className="mb-1.5 text-sm font-medium text-ink">Dizayn</legend>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 {TEMPLATES.map(([k, l, d]) => (
                   <button key={k} type="button" onClick={() => set('template')(k)} title={d}
                     className={`rounded-xl border p-1.5 text-left transition ${f.template === k ? 'border-brand-400 ring-2 ring-brand-400/40' : 'border-line'}`}>
-                    <div className="pointer-events-none mx-auto w-[64px]"><PromoCard promo={{ template: k, title: 'Aa *Bb*', footer: 'Cc', imageUrl: f.imageUrl }} preview /></div>
+                    <div className="pointer-events-none mx-auto w-full max-w-[64px]"><PromoCard promo={{ template: k, title: 'Aa *Bb*', footer: 'Cc', imageUrl: f.imageUrl }} preview /></div>
                     <div className="mt-1 text-center text-xs font-medium text-ink">{l}</div>
                   </button>
                 ))}
               </div>
             </fieldset>
 
-            <ImageUpload value={f.imageUrl} onChange={set('imageUrl')} folder="banners" label="Rasm (shaffof PNG eng chiroyli chiqadi)" aspect="1/1" />
+            <ImageUpload
+              key={imageOnly ? 'cover' : 'art'}
+              value={f.imageUrl}
+              onChange={set('imageUrl')}
+              folder="banners"
+              label={imageOnly ? "Rasm — butun oynani qoplaydi (2:3 nisbat, masalan 1080×1620)" : 'Rasm (shaffof PNG eng chiroyli chiqadi)'}
+              aspect={imageOnly ? '2/3' : '1/1'}
+            />
+            {imageOnly && <p className="-mt-2 text-[11px] text-muted">Rasm 2:3 bo‘lmasa, chetlari kesiladi (markaz saqlanadi). Matn va ramka ko‘rsatilmaydi — kerakli yozuvlarni rasmning o‘ziga joylang.</p>}
 
+            {!imageOnly && (<>
             <label className="block">
               <span className="mb-1 flex items-center justify-between text-sm font-medium text-ink">
                 Sarlavha
@@ -237,7 +248,7 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
               <textarea ref={titleRef} rows={3} className="inp resize-none" value={f.title} onChange={(e) => set('title')(e.target.value)}
                 placeholder="100 000 so‘mlik taom buyurtma qiling 1 litr *Coca-Cola Bonus!*" />
               <span className="mt-1 flex items-center justify-between gap-2 text-[11px] text-muted">
-                <span>*yulduzcha* ichidagi so‘zlar urg‘u rangida chiqadi (ko‘pi bilan 2 ta).</span>
+                <span>*yulduzcha* ichidagi so‘zlar urg‘u rangida chiqadi (ko‘pi bilan 2 ta). Yangi qator — Enter.</span>
                 <button type="button" onClick={accent} className="flex-none rounded-lg border border-line px-2 py-1 text-[11px] font-medium text-ink">Belgilanganni ajratish</button>
               </span>
             </label>
@@ -249,9 +260,10 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
               </span>
               <input className="inp" value={f.footer} onChange={(e) => set('footer')(e.target.value)} placeholder="*LokmaGo* bilan buyurtma qiling — sovg‘a oling!" />
             </label>
+            </>)}
 
             <label className="block">
-              <span className="mb-1 block text-sm font-medium text-ink">Pastki yozuv bosilganda</span>
+              <span className="mb-1 block text-sm font-medium text-ink">{imageOnly ? 'Rasm bosilganda' : 'Pastki yozuv bosilganda'}</span>
               <select className="inp" value={linkMode} onChange={(e) => { setLinkMode(e.target.value); if (e.target.value !== 'custom') set('link')(e.target.value); }}>
                 {LINKS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
               </select>

@@ -14,7 +14,7 @@
   border-radius: 28px;
   overflow: hidden;
   isolation: isolate;
-  font-family: 'Montserrat', 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: 'Inter Tight', 'Inter', system-ui, -apple-system, sans-serif;
   color: var(--pm-black);
   -webkit-user-select: none;
   user-select: none;
@@ -69,17 +69,44 @@ button.pm-foot:active { transform: scale(0.98) rotate(var(--pm-tilt, 0deg)); }
 .pm-dots--l { left: 0; -webkit-mask-image: linear-gradient(90deg, #000, transparent); mask-image: linear-gradient(90deg, #000, transparent); }
 .pm-dots--r { right: 0; -webkit-mask-image: linear-gradient(270deg, #000, transparent); mask-image: linear-gradient(270deg, #000, transparent); }
 
-/* ══ 1. BRUSH — asosiy reklama rasmi kabi ══ */
-.pm-brushart { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 0; pointer-events: none; }
+/* ══ 1. BRUSH — asosiy plakat bilan AYNAN bir xil ══
+ * Barcha o'lchamlar plakatdan (832×1248) o'lchangan: sarlavha y 10.2–32.2%, maskot (50,429)–(828,1071),
+ * qora lenta (88,1043)–(742,1241), radius 30px. Ramka — plakatning o'zidan ajratilgan shaffof rasm.
+ */
 .pm-t-brush { background: #fff; }
-.pm-t-brush .pm-acc { color: var(--pm-orange); }
-.pm-t-brush .pm-dots { color: #1a1a1a; }
-.pm-t-brush .pm-foot {
-  --pm-tilt: -2.2deg;
-  background: var(--pm-black); color: #fff; border-radius: 16px; transform: rotate(var(--pm-tilt));
-  box-shadow: 0 10px 22px -8px rgba(0, 0, 0, 0.5);
+.pm-frame {
+  position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background-image: url('/promo/brush-frame.png');
+  background-image: image-set(url('/promo/brush-frame.webp') type('image/webp'), url('/promo/brush-frame.png') type('image/png'));
+  background-size: 100% 100%; background-repeat: no-repeat;
 }
+.pm-t-brush .pm-titlebox { left: 9.6%; right: 2%; top: 10.2%; height: 22%; }
+.pm-t-brush .pm-title { font-weight: 800; line-height: 1.04; letter-spacing: -0.048em; transform: rotate(-1deg); }
+.pm-t-brush .pm-acc { color: var(--pm-orange); }
+/* Rasm: plakatdagi maskot qutisi; rasm pastga taqaladi (lenta ustida turgandek) */
+.pm-t-brush .pm-imgbox { left: 6%; top: 34.4%; width: 93.5%; right: auto; height: 51.4%; bottom: auto; align-items: flex-end; }
+.pm-t-brush .pm-img { object-position: center bottom; filter: none; }
+.pm-t-brush .pm-foot {
+  --pm-tilt: -0.4deg;
+  /* ramkadagi lenta o'rnidan ~3px katta — chetida oq halqa qolmasin */
+  left: 10.2%; width: 79.4%; right: auto; top: 83.4%; height: 16.2%; bottom: auto;
+  padding: 0 5% 2.6%; border-radius: 3.6cqw;
+  background: var(--pm-black); color: #fff; transform: rotate(var(--pm-tilt));
+}
+.pm-t-brush .pm-footbox { height: 78%; }
+.pm-t-brush .pm-foottext { font-weight: 700; letter-spacing: -0.02em; line-height: 1.14; }
 .pm-t-brush .pm-foot .pm-acc { color: var(--pm-orange); }
+.pm-t-brush .pm-foot-go { position: absolute; right: 4%; top: 50%; transform: translateY(-50%); }
+.pm-swoosh { position: absolute; left: 23%; width: 70%; bottom: 9%; height: 7%; pointer-events: none; overflow: visible; }
+
+/* ══ 4. FAQAT RASM — matnsiz, ramkasiz, chetdan-chetgacha ══ */
+.pm-t-image { background: #000; box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.55); }
+.pm-coverbtn { position: absolute; inset: 0; display: block; width: 100%; height: 100%; padding: 0; margin: 0; border: 0; background: none; cursor: default; }
+button.pm-coverbtn { cursor: pointer; }
+button.pm-coverbtn:active .pm-cover { transform: scale(0.99); }
+.pm-cover { display: block; width: 100%; height: 100%; object-fit: cover; object-position: center; transition: transform 0.15s ease; }
+.pm-cover--empty { display: flex; align-items: center; justify-content: center; background: #f2f2ef; color: #8a8a85; font: 600 14px/1.2 'Inter', system-ui, sans-serif; }
+.pm-t-image .pm-close { background: rgba(0, 0, 0, 0.35); color: #fff; }
 
 /* ══ 2. COUPON — chegirma chiptasi ══ */
 .pm-t-coupon {
