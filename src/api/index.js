@@ -461,4 +461,17 @@ export const ownerApi = {
   employees: () => apiFetch(`${O}/employees`),
   addEmployee: (d) => apiFetch(`${O}/employees`, wjson('POST', d)),
   updateEmployee: (id, d) => apiFetch(`${O}/employees/${id}`, wjson('PATCH', d)),
+
+  // ── Mijoz bronlari: so'rovlar qutisi (kelishildi / rad etish / avans / tasdiqlash) ──
+  inboxSummary: () => apiFetch(`${O}/inbox/summary`),
+  inbox: (state) => apiFetch(`${O}/inbox${wq({ state })}`),
+  inboxBooking: (id) => apiFetch(`${O}/inbox/${id}`),
+  inboxSeen: (id) => apiFetch(`${O}/inbox/${id}/seen`, wjson('POST', {})),
+  inboxAgree: (id, d) => apiFetch(`${O}/inbox/${id}/agree`, wjson('POST', d)),
+  inboxReject: (id, d) => apiFetch(`${O}/inbox/${id}/reject`, wjson('POST', d)),
+  inboxAdvance: (id, d) => apiFetch(`${O}/inbox/${id}/advance`, wjson('POST', d)),
+  inboxConfirm: (id, d) => apiFetch(`${O}/inbox/${id}/confirm`, wjson('POST', d)),
+  inboxCancel: (id, d) => apiFetch(`${O}/inbox/${id}/cancel`, wjson('POST', d)),
+  notifications: () => apiFetch(`${O}/notifications`),
+  readNotifications: (ids) => apiFetch(`${O}/notifications/read`, wjson('POST', ids ? { ids } : {})),
 };

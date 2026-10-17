@@ -28,6 +28,7 @@ const WeddingPaymentsPage = lazy(() => import('@/pages/wedding/PaymentsPage').th
 const WeddingVendorsPage = lazy(() => import('@/pages/wedding/VendorsPage').then((m) => ({ default: m.VendorsPage })));
 // ── To'yxona egasi (CRM) — role 'venue_owner'
 const OwnerCalendarPage = lazy(() => import('@/pages/owner/OwnerCalendarPage').then((m) => ({ default: m.OwnerCalendarPage })));
+const OwnerInboxHost = lazy(() => import('@/pages/owner/inbox/OwnerInboxHost').then((m) => ({ default: m.OwnerInboxHost })));
 const OwnerReservationsPage = lazy(() => import('@/pages/owner/OwnerReservationsPage').then((m) => ({ default: m.OwnerReservationsPage })));
 const OwnerFinancePage = lazy(() => import('@/pages/owner/OwnerFinancePage').then((m) => ({ default: m.OwnerFinancePage })));
 const OwnerEmployeesPage = lazy(() => import('@/pages/owner/OwnerEmployeesPage').then((m) => ({ default: m.OwnerEmployeesPage })));
@@ -227,6 +228,8 @@ function OwnerRoutes() {
       <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-none lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
         <div className="w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0">
           <Suspense fallback={<PageLoading />}>
+            {/* Mijoz bron so'rovlari: jonli xabar (ovoz, toast) va bron kartasi — har sahifada */}
+            <OwnerInboxHost />
             <Routes>
               <Route path="/" element={<OwnerCalendarPage />} />
               <Route path="/reservations" element={<OwnerReservationsPage />} />
