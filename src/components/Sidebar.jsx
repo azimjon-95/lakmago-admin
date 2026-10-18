@@ -13,128 +13,62 @@ import { useDineInStatus } from "@/hooks/useDineInStatus";
 // ADMIN MENU
 // =======================
 
+/*
+ * ADMIN MENYUSI — bo'limlar bo'yicha (group). Bir xil `group`dagi ketma-ket bandlar bitta sarlavha ostida chiqadi;
+ * `group` yo'q — sarlavhasiz (oxirgi blok). Tartib: ASOSIY → MOLIYA → MARKETING → OPERATSIYALAR → JAMOA → pastki blok.
+ * Mobil pastki panelda dastlabki 4 ta band ko'rinadi (Boshqaruv, Buyurtmalar, Muassasalar, Daromad), qolgani "Ko'proq"da.
+ */
 const adminNav = [
-  {
-    to: "/",
-    icon: "ti-layout-dashboard",
-    label: "Boshqaruv",
-    end: true,
-    page: "dashboard",
-  },
-  {
-    to: "/restaurants",
-    icon: "ti-building-store",
-    label: "Muassasalar",
-    page: "restaurants",
-  },
-  {
-    to: "/orders",
-    icon: "ti-clipboard-list",
-    label: "Buyurtmalar",
-    page: "orders",
-  },
-  {
-    to: "/revenue",
-    icon: "ti-cash",
-    label: "Daromad",
-    page: "revenue",
-  },
-  {
-    to: "/banners",
-    icon: "ti-photo",
-    label: "Bannerlar",
-    page: "banners",
-  },
-  {
-    // Mijoz ilovasi ochilganda chiqadigan reklama oynalari (navbat bilan, kuniga bir marta)
-    to: "/promo-modals",
-    icon: "ti-sparkles",
-    label: "Reklama oynalari",
-    page: "banners",
-  },
-  {
-    // LokmaGo sovg'a-bonusi: buyurtma summasi shartdan oshsa taomga qo'shib bepul sovg'a (puli restoranga qoplanadi)
-    to: "/gift-bonuses",
-    icon: "ti-gift",
-    label: "Sovg‘a-bonuslar",
-    page: "banners",
-  },
-  {
-    to: "/support",
-    icon: "ti-message-circle",
-    label: "Xabarlar",
-    page: "notifications",
-  },
-  {
-    to: "/incidents",
-    icon: "ti-user-x",
-    label: "Muammoli mijozlar",
-    page: "orders",
-  },
-  {
-    to: "/groups",
-    icon: "ti-brand-telegram",
-    label: "Guruhlar",
-    page: "groups",
-  },
-  {
-    to: "/catalog",
-    icon: "ti-package",
-    label: "Katalog",
-    page: "catalog",
-  },
-  {
-    to: "/promo-admin",
-    icon: "ti-speakerphone",
-    label: "Mijoz jalb qilish",
-    page: "marketing",
-  },
-  {
-    to: "/dine-in-admin",
-    icon: "ti-armchair",
-    label: "Dine-in",
-    page: "dinein",
-  },
-  {
-    to: "/billing",
-    icon: "ti-report-money",
-    label: "Moliya",
-    page: "billing",
-  },
-  {
-    // Botga ulangan restoranlar va ularga xabar yuborish
-    to: "/bot",
-    icon: "ti-brand-telegram",
-    label: "Restoran botlari",
-    page: "bot",
-    adminOnly: true,
-  },
-  {
-    to: "/staff",
-    icon: "ti-users-group",
-    label: "Xodimlar",
-    page: "staff",
-    adminOnly: true,   // faqat 'admin' — hech qanday bo'lim (department) ko'rmaydi
-  },
-  {
-    to: "/couriers",
-    icon: "ti-moped",
-    label: "Kuryerlar",
-    page: "couriers",
-  },
-  {
-    to: "/morning-checks",
-    icon: "ti-sunrise",
-    label: "Ertalabki tekshiruv",
-    page: "restaurants",
-  },
-  {
-    to: "/settings",
-    icon: "ti-settings",
-    label: "Sozlamalar",
-    page: "settings",
-  },
+  // ── ASOSIY ──
+  { group: "Asosiy", to: "/", icon: "ti-layout-dashboard", label: "Boshqaruv", end: true, page: "dashboard" },
+  { group: "Asosiy", to: "/orders", icon: "ti-clipboard-list", label: "Buyurtmalar", page: "orders" },
+  { group: "Asosiy", to: "/restaurants", icon: "ti-building-store", label: "Muassasalar", page: "restaurants" },
+
+  // ── MOLIYA ──
+  { group: "Moliya", to: "/revenue", icon: "ti-cash", label: "Daromad", page: "revenue" },
+  { group: "Moliya", to: "/billing", icon: "ti-report-money", label: "Moliya", page: "billing" },
+
+  // ── MARKETING & KONTENT ──
+  { group: "Marketing & kontent", to: "/banners", icon: "ti-photo", label: "Bannerlar", page: "banners" },
+  // Mijoz ilovasi ochilganda chiqadigan reklama oynalari (navbat bilan, kuniga bir marta)
+  { group: "Marketing & kontent", to: "/promo-modals", icon: "ti-sparkles", label: "Reklama oynalari", page: "banners" },
+  // LokmaGo sovg'a-bonusi: buyurtma summasi shartdan oshsa taomga qo'shib bepul sovg'a (puli restoranga qoplanadi)
+  { group: "Marketing & kontent", to: "/gift-bonuses", icon: "ti-gift", label: "Sovg‘a-bonuslar", page: "banners" },
+  { group: "Marketing & kontent", to: "/promo-admin", icon: "ti-speakerphone", label: "Mijoz jalb qilish", page: "marketing" },
+  { group: "Marketing & kontent", to: "/catalog", icon: "ti-package", label: "Katalog", page: "catalog" },
+
+  // ── OPERATSIYALAR ──
+  { group: "Operatsiyalar", to: "/couriers", icon: "ti-moped", label: "Kuryerlar", page: "couriers" },
+  { group: "Operatsiyalar", to: "/dine-in-admin", icon: "ti-armchair", label: "Dine-in", page: "dinein" },
+  // Botga ulangan restoranlar va ularga xabar yuborish
+  { group: "Operatsiyalar", to: "/bot", icon: "ti-brand-telegram", label: "Restoran botlari", page: "bot", adminOnly: true },
+  { group: "Operatsiyalar", to: "/groups", icon: "ti-send", label: "Guruhlar", page: "groups" },
+  { group: "Operatsiyalar", to: "/support", icon: "ti-message-circle", label: "Xabarlar", page: "notifications" },
+
+  // ── JAMOA ──
+  // faqat 'admin' — hech qanday bo'lim (department) ko'rmaydi
+  { group: "Jamoa", to: "/staff", icon: "ti-users-group", label: "Xodimlar", page: "staff", adminOnly: true },
+
+  // ── pastki blok (sarlavhasiz): Sozlamalar eng pastda ──
+  { to: "/incidents", icon: "ti-user-x", label: "Muammoli mijozlar", page: "orders" },
+  { to: "/morning-checks", icon: "ti-sunrise", label: "Ertalabki tekshiruv", page: "restaurants" },
+  { to: "/settings", icon: "ti-settings", label: "Sozlamalar", page: "settings" },
 ];
+
+/**
+ * Tekis ro'yxatni ketma-ket bir xil `group`li bo'laklarga ajratadi (rollar bo'yicha filtrlangandan keyin):
+ * bo'sh qolgan bo'lim sarlavhasi chiqmaydi. `group` yo'q bandlar sarlavhasiz blok bo'ladi
+ * (restoran/to'yxona menyulari shunday — ular avvalgidek bitta ro'yxat).
+ */
+export function groupNav(items) {
+  const out = [];
+  for (const it of items) {
+    const last = out[out.length - 1];
+    if (last && last.title === (it.group || null)) last.items.push(it);
+    else out.push({ title: it.group || null, items: [it] });
+  }
+  return out;
+}
 
 
 
@@ -255,13 +189,13 @@ const ownerNav = [
 ];
 
 const DOMAINS = [
-  { key: "lokma", label: "Restoran / Do'konlar", icon: "ti-tools-kitchen-2", home: "/" },
-  { key: "wedding", label: "To'yxonalar", icon: "ti-building-castle", home: "/weddings" },
+  { key: "lokma", label: "Restoran/Do'kon", icon: "ti-tools-kitchen-2", home: "/" },
+  { key: "wedding", label: "To'yxona", icon: "ti-building-castle", home: "/weddings" },
 ];
 
 function DomainSwitch({ domain, onPick }) {
   return (
-    <div className="grid grid-cols-2 gap-1 rounded-[14px] bg-white/[0.07] p-1" role="tablist" aria-label="Soha">
+    <div className="grid grid-cols-[1.3fr_1fr] gap-1 rounded-[14px] bg-white/[0.07] p-1" role="tablist" aria-label="Soha">
       {DOMAINS.map((d) => {
         const on = d.key === domain;
         return (
@@ -271,10 +205,10 @@ function DomainSwitch({ domain, onPick }) {
             role="tab"
             aria-selected={on}
             onClick={() => onPick(d)}
-            className={`flex items-center justify-center gap-1.5 rounded-[10px] px-2 py-2 text-[12.5px] font-semibold leading-tight transition-colors ${
+            className={`flex min-h-[40px] items-center justify-center rounded-[10px] px-1.5 py-2 text-[12.5px] font-semibold leading-tight transition-colors ${
               on ? "bg-brand-400 text-brand-text shadow-sm" : "text-white/60 hover:text-white active:bg-white/10"}`}
           >
-            <i className={`ti ${d.icon} text-[15px]`} />
+            {/* Ikonkasiz: 280 px sidebar'da ikkala yorliq to'liq sig'sin ("Restoran/Do'kon" · "To'yxona") */}
             <span className="truncate">{d.label}</span>
           </button>
         );
@@ -335,6 +269,12 @@ const nav = (isOwner ? ownerNav : domain === "wedding" ? weddingNav : isAdminLik
 const MOBILE_TABS = 4;
 const primaryNav = nav.slice(0, MOBILE_TABS);
 const moreNav = nav.slice(MOBILE_TABS);
+// Bo'limlar (sarlavha + bandlar) — kompyuter va telefon menyusi uchun
+const navGroups = groupNav(nav);
+// Sarlavhasiz oxirgi blok (admin: Muammoli mijozlar, Ertalabki tekshiruv, Sozlamalar) kompyuterda skroll
+// maydonidan TASHQARIDA, akkaunt kartasi tepasida turadi — ro'yxat uzun bo'lsa ham Sozlamalar doim ko'rinadi.
+const pinnedGroup = navGroups.length > 1 && !navGroups[navGroups.length - 1].title ? navGroups[navGroups.length - 1] : null;
+const scrollGroups = pinnedGroup ? navGroups.slice(0, -1) : navGroups;
 
 
 // To'yxona egasi: javob kutayotgan yangi mijoz so'rovlari soni (boshqa rollarda 0)
@@ -812,20 +752,19 @@ sidebar-scroll
 p-4
 ">
 
-<nav className="space-y-1">
-
-{
-nav.map(item=>(
-
-<NavItem
-key={item.to}
-item={item}
-/>
-
-))
-
-}
-
+<nav aria-label="Asosiy menyu">
+  {scrollGroups.map((g, gi) => (
+    <div key={g.title || `block-${gi}`} className={gi > 0 ? "mt-5" : ""}>
+      {g.title && (
+        <div className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/35">
+          {g.title}
+        </div>
+      )}
+      <div className="space-y-1">
+        {g.items.map((item) => <NavItem key={item.to} item={item} />)}
+      </div>
+    </div>
+  ))}
 </nav>
 
 
@@ -833,6 +772,12 @@ item={item}
 
 
 
+
+{pinnedGroup && (
+  <nav aria-label="Qo'shimcha" className="flex-none space-y-1 border-t border-white/10 px-4 py-3">
+    {pinnedGroup.items.map((item) => <NavItem key={item.to} item={item} />)}
+  </nav>
+)}
 
 <div className="
 p-4
@@ -947,18 +892,28 @@ border-white/10
       {/* Bandlar — bitta guruhlangan ro'yxat, orasida ingichka
           ajratgich. Ikonka ustunidan keyin boshlanadi. */}
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-3">
-        <div className="overflow-hidden rounded-[16px] bg-white/[0.06] divide-y divide-white/[0.07]">
-          {nav.map((item)=>(
-            <MobileRow
-              key={item.to}
-              item={item}
-              onClick={()=>setOpen(false)}
-              badge={
-                item.badge==="stopped" ? stoppedCount
-                : item.badge==="transfers" ? transferCount
-                : 0
-              }
-            />
+        <div className="space-y-4">
+          {navGroups.map((g, gi) => (
+            <section key={g.title || `block-${gi}`} aria-label={g.title || undefined}>
+              {g.title && (
+                <h3 className="mb-1.5 px-3 text-[11px] font-semibold uppercase tracking-[0.08em] text-white/40">{g.title}</h3>
+              )}
+              <div className="overflow-hidden rounded-[16px] bg-white/[0.06] divide-y divide-white/[0.07]">
+                {g.items.map((item)=>(
+                  <MobileRow
+                    key={item.to}
+                    item={item}
+                    onClick={()=>setOpen(false)}
+                    badge={
+                      item.badge==="stopped" ? stoppedCount
+                      : item.badge==="transfers" ? transferCount
+                      : item.badge==="inbox" ? inboxCount
+                      : 0
+                    }
+                  />
+                ))}
+              </div>
+            </section>
           ))}
         </div>
       </div>
