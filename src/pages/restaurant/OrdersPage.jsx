@@ -266,7 +266,7 @@ export function RestaurantOrdersPage() {
                     <span className="text-xs px-2 py-0.5 rounded-full flex-none" style={{ background: `${flow[o.status]?.color}20`, color: flow[o.status]?.color }}>
                       {flow[o.status]?.label}
                     </span>
-                    <span className="text-sm text-ink truncate flex-1 min-w-0">{o.items?.map((i) => `${i.name}×${i.quantity}`).join(', ')}{o.bonusItems?.length > 0 && <span className="text-amber-700"> · 🎁 {o.bonusItems.map((g) => g.itemName).join(', ')}</span>}</span>
+                    <span className="text-sm text-ink truncate flex-1 min-w-0">{o.items?.map((i) => `${i.name}×${i.quantity}`).join(', ')}</span>
                     <span className="text-sm font-medium text-ink flex-none whitespace-nowrap">{som(o.total)}</span>
                   </div>
                 ))}
@@ -429,21 +429,6 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
             <span className="text-muted">{som(it.unitPrice * it.quantity)}</span>
           </div>
         ))}
-        {/* LokmaGo sovg'a-bonusi: taomga QO'SHIB mijozga BEPUL beriladi, puli LokmaGo tomonidan qoplanadi */}
-        {o.bonusItems?.length > 0 && (
-          <div className="mt-2 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5" role="note">
-            <div className="flex items-center gap-1.5 text-xs font-bold uppercase tracking-wide text-amber-800">
-              <i className="ti ti-gift text-sm" /> Sovg‘a — mijozga bepul qo‘shib bering
-            </div>
-            {o.bonusItems.map((g, i) => (
-              <div key={i} className="mt-1 flex items-center justify-between gap-3 text-sm">
-                <span className="font-semibold text-ink">{g.quantity}× {g.itemName}</span>
-                {g.reimburse > 0 && <span className="whitespace-nowrap text-xs text-green-700">+{som(g.reimburse * g.quantity)} so‘m LokmaGo qoplaydi</span>}
-              </div>
-            ))}
-            <p className="mt-1 text-[11px] leading-snug text-amber-900/80">Mijozdan pul olinmaydi. Buyurtma yetkazilgach summa hisobingizga qo‘shiladi.</p>
-          </div>
-        )}
         {/* Hisob taqsimoti — bonus yoki qo'shimcha haq bo'lsa */}
         {(o.deliveryFee > 0 || o.serviceFee > 0 || o.bonusUsed > 0) && (
           <div className="mt-2 pt-2 border-t border-line text-xs text-muted">

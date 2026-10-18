@@ -343,12 +343,6 @@ export const adminApi = {
   // Daromad hisobi
   getRevenue: () => apiFetch('/admin/revenue'),
 
-  // LokmaGo sovg'a-bonusi (masalan 100 000 so'mdan 1 l Coca-Cola; puli restoranga qoplanadi)
-  getGiftBonuses: () => apiFetch('/admin/gift-bonuses'),
-  createGiftBonus: (d) => apiFetch('/admin/gift-bonuses', { method: 'POST', body: JSON.stringify(d) }),
-  updateGiftBonus: (id, d) => apiFetch(`/admin/gift-bonuses/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
-  deleteGiftBonus: (id) => apiFetch(`/admin/gift-bonuses/${id}`, { method: 'DELETE' }),
-
   // Reklama oynalari (mijoz ilovasi ochilganda navbat bilan)
   getPromoModals: () => apiFetch('/admin/promo-modals'),
   createPromoModal: (d) => apiFetch('/admin/promo-modals', { method: 'POST', body: JSON.stringify(d) }),
