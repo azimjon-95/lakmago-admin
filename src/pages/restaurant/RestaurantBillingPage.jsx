@@ -234,6 +234,7 @@ export function RestaurantBillingPage() {
                         <th className="px-4 py-2.5 font-medium text-right">Tushum</th>
                         <th className="px-4 py-2.5 font-medium text-right">Komissiya</th>
                         <th className="px-4 py-2.5 font-medium text-right">Ulushingiz</th>
+                        <th className="px-4 py-2.5 font-medium text-right" title="Mijozga bepul bergan sovg‘alar puli — LokmaGo qoplaydi">LokmaGo bonusi</th>
                         <th className="px-4 py-2.5 font-medium text-right">O‘tkazildi</th>
                       </tr>
                     </thead>
@@ -247,6 +248,9 @@ export function RestaurantBillingPage() {
                           </td>
                           <td className="px-4 py-2.5 text-right font-medium text-ink">
                             {som(d.restoranUlushi)}
+                          </td>
+                          <td className="px-4 py-2.5 text-right text-green-600">
+                            {d.bonusKompensatsiya > 0 ? `+${som(d.bonusKompensatsiya)}` : '—'}
                           </td>
                           <td className="px-4 py-2.5 text-right text-green-600">
                             {d.tolangan > 0 ? som(d.tolangan) : '—'}
@@ -270,6 +274,9 @@ export function RestaurantBillingPage() {
                           <div><span>Komissiya</span><span className="text-red-600">−{som(d.komissiya)}</span></div>
                         )}
                         <div><span>Ulushingiz</span><span className="font-medium">{som(d.restoranUlushi)}</span></div>
+                        {d.bonusKompensatsiya > 0 && (
+                          <div><span>🎁 LokmaGo sovg‘a bonusi</span><span className="text-green-600">+{som(d.bonusKompensatsiya)}</span></div>
+                        )}
                         {d.tolangan > 0 && (
                           <div><span>O‘tkazildi</span><span className="text-green-600">{som(d.tolangan)}</span></div>
                         )}

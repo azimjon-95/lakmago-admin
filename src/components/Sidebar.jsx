@@ -32,6 +32,8 @@ const adminNav = [
   { group: "Marketing & kontent", to: "/banners", icon: "ti-photo", label: "Bannerlar", page: "banners" },
   // Mijoz ilovasi ochilganda chiqadigan reklama oynalari (navbat bilan, kuniga bir marta)
   { group: "Marketing & kontent", to: "/promo-modals", icon: "ti-sparkles", label: "Reklama oynalari", page: "banners" },
+  // LokmaGo sovg'a-bonusi: buyurtma summasi shartdan oshsa taomga qo'shib bepul sovg'a (puli restoranga qoplanadi)
+  { group: "Marketing & kontent", to: "/gift-bonuses", icon: "ti-gift", label: "Sovg‘a-bonuslar", page: "banners" },
   { group: "Marketing & kontent", to: "/promo-admin", icon: "ti-speakerphone", label: "Mijoz jalb qilish", page: "marketing" },
   { group: "Marketing & kontent", to: "/catalog", icon: "ti-package", label: "Katalog", page: "catalog" },
 
