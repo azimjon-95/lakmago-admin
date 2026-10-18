@@ -53,6 +53,13 @@ const adminNav = [
     page: "banners",
   },
   {
+    // LokmaGo sovg'a-bonusi: buyurtma summasi shartdan oshsa taomga qo'shib bepul sovg'a (puli restoranga qoplanadi)
+    to: "/gift-bonuses",
+    icon: "ti-gift",
+    label: "Sovg‘a-bonuslar",
+    page: "banners",
+  },
+  {
     to: "/support",
     icon: "ti-message-circle",
     label: "Xabarlar",
