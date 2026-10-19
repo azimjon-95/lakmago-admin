@@ -2,6 +2,7 @@ import { useEffect, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
+import { PullToRefresh, RefreshBoundary } from '@/components/PullToRefresh';
 import { NotificationCenter } from '@/components/NotificationCenter';
 import { LoginPage } from '@/pages/LoginPage';
 import { MorningCheckBanner } from '@/components/restaurant/MorningCheckBanner';
@@ -104,6 +105,9 @@ function Shell({ children }) {
           shuning uchun karkas darajasida turadi */}
       <NotificationCenter />
 
+      {/* Ekranni pastga tortib yangilash (faqat mobil/touch) — ko'rsatkich sarlavha ostida */}
+      <PullToRefresh />
+
       {/* Kontent. Mobilda aynan shu maydon suriladi. */}
       <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-none lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
         {/* Pastki menyu fixed — oxirgi element uning ostida
@@ -112,9 +116,11 @@ function Shell({ children }) {
           {/* Sahifa bo'lagi yuklanguncha — yengil ko'rsatkich.
               Kod bo'linishi tufayli bu odatda bir lahza (bo'lak
               kichik va keshlanadi). */}
-          <Suspense fallback={<PageLoading />}>
-            {children}
-          </Suspense>
+          <RefreshBoundary>
+            <Suspense fallback={<PageLoading />}>
+              {children}
+            </Suspense>
+          </RefreshBoundary>
         </div>
       </main>
 
@@ -229,8 +235,10 @@ function OwnerRoutes() {
   return (
     <div className="flex h-[100dvh] flex-col overflow-hidden bg-canvas lg:block lg:h-auto lg:min-h-screen lg:overflow-visible">
       <Sidebar />
+      <PullToRefresh />
       <main className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-none lg:ml-[280px] lg:min-h-screen lg:flex-none lg:overflow-visible lg:pb-0">
         <div className="w-full pb-[calc(64px+env(safe-area-inset-bottom,0px))] lg:min-h-screen lg:pb-0">
+          <RefreshBoundary>
           <Suspense fallback={<PageLoading />}>
             {/* Mijoz bron so'rovlari: jonli xabar (ovoz, toast) va bron kartasi — har sahifada */}
             <OwnerInboxHost />
@@ -242,6 +250,7 @@ function OwnerRoutes() {
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </Suspense>
+          </RefreshBoundary>
         </div>
       </main>
     </div>

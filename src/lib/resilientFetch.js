@@ -1,3 +1,4 @@
+import { netBegin, netEnd } from './netActivity.js';
 /*
  * ═══════════════════════════════════════════════════════════
  * CHIDAMLI FETCH — SERVER JAVOB BERMASA OSILIB QOLMASIN
@@ -70,7 +71,20 @@ async function attempt(url, init, timeoutMs, outerSignal) {
  * @param {RequestInit & { timeoutMs?: number, retries?: number }} [init]
  * @returns {Promise<Response>}
  */
+/*
+ * Tashqi funksiya faqat faol so'rovlarni sanaydi (lib/netActivity.js — "tortib yangilash" animatsiyasi uchun);
+ * butun mantiq `run` ichida avvalgidek.
+ */
 export async function resilientFetch(url, init = {}) {
+  netBegin();
+  try {
+    return await run(url, init);
+  } finally {
+    netEnd();
+  }
+}
+
+async function run(url, init = {}) {
   const { timeoutMs = DEFAULT_TIMEOUT_MS, retries, signal, ...rest } = init;
   const method = String(rest.method || 'GET').toUpperCase();
   const maxRetries = SAFE_METHODS.has(method)
