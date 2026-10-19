@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useLayoutEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 
 /**
@@ -21,7 +21,14 @@ import { createPortal } from 'react-dom';
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 4;
 
-export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
+/*
+ * ═══ TO'LIQ KO'RSATISH REJIMI ═══
+ * `allowFull` — "Kesish | To'liq ko'rsatish" tanlovi ko'rinadi. To'liq rejimda ramka rasmning O'Z nisbatiga
+ * moslashadi (tik plakat tik ramka bo'ladi) va rasm KESILMAYDI: yuklanadigan fayl burilgan rasmning to'liq
+ * ko'rinishi (eng uzun tomoni ≤ 1600 px). `startFull` — oyna shu rejimda ochiladi (reklama plakatlari uchun).
+ * Standart rejim (Kesish) avvalgidek: berilgan `aspect` ramkasiga to'ldirib qirqiladi.
+ */
+export function ImageCropper({ file, aspect = 4 / 3, allowFull = true, startFull = false, onCancel, onDone }) {
   const [img, setImg] = useState(null);
   const [zoom, setZoom] = useState(1);
   const [pos, setPos] = useState({ x: 0, y: 0 });
@@ -38,6 +45,8 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
    */
   const [rot, setRot] = useState(0);
   const [busy, setBusy] = useState(false);
+  const [whole, setWhole] = useState(startFull);
+  const [fw, setFw] = useState(0); // ramkaning haqiqiy eni (px) — to'liq rejimda ramka eni o'zgaradi
 
   const frameRef = useRef(null);
   const drag = useRef(null);
@@ -53,6 +62,26 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
     return () => URL.revokeObjectURL(url);
   }, [file]);
 
+  // Burilgandan keyingi rasm o'lchami va ramka nisbati (to'liq rejimda ramka rasmning o'z nisbati)
+  const swappedRot = rot === 90 || rot === 270;
+  const rotW = img ? (swappedRot ? img.h : img.w) : 0;
+  const rotH = img ? (swappedRot ? img.w : img.h) : 0;
+  const effAspect = whole && img ? rotW / rotH : aspect;
+
+  /* Ramka eni o'zgarganda (rejim, burish, oyna o'lchami) qayta o'lchanadi */
+  useLayoutEffect(() => {
+    const node = frameRef.current;
+    if (!node) return undefined;
+    const measure = () => setFw(node.clientWidth);
+    measure();
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(measure) : null;
+    ro?.observe(node);
+    window.addEventListener('resize', measure);
+    return () => { ro?.disconnect(); window.removeEventListener('resize', measure); };
+  }, [whole, rot, img]);
+
+  const setMode = (full) => { setWhole(full); setZoom(1); setPos({ x: 0, y: 0 }); };
+
   /*
    * Rasm ramkani TO'LIQ qoplashi uchun kerakli o'lcham.
    *
@@ -61,10 +90,8 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
    * burchak qolmaydi.
    */
   const fit = useCallback(() => {
-    const frame = frameRef.current;
-    if (!frame || !img) return null;
-    const fw = frame.clientWidth;
-    const fh = fw / aspect;
+    if (!fw || !img) return null;
+    const fh = fw / effAspect;
 
     /*
      * 90° yoki 270° ga burilganda rasmning ENI va BO'YI
@@ -84,7 +111,7 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
       // Rasmning O'ZINING o'lchami — CSS transform uchun
       rawW: img.w * scale, rawH: img.h * scale,
     };
-  }, [img, aspect, rot]);
+  }, [img, fw, effAspect, rot]);
 
   /*
    * Chegara: rasm ramkadan uzoqlashib, chetida bo'sh joy
@@ -172,8 +199,16 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
        * Ekranda 300px ko'ringan rasm 1200px bo'lib kesiladi —
        * aks holda menyudagi katta kartochkada xira chiqardi.
        */
-      const outW = Math.min(1600, Math.round(img.w / (f.w / f.fw) * zoom * 2));
-      const outH = Math.round(outW / aspect);
+      let outW; let outH;
+      if (whole) {
+        // To'liq rejim: kesish YO'Q — burilgan rasmning o'z o'lchami (eng uzun tomoni 1600 px dan oshmaydi)
+        const sc = Math.min(1, 1600 / Math.max(rotW, rotH));
+        outW = Math.round(rotW * sc);
+        outH = Math.round(rotH * sc);
+      } else {
+        outW = Math.min(1600, Math.round(img.w / (f.w / f.fw) * zoom * 2));
+        outH = Math.round(outW / aspect);
+      }
 
       const canvas = document.createElement('canvas');
       canvas.width = outW;
@@ -209,7 +244,7 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
       ctx.drawImage(img.el, -dw / 2, -dh / 2, dw, dh);
       ctx.restore();
 
-      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', 0.9));
+      const blob = await new Promise((res) => canvas.toBlob(res, 'image/jpeg', whole ? 0.92 : 0.9));
       if (!blob) throw new Error('Kesib bo‘lmadi');
 
       onDone(new File([blob], 'crop.jpg', { type: 'image/jpeg' }));
@@ -236,8 +271,8 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
     <div className="fixed inset-0 z-[100] flex items-center justify-center
                     bg-black/80 backdrop-blur-sm p-4">
 
-      <div className="w-full max-w-sm overflow-hidden rounded-2xl bg-neutral-900
-                      shadow-2xl">
+      <div className="w-full max-w-sm max-h-[calc(100dvh-2rem)] overflow-y-auto overflow-x-hidden
+                      rounded-2xl bg-neutral-900 shadow-2xl">
 
       <div className="flex-none flex items-center justify-between px-4 py-3
                       border-b border-white/10">
@@ -286,9 +321,14 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
             biror sabab bilan chizilmasa, ostidagi oq modal
             ko'rinib qolmasin.
           */
-          className="relative w-full overflow-hidden rounded-xl bg-black
-                     cursor-grab active:cursor-grabbing select-none"
-          style={{ aspectRatio: aspect, touchAction: 'none' }}
+          className={`relative mx-auto overflow-hidden rounded-xl bg-black select-none ${
+            whole ? '' : 'cursor-grab active:cursor-grabbing'}`}
+          style={{
+            aspectRatio: effAspect,
+            touchAction: whole ? 'auto' : 'none',
+            // To'liq rejimda tik rasm ekrandan chiqib ketmasin: balandlik ko'pi bilan ekranning 44% i
+            width: whole ? `min(100%, calc(44vh * ${effAspect}))` : '100%',
+          }}
         >
           {img && f && (
             <img
@@ -323,16 +363,29 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
           )}
 
           {/* Uchdan bir chiziqlari — markazni topishga yordam beradi */}
-          <div className="pointer-events-none absolute inset-0">
-            <div className="absolute inset-y-0 left-1/3 w-px bg-white/25" />
-            <div className="absolute inset-y-0 left-2/3 w-px bg-white/25" />
-            <div className="absolute inset-x-0 top-1/3 h-px bg-white/25" />
-            <div className="absolute inset-x-0 top-2/3 h-px bg-white/25" />
-          </div>
+          {!whole && (
+            <div className="pointer-events-none absolute inset-0">
+              <div className="absolute inset-y-0 left-1/3 w-px bg-white/25" />
+              <div className="absolute inset-y-0 left-2/3 w-px bg-white/25" />
+              <div className="absolute inset-x-0 top-1/3 h-px bg-white/25" />
+              <div className="absolute inset-x-0 top-2/3 h-px bg-white/25" />
+            </div>
+          )}
         </div>
       </div>
 
       <div className="flex-none px-4 pb-4">
+        {allowFull && (
+          <div className="mb-3 grid grid-cols-2 gap-1 rounded-xl bg-white/[0.07] p-1" role="group" aria-label="Rasm ko‘rinishi">
+            <ModeBtn on={!whole} icon="ti-crop" label="Kesish" onClick={() => setMode(false)} />
+            <ModeBtn on={whole} icon="ti-arrows-maximize" label="To‘liq ko‘rsatish" onClick={() => setMode(true)} />
+          </div>
+        )}
+        {whole && (
+          <p className="mb-3 text-center text-[11px] leading-snug text-white/55">
+            Rasm kesilmaydi — asl nisbatda to‘liq saqlanadi.
+          </p>
+        )}
         <div className="flex items-center gap-3">
           <i className="ti ti-photo text-white/40 text-sm" />
           <input
@@ -340,7 +393,8 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
             min={MIN_ZOOM} max={MAX_ZOOM} step={0.01}
             value={zoom}
             onChange={(e) => setZoom(Number(e.target.value))}
-            className="flex-1 accent-brand-400"
+            disabled={whole}
+            className="flex-1 accent-brand-400 disabled:opacity-30"
             aria-label="Kattalashtirish"
           />
           <i className="ti ti-photo text-white/40 text-xl" />
@@ -363,6 +417,22 @@ export function ImageCropper({ file, aspect = 4 / 3, onCancel, onDone }) {
       </div>
     </div>
   ), document.body);
+}
+
+/* "Kesish | To'liq ko'rsatish" tanlovi bandi (44 px dan past emas — barmoq bilan bosiladi) */
+function ModeBtn({ on, icon, label, onClick }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={on}
+      className={`flex h-11 items-center justify-center gap-1.5 rounded-lg text-[13px] font-semibold
+                  transition-colors ${on ? 'bg-brand-400 text-brand-text' : 'text-white/65 active:bg-white/10'}`}
+    >
+      <i className={`ti ${icon} text-base`} />
+      {label}
+    </button>
+  );
 }
 
 /*

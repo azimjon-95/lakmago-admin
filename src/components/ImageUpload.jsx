@@ -5,7 +5,9 @@ import { ImageCropper } from './ImageCropper';
 // Bitta rasm yuklash komponenti (taom yoki banner uchun).
 // value = rasm URL (bor bo'lsa preview), onChange(url) — yuklangач chaqiriladi.
 // folder = 'dishes' yoki 'banners'.
-export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm', aspect = '4/3' }) {
+// fullDefault — qirqish oynasi "To'liq ko'rsatish" rejimida ochiladi (reklama plakatlari kesilmasin);
+// fullPreview — yuklangan rasm ramkada KESILMASDAN, to'liq ko'rinadi; allowFull — "Kesish | To'liq" tanlovi.
+export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm', aspect = '4/3', fullDefault = false, fullPreview = false, allowFull = true }) {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [err, setErr] = useState(null);
@@ -66,11 +68,11 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
       <div
         onClick={!uploading ? pick : undefined}
         className="relative rounded-xl border-2 border-dashed border-line hover:border-brand-400 cursor-pointer overflow-hidden transition-colors bg-canvas"
-        style={{ aspectRatio: aspect }}
+        style={value && fullPreview ? undefined : { aspectRatio: aspect }}
       >
         {value ? (
           <>
-            <img src={optimizeUrl(value, 600)} alt="" className="w-full h-full object-cover" loading="lazy" />
+            <img src={optimizeUrl(value, 600)} alt="" className={fullPreview ? 'w-full h-auto max-h-80 object-contain' : 'w-full h-full object-cover'} loading="lazy" />
             {!uploading && (
               <div className="absolute inset-0 bg-black/0 hover:bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-all">
                 <span className="text-white text-sm font-medium flex items-center gap-1.5">
@@ -111,6 +113,8 @@ export function ImageUpload({ value, onChange, folder = 'dishes', label = 'Rasm'
         <ImageCropper
           file={cropping}
           aspect={ratio}
+          allowFull={allowFull}
+          startFull={fullDefault}
           onCancel={() => setCropping(null)}
           onDone={upload}
         />

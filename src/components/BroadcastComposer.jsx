@@ -171,6 +171,8 @@ export function BroadcastComposer({ target, onClose, onSent }) {
                 folder="banners"
                 label="Rasm (ixtiyoriy)"
                 aspect="16/9"
+                fullDefault
+                fullPreview
               />
             ) : (
               <VideoPicker value={videoFile} onChange={setVideoFile} disabled={sending} />
