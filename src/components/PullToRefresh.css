@@ -22,6 +22,7 @@ html, body { overscroll-behavior-y: none; } /* Android Chrome'ning o'z "sahifani
 .ptr__badge--armed { animation: ptr-pop 0.26s cubic-bezier(0.3, 1.6, 0.5, 1); border-color: #f0a029; }
 .ptr__badge--loading, .ptr__badge--done { opacity: 1; transform: scale(1); }
 .ptr__badge--done { border-color: #bfe8cf; background: #f2fbf6; }
+.ptr__badge--error { opacity: 1; transform: scale(1); border-color: #f1b4b4; background: #fdf3f3; animation: ptr-shake 0.4s ease; }
 
 .ptr__ring { position: absolute; inset: 0; width: 100%; height: 100%; transform: rotate(-90deg); }
 .ptr__track { fill: none; stroke: #f1ece3; stroke-width: 2.6; }
@@ -36,14 +37,19 @@ html, body { overscroll-behavior-y: none; } /* Android Chrome'ning o'z "sahifani
 .ptr__badge--loading .ptr__arc { stroke-dasharray: 70 106.8; stroke-dashoffset: 0; }
 /* Tugagach: yashil to'liq aylana + belgi */
 .ptr__badge--done .ptr__arc { stroke: #22a55b; stroke-dashoffset: 0; transition: stroke 0.25s ease; }
+/* Xato: qizil to'liq aylana + undov belgisi */
+.ptr__badge--error .ptr__arc { stroke: #e04848; stroke-dashoffset: 0; }
 
-.ptr__arrow, .ptr__check {
+.ptr__arrow, .ptr__check, .ptr__bang {
   position: absolute; left: 50%; top: 50%; width: 20px; height: 20px; margin: -10px 0 0 -10px;
   fill: none; stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round;
 }
 .ptr__arrow { stroke: #f0a029; transition: transform 0.22s ease, opacity 0.18s ease; }
 .ptr__badge--armed .ptr__arrow { transform: rotate(180deg); }          /* yuqoriga qaragan strelka: "qo'yib yuboring" */
-.ptr__badge--loading .ptr__arrow, .ptr__badge--done .ptr__arrow { opacity: 0; transform: scale(0.5); }
+.ptr__badge--loading .ptr__arrow, .ptr__badge--done .ptr__arrow, .ptr__badge--error .ptr__arrow { opacity: 0; transform: scale(0.5); }
+.ptr__bang { stroke: #e04848; opacity: 0; transform: scale(0.5); transition: opacity 0.2s ease, transform 0.25s cubic-bezier(0.3, 1.5, 0.5, 1); }
+.ptr__bang circle { fill: #e04848; }
+.ptr__badge--error .ptr__bang { opacity: 1; transform: scale(1); }
 .ptr__check { stroke: #22a55b; stroke-dasharray: 22; stroke-dashoffset: 22; }
 .ptr__badge--done .ptr__check { animation: ptr-check 0.38s 0.05s ease forwards; }
 
@@ -52,10 +58,12 @@ html, body { overscroll-behavior-y: none; } /* Android Chrome'ning o'z "sahifani
   transition: color 0.2s ease;
 }
 .ptr__label--on { opacity: 1; color: #6b665d; }
+.ptr__label--error { color: #c43c3c; }
 
 @keyframes ptr-spin { to { transform: rotate(270deg); } }
 @keyframes ptr-pop { 0% { transform: scale(1); } 55% { transform: scale(1.14); } 100% { transform: scale(1); } }
 @keyframes ptr-check { to { stroke-dashoffset: 0; } }
+@keyframes ptr-shake { 0%, 100% { translate: 0; } 25% { translate: -4px; } 75% { translate: 4px; } }
 
 @media (prefers-reduced-motion: reduce) {
   .ptr__badge--armed { animation: none; }

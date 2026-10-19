@@ -4,10 +4,13 @@
  * bo'lsa — "Yangilanmoqda", hammasi tugasa — "Yangilandi".
  */
 let inflight = 0;
+let failures = 0; // tarmoq xatosi yoki server xatosi (5xx) bilan tugagan so'rovlar soni
 const listeners = new Set();
 
 export const netBegin = () => { inflight += 1; };
-export const netEnd = () => {
+export const netFailed = () => failures;
+export const netEnd = (ok = true) => {
+  if (!ok) failures += 1;
   inflight = Math.max(0, inflight - 1);
   if (inflight === 0) listeners.forEach((f) => f());
 };

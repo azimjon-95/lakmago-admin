@@ -77,10 +77,16 @@ async function attempt(url, init, timeoutMs, outerSignal) {
  */
 export async function resilientFetch(url, init = {}) {
   netBegin();
+  let ok = true;
   try {
-    return await run(url, init);
+    const res = await run(url, init);
+    ok = res.status < 500;            // 5xx — server muammosi (4xx — oddiy ilova xatosi, bu yerda sanalmaydi)
+    return res;
+  } catch (e) {
+    ok = e?.name === 'AbortError';    // foydalanuvchi o'zi bekor qilgani xato emas
+    throw e;
   } finally {
-    netEnd();
+    netEnd(ok);
   }
 }
 

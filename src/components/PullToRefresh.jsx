@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { useRefreshKey } from '@/store/refresh';
-import { whenIdle } from '@/lib/netActivity';
+import { netFailed, whenIdle } from '@/lib/netActivity';
 import './PullToRefresh.css';
 
 /*
@@ -37,6 +37,7 @@ const LABEL = {
   armed: 'Qo‘yib yuboring',
   loading: 'Yangilanmoqda…',
   done: 'Yangilandi',
+  error: 'Yangilanmadi — ulanishni tekshiring',
 };
 
 /** Tortish boshlanishi mumkin bo'lmagan joylar (matn maydoni, modal, fixed element, skroll qilingan ichki ro'yxat) */
@@ -100,13 +101,16 @@ export function PullToRefresh() {
       setP('loading');
       animateTo(HOLD);
       const t0 = Date.now();
+      const failed0 = netFailed();
       bump();                                   // sahifa qayta mount bo'ladi → o'z so'rovlarini yuboradi
       await sleep(150);                         // yangi mount bo'lgan sahifa so'rovlarni boshlab olsin
       await Promise.allSettled([qc.invalidateQueries(), whenIdle({ grace: 300, timeout: 9000 })]);
       await sleep(Math.max(0, MIN_SPIN_MS - (Date.now() - t0)));
       main.scrollTop = 0;
-      setP('done');
-      await sleep(600);                         // "Yangilandi ✓" ko'rinib tursin
+      // HAQIQIY natija: yangilash paytida so'rov tarmoq/server xatosi bilan tugagan bo'lsa "Yangilandi" DEMAYMIZ
+      const failed = netFailed() > failed0;
+      setP(failed ? 'error' : 'done');
+      await sleep(failed ? 1900 : 600);         // natija ko'rinib tursin (xatoni o'qishga ko'proq vaqt)
       await animateTo(0);
       setP('idle');
       g.busy = false;
@@ -188,8 +192,9 @@ export function PullToRefresh() {
           </svg>
           <svg className="ptr__arrow" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v13M6.5 12.5 12 18l5.5-5.5" /></svg>
           <svg className="ptr__check" viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 12.5l3.4 3.4L17.5 8.5" /></svg>
+          <svg className="ptr__bang" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 6.5v7" /><circle cx="12" cy="17.2" r="0.6" /></svg>
         </div>
-        <div className={`ptr__label ${phase === 'pull' ? '' : 'ptr__label--on'}`}>{LABEL[phase] || (loading ? LABEL.loading : '')}</div>
+        <div className={`ptr__label ${phase === 'pull' ? '' : 'ptr__label--on'} ${phase === 'error' ? 'ptr__label--error' : ''}`}>{LABEL[phase] || (loading ? LABEL.loading : '')}</div>
       </div>
     </div>
   );

@@ -16,14 +16,27 @@ export function clearToken() {
 
 export async function apiFetch(path, options = {}) {
   // Vaqt chegarasi + o'qishda qayta urinish (lib/resilientFetch.js)
-  const res = await resilientFetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
-      ...options.headers,
-    },
-  });
+  let res;
+  try {
+    res = await resilientFetch(`${API_BASE}${path}`, {
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(getToken() ? { Authorization: `Bearer ${getToken()}` } : {}),
+        ...options.headers,
+      },
+    });
+  } catch (e) {
+    /*
+     * Brauzer tarmoq darajasidagi xatoni ("Load failed" — Safari, "Failed to fetch" — Chrome) texnik matn bilan
+     * beradi. Bu javob umuman olinmaganini bildiradi: server o'chiq/qayta ishga tushmoqda, internet yo'q
+     * yoki so'rov CORS/SSL tufayli bloklangan. Foydalanuvchiga tushunarli xabar beramiz.
+     */
+    if (e instanceof TypeError) {
+      throw new Error('Serverga ulanib bo‘lmadi. Internetni tekshiring yoki birozdan so‘ng qayta urinib ko‘ring.');
+    }
+    throw e;
+  }
   if (res.status === 401) {
     clearToken();
     throw new Error('Sessiya tugadi. Qaytadan kiring.');
