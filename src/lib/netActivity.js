@@ -9,6 +9,14 @@ const listeners = new Set();
 
 export const netBegin = () => { inflight += 1; };
 export const netFailed = () => failures;
+
+/*
+ * "Tortib yangilash" paytida BARCHA GET so'rovlar brauzer keshini chetlab o'tadi (cache: 'reload'):
+ * server `Cache-Control` bilan javob bergan bo'lsa ham, ma'lumot haqiqatan serverdan keladi.
+ */
+let forceFresh = false;
+export const setForceFresh = (v) => { forceFresh = Boolean(v); };
+export const isForceFresh = () => forceFresh;
 export const netEnd = (ok = true) => {
   if (!ok) failures += 1;
   inflight = Math.max(0, inflight - 1);

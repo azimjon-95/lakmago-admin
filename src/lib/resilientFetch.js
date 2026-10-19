@@ -1,4 +1,4 @@
-import { netBegin, netEnd } from './netActivity.js';
+import { isForceFresh, netBegin, netEnd } from './netActivity.js';
 /*
  * ═══════════════════════════════════════════════════════════
  * CHIDAMLI FETCH — SERVER JAVOB BERMASA OSILIB QOLMASIN
@@ -79,7 +79,9 @@ export async function resilientFetch(url, init = {}) {
   netBegin();
   let ok = true;
   try {
-    const res = await run(url, init);
+    // Tortib yangilash paytida GET so'rovlar keshsiz (har doim serverdan)
+    const fresh = isForceFresh() && String(init.method || 'GET').toUpperCase() === 'GET' && !init.cache;
+    const res = await run(url, fresh ? { ...init, cache: 'reload' } : init);
     ok = res.status < 500;            // 5xx — server muammosi (4xx — oddiy ilova xatosi, bu yerda sanalmaydi)
     return res;
   } catch (e) {
