@@ -344,6 +344,9 @@ export const adminApi = {
   getRevenue: () => apiFetch('/admin/revenue'),
 
   // LokmaGo sovg'a-bonusi (masalan 100 000 so'mdan 1 l Coca-Cola; puli restoranga qoplanadi)
+  // Baza zaxirasi: holat (xato sabablari bilan) va "hozir zaxira olish"
+  getBackupStatus: () => apiFetch('/admin/backup/status'),
+  runBackup: () => apiFetch('/admin/backup/run', { method: 'POST', body: JSON.stringify({}), timeoutMs: 120_000 }),
   getGiftBonuses: () => apiFetch('/admin/gift-bonuses'),
   createGiftBonus: (d) => apiFetch('/admin/gift-bonuses', { method: 'POST', body: JSON.stringify(d) }),
   updateGiftBonus: (id, d) => apiFetch(`/admin/gift-bonuses/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
 import { useTempFlag } from '@/hooks/useTempFlag';
+import { BackupCard } from '@/pages/admin/BackupCard';
 
 /*
  * ═══ GLOBAL KOMISSIYA TANLAGICHI OLIB TASHLANDI ═══
@@ -60,6 +61,9 @@ export function SettingsPage() {
         Restoran komissiyasi endi shu yerda emas — har bir restoran
         sahifasida alohida belgilanadi.
       </p>
+
+      {/* Baza zaxirasi: holat, xato sabablari, "Hozir zaxira olish" */}
+      <BackupCard />
 
       {/* Referral tizimi */}
       <section className="bg-surface border border-line rounded-2xl p-4 sm:p-5 mb-4">
