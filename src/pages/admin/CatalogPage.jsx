@@ -1,360 +1,115 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/api';
-import { ImageUpload } from '@/components/ImageUpload';
-import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
-import { Img } from '@/components/Img';
-import { CATALOG_CATEGORIES as CATEGORIES, DRINKS_CATEGORY, catalogCategoryLabel } from '@/constants/catalogCategories';
+import { summarizeGroups, groupById } from '@/constants/catalogGroups';
+import { countFromItems, LIST_LIMIT } from '@/lib/catalogCounts';
 import { CatalogZipImportModal } from './CatalogZipImportModal';
+import { CatalogHome } from './catalog/CatalogHome';
+import { CatalogGroupView } from './catalog/CatalogGroupView';
+import { CatalogProductForm } from './catalog/CatalogProductForm';
 
-const catLabel = catalogCategoryLabel;
-
+/*
+ * ═══ UMUMIY KATALOG ═══
+ *
+ * Ko'rinishlar (URL bilan — "orqaga" tugmasi va yangilash joyida qoladi):
+ *   /catalog                       — guruh kartochkalari (maketdagi chap ekran)
+ *   /catalog?g=gosht[&c=<kateg.>]  — guruh ichi: muqova, chiplar, mahsulotlar (o'ng ekran)
+ *
+ * Sonlar: serverning /admin/catalog/counts (aniq). Server hali yangilanmagan bo'lsa (404) — oddiy ro'yxatdan
+ * hisoblanadi (server ro'yxatni 500 ta bilan kesadi → `truncated` ogohlantirishi).
+ */
 export function CatalogPage() {
-  const [items, setItems] = useState([]);
+  const [params, setParams] = useSearchParams();
+  const groupId = params.get('g') || '';
+  const sub = params.get('c') || '';
+
+  const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(null);
-  const [zipImportOpen, setZipImportOpen] = useState(false);
-  const [filter, setFilter] = useState('');
-  const [q, setQ] = useState('');
+  const [truncated, setTruncated] = useState(false);
+  const [loadError, setLoadError] = useState(null);
+  const [version, setVersion] = useState(0);          // saqlash/o'chirishdan keyin ro'yxatlarni qayta yuklash
+  const [zipOpen, setZipOpen] = useState(false);
+  const [editing, setEditing] = useState(null);       // null | { product } | { defaults }
 
-  const load = useCallback(() => {
-    setLoading(true);
-    const params = new URLSearchParams();
-    if (filter) params.set('category', filter);
-    if (q.trim()) params.set('q', q.trim());
-    const qs = params.toString();
+  const loadCounts = useCallback(async () => {
+    try {
+      const r = await adminApi.getCatalogCounts();
+      setRows(Array.isArray(r) ? r : r.counts || []); setTruncated(false); setLoadError(null);
+    } catch {
+      try {
+        const list = await adminApi.getCatalog('');
+        setRows(countFromItems(list)); setTruncated(list.length >= LIST_LIMIT); setLoadError(null);
+      } catch (e) { setLoadError(e.message || 'Katalogni yuklab bo‘lmadi'); }
+    } finally { setLoading(false); }
+  }, []);
+  useEffect(() => { loadCounts(); }, [loadCounts, version]);
 
-    adminApi.getCatalog(qs ? `?${qs}` : '')
-      .then(setItems)
-      .catch(() => {})
-      .finally(() => setLoading(false));
-  }, [filter, q]);
+  const { groups } = useMemo(() => summarizeGroups(rows), [rows]);
+  const group = groupId ? groups.find((g) => g.id === groupId) || (groupById(groupId) ? { ...groupById(groupId), subs: [], total: 0, active: 0, withImage: 0 } : null) : null;
 
-  useEffect(() => {
-    const t = setTimeout(load, q ? 350 : 0);
-    return () => clearTimeout(t);
-  }, [load, q]);
+  // Guruh ochilganda/yopilganda sahifa boshiga
+  useEffect(() => { window.scrollTo?.(0, 0); document.querySelector('main')?.scrollTo?.(0, 0); }, [groupId]);
+
+  const openGroup = (id) => setParams({ g: id });
+  const setSub = (c) => setParams(c ? { g: groupId, c } : { g: groupId }, { replace: true });
+  const back = () => setParams({});
+  const refresh = () => setVersion((v) => v + 1);
 
   const remove = async (p) => {
     if (!await confirm({ title: `"${p.name}" o'chirilsinmi?` })) return;
     try {
       const r = await adminApi.deleteCatalogProduct(p._id);
       if (r.deactivated) alert(r.message);
-      load();
+      refresh();
     } catch (e) { alert(e.message); }
   };
 
-  // Kategoriya bo'yicha guruhlaymiz (brend endi yig'ilmaydi)
-  const grouped = items.reduce((acc, p) => {
-    const key = catLabel(p.category);
-    (acc[key] = acc[key] || []).push(p);
-    return acc;
-  }, {});
+  // "Qo'shish": ochiq guruhda — tanlangan chip yoki guruhning birinchi kategoriyasi oldindan tanlanadi
+  const addDefaults = group ? { category: sub || group.subs[0]?.category || group.categories?.[0] } : null;
 
   return (
-    <div className="p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 mb-1">
-        <div>
-          <h1 className="text-xl font-semibold text-ink">Umumiy katalog</h1>
-          <p className="text-sm text-muted mt-0.5">
-            Restoranlar shu ro'yxatdan tanlab o'z narxini qo'yadi
-          </p>
+    <>
+      {loadError && !rows.length ? (
+        <div className="mx-auto max-w-md p-8 text-center">
+          <div className="text-ink font-semibold">{loadError}</div>
+          <button type="button" onClick={() => { setLoading(true); loadCounts(); }} className="mt-4 rounded-xl bg-brand-400 px-5 py-2.5 text-sm font-semibold text-brand-text">Qayta urinish</button>
         </div>
-        <div className="flex gap-2 flex-none">
-          <button
-            onClick={() => setZipImportOpen(true)}
-            className="flex-1 sm:flex-none border border-line text-ink font-medium px-4 py-2 rounded-xl hover:bg-canvas"
-          >
-            <i className="ti ti-file-zip" /> ZIP orqali
-          </button>
-          <button
-            onClick={() => setEditing('new')}
-            className="flex-1 sm:flex-none bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white"
-          >
-            <i className="ti ti-plus" /> Qo'shish
-          </button>
-        </div>
-      </div>
-
-      {zipImportOpen && (
-        <CatalogZipImportModal
-          onClose={() => setZipImportOpen(false)}
-          onImported={load}
+      ) : group ? (
+        <CatalogGroupView
+          key={group.id}
+          group={group}
+          sub={sub}
+          onSub={setSub}
+          onBack={back}
+          onAdd={() => setEditing({ defaults: addDefaults })}
+          onEdit={(p) => setEditing({ product: p })}
+          onDelete={remove}
+          version={version}
         />
-      )}
-
-      {/* Filtr — mobilda ustma-ust (ikkalasi ham to'liq kenglikda,
-          70 ta kategoriyaning eng uzuni ham qulay o'qiladi),
-          sm+ ekranda yonma-yon */}
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_15rem] gap-2 mt-4 mb-4">
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Nom bo'yicha qidirish..."
-          className="inp"
-        />
-        <select
-          value={filter}
-          onChange={(e) => setFilter(e.target.value)}
-          className="inp"
-        >
-          <option value="">Barcha kategoriya</option>
-          {CATEGORIES.map((c) => (
-            <option key={c.value} value={c.value}>{c.label}</option>
-          ))}
-        </select>
-      </div>
-
-      {loading ? (
-        <div className="text-muted text-sm">Yuklanmoqda...</div>
-      ) : items.length === 0 ? (
-        <div className="text-center py-14 px-6">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center
-                          rounded-full bg-brand-50">
-            <i className="ti ti-package text-3xl text-brand-600" />
-          </div>
-          <div className="text-ink font-semibold">Katalog bo'sh</div>
-          {/*
-            Ilgari bu yerda "npm run seed:catalog" yozilardi.
-            Bu sahifani biznes administratori ochadi — terminal
-            buyrug'i unga hech narsa aytmaydi va ish to'xtaydi.
-            Endi tugma ko'rsatiladi.
-          */}
-          <p className="mx-auto mt-2 max-w-sm text-sm leading-relaxed text-muted">
-            Bu yerga bir marta kiritilgan mahsulot barcha restoranlarda
-            bir xil nom va rasm bilan ko'rinadi. Restoran faqat
-            o'z narxini qo'yadi.
-          </p>
-          <button
-            onClick={() => setEditing('new')}
-            className="mt-5 rounded-xl bg-brand-400 px-5 py-2.5 text-sm font-medium
-                       text-brand-text transition hover:bg-brand-600 hover:text-white"
-          >
-            <i className="ti ti-plus mr-1.5" />
-            Birinchi mahsulotni qo'shish
-          </button>
-        </div>
       ) : (
-        <div className="space-y-5">
-          {Object.entries(grouped).map(([group, list]) => (
-            <div key={group}>
-              <h2 className="text-sm font-semibold text-ink mb-2">{group}</h2>
-              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                {list.map((p) => (
-                  <div
-                    key={p._id}
-                    className={`bg-surface border rounded-xl p-3 flex items-center gap-3 ${
-                      p.isActive ? 'border-line' : 'border-line opacity-50'
-                    }`}
-                  >
-                    {p.imageUrl ? (
-                      <Img
-                        src={p.imageUrl} w={96}
-                        className="w-12 h-12 rounded-lg object-cover flex-none bg-canvas"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-canvas flex items-center justify-center flex-none">
-                        <i className="ti ti-photo text-muted" />
-                      </div>
-                    )}
-
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium text-ink truncate">
-                        {p.name}
-                        {p.volume && (
-                          <span className="text-muted font-normal"> · {p.volume}</span>
-                        )}
-                      </div>
-                      {p.usageCount > 0 && (
-                        <div className="text-xs text-muted">
-                          {p.usageCount} restoranda
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="flex gap-1 flex-none">
-                      <button
-                        onClick={() => setEditing(p)}
-                        className="w-8 h-8 rounded-lg hover:bg-canvas text-muted"
-                      >
-                        <i className="ti ti-pencil text-sm" />
-                      </button>
-                      <button
-                        onClick={() => remove(p)}
-                        className="w-8 h-8 rounded-lg hover:bg-red-50 text-red-600"
-                      >
-                        <i className="ti ti-trash text-sm" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <CatalogHome
+          groups={groups}
+          loading={loading}
+          truncated={truncated}
+          onOpenGroup={openGroup}
+          onZip={() => setZipOpen(true)}
+          onAdd={() => setEditing({ defaults: null })}
+          onEdit={(p) => setEditing({ product: p })}
+          onDelete={remove}
+          version={version}
+        />
       )}
 
+      {zipOpen && <CatalogZipImportModal onClose={() => setZipOpen(false)} onImported={refresh} />}
       {editing && (
-        <ProductForm
-          product={editing === 'new' ? null : editing}
+        <CatalogProductForm
+          product={editing.product || null}
+          defaults={editing.defaults || null}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); load(); }}
+          onSaved={() => { setEditing(null); refresh(); }}
         />
       )}
-    </div>
-  );
-}
-
-function ProductForm({ product, onClose, onSaved }) {
-  useLockScroll();
-
-  const [form, setForm] = useState({
-    name: product?.name || '',
-    volume: product?.volume || '',
-    category: product?.category || DRINKS_CATEGORY,
-    description: product?.description || '',
-    imageUrl: product?.imageUrl || '',
-    isActive: product?.isActive ?? true,
-  });
-  const [saving, setSaving] = useState(false);
-  const [err, setErr] = useState(null);
-
-  const set = (k, v) => setForm((f) => ({ ...f, [k]: v }));
-
-  const submit = async () => {
-    if (form.name.trim().length < 2) { setErr('Nom kiriting'); return; }
-    setSaving(true); setErr(null);
-    try {
-      const payload = { ...form, name: form.name.trim() };
-      if (product) await adminApi.updateCatalogProduct(product._id, payload);
-      else await adminApi.createCatalogProduct(payload);
-      onSaved();
-    } catch (e) {
-      setErr(e.message);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <div
-      onClick={onClose}
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-end sm:items-center justify-center sm:p-4"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        /*
-          FLEX USTUN: sarlavha va tugmalar qotib turadi, faqat
-          o'rtadagi forma suriladi.
-
-          Ilgari butun quti `overflow-y-auto` edi va tugmalar
-          `sticky bottom-0` bilan ushlab turilardi. Sticky element
-          O'Z KONTEYNERI ichida yopishadi — konteyner esa suriladi,
-          shuning uchun tugmalar formaning o'rtasida osilib
-          qolardi va ostidagi maydonlarni to'sardi.
-        */
-        className="bg-white w-full max-w-md rounded-t-2xl sm:rounded-2xl
-                   flex flex-col max-h-[92dvh] sm:max-h-[85dvh] overflow-hidden"
-      >
-        <div className="flex-none flex items-center justify-between px-5 pt-5 pb-3">
-          <h3 className="text-lg font-semibold text-ink">
-            {product ? 'Tahrirlash' : 'Yangi mahsulot'}
-          </h3>
-          <button onClick={onClose} className="text-muted hover:text-ink">
-            <i className="ti ti-x text-xl" />
-          </button>
-        </div>
-
-        {/* Faqat SHU qism suriladi */}
-        <div className="flex-1 min-h-0 overflow-y-auto px-5 pb-3">
-
-        <ImageUpload
-          label="Rasm"
-          value={form.imageUrl}
-          onChange={(url) => set('imageUrl', url)}
-        />
-
-        <Field label="Nom *">
-          <input
-            value={form.name}
-            onChange={(e) => set('name', e.target.value)}
-            placeholder="Coca-Cola"
-            className="inp"
-          />
-        </Field>
-
-        <Field label="Hajm" hint="Ixtiyoriy — 0.5 l, 1 kg va h.k.">
-          <input
-            value={form.volume}
-            onChange={(e) => set('volume', e.target.value)}
-            placeholder="0.5 l"
-            className="inp"
-          />
-        </Field>
-
-        <Field label="Kategoriya *">
-          <select
-            value={form.category}
-            onChange={(e) => set('category', e.target.value)}
-            className="inp"
-          >
-            {CATEGORIES.map((c) => (
-              <option key={c.value} value={c.value}>{c.label}</option>
-            ))}
-          </select>
-        </Field>
-
-        <Field label="Tavsif">
-          <textarea
-            value={form.description}
-            onChange={(e) => set('description', e.target.value)}
-            rows={2}
-            className="inp resize-none"
-          />
-        </Field>
-
-        <label className="flex items-center justify-between gap-3 py-2 cursor-pointer">
-          <span className="text-sm text-ink">Faol</span>
-          <input
-            type="checkbox"
-            checked={form.isActive}
-            onChange={(e) => set('isActive', e.target.checked)}
-            className="w-5 h-5 accent-brand-400"
-          />
-        </label>
-
-        {err && (
-          <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2 mb-3">
-            {err}
-          </div>
-        )}
-
-        </div>
-
-        <div className="flex-none flex gap-2 px-5 pt-3 border-t border-line bg-white
-                        pb-[calc(1rem+env(safe-area-inset-bottom))] sm:pb-4">
-          <button onClick={onClose} className="flex-1 border border-line text-muted py-2.5 rounded-xl">
-            Bekor
-          </button>
-          <button
-            onClick={submit}
-            disabled={saving}
-            className="flex-[1.5] bg-brand-400 text-brand-text font-medium py-2.5 rounded-xl disabled:opacity-50"
-          >
-            {saving ? 'Saqlanmoqda...' : 'Saqlash'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Field({ label, hint, children }) {
-  return (
-    <div className="mb-3">
-      <label className="block text-sm font-medium text-ink mb-1.5">{label}</label>
-      {children}
-      {hint && <p className="text-[11px] text-muted mt-1">{hint}</p>}
-    </div>
+    </>
   );
 }
