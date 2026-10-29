@@ -1,25 +1,30 @@
 import { useEffect, useState } from 'react';
 import { panelApi } from '@/api';
 import { useLockScroll } from '@/hooks/useLockScroll';
+import { parseRefusalReasons } from '@/lib/incidentMode';
 
 /*
- * "Mijoz rad etdi" — restoran qabul qilgan buyurtmadan mijoz voz kechganda.
- * Buyurtma DARHOL bekor qilinmaydi: so'rov LokmaGo adminiga boradi (guruh +
- * admin panel), admin tasdiqlasa bekor qilinadi va xohlasa mijozning naqd
- * to'lovini o'chiradi yoki bloklaydi. Server: POST /panel/orders/:id/cancel-request
+ * "Mijoz rad etdi" — restoran qabul qilgan buyurtmadan mijoz voz kechganda. Server: POST /panel/orders/:id/cancel-request
+ *
+ * Ikki rejim (server `approvalRequired` ni beradi; eski server — har doim tasdiq):
+ *   • tasdiq (eski): buyurtma DARHOL bekor qilinmaydi — so'rov LokmaGo adminiga boradi, u tasdiqlasa bekor qilinadi;
+ *   • standart: sabab tanlanadi → buyurtma DARHOL bekor qilinadi, holat adminga yuboriladi (u keyin ko'rib chiqadi).
  */
 const som = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
 export function RefusalModal({ order, onClose, onSent }) {
   useLockScroll();
   const [reasons, setReasons] = useState([]);
+  const [approvalRequired, setApprovalRequired] = useState(true);   // eski server (massiv javob) — tasdiq kutadi
   const [code, setCode] = useState('');
   const [note, setNote] = useState('');
   const [err, setErr] = useState(null);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    panelApi.refusalReasons().then(setReasons).catch((e) => setErr(e.message));
+    panelApi.refusalReasons()
+      .then((res) => { const p = parseRefusalReasons(res); setReasons(p.reasons); setApprovalRequired(p.approvalRequired); })
+      .catch((e) => setErr(e.message));
   }, []);
 
   const send = async () => {
@@ -44,8 +49,12 @@ export function RefusalModal({ order, onClose, onSent }) {
         </div>
         <div className="flex-1 overflow-y-auto px-5 py-4">
           <div className="mb-3 rounded-xl bg-amber-50 px-3 py-2.5 text-xs leading-relaxed text-amber-800">
-            <i className="ti ti-info-circle" /> Buyurtma darhol bekor qilinmaydi. So‘rov <b>LokmaGo adminiga</b> boradi — u tasdiqlasa bekor qilinadi.
-            Qaror chiqquncha taomni bermang.
+            {approvalRequired ? (
+              <><i className="ti ti-info-circle" /> Buyurtma darhol bekor qilinmaydi. So‘rov <b>LokmaGo adminiga</b> boradi — u tasdiqlasa bekor qilinadi.
+                Qaror chiqquncha taomni bermang.</>
+            ) : (
+              <><i className="ti ti-info-circle" /> Sababni tanlang — buyurtma <b>darhol bekor qilinadi</b>, holat LokmaGo adminiga yuboriladi.</>
+            )}
           </div>
           <div className="space-y-2">
             {reasons.map((r) => (
@@ -66,7 +75,7 @@ export function RefusalModal({ order, onClose, onSent }) {
         <div className="flex gap-2 border-t border-line px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
           <button onClick={onClose} className="rounded-xl border border-line px-4 py-2.5 text-muted">Bekor</button>
           <button onClick={send} disabled={saving} className="flex-1 rounded-xl bg-red-600 py-2.5 font-semibold text-white disabled:opacity-50">
-            {saving ? 'Yuborilmoqda...' : 'Adminga yuborish'}
+            {saving ? (approvalRequired ? 'Yuborilmoqda...' : 'Bekor qilinmoqda...') : (approvalRequired ? 'Adminga yuborish' : 'Buyurtmani bekor qilish')}
           </button>
         </div>
       </div>

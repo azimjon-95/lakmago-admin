@@ -4,23 +4,19 @@ import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { confirm } from '@/components/ui/confirm';
+import { decisionButtons, decisionTexts, pendingBanner, statusInfo } from '@/lib/incidentMode';
 
 /*
  * ═══ MUAMMOLI MIJOZLAR ═══
  * Restoran qabul qilgan buyurtmadan mijoz voz kechdi → restoran "Mijoz rad etdi"
- * so'rovini yuboradi → shu yerda admin hal qiladi:
- *   ✅ bekor qilishni tasdiqlash (+ xohlasa naqd to'lovni o'chirish / bloklash, sababi bilan)
- *   ❌ rad etish (buyurtma davom etadi)
+ * so'rovini yuboradi → shu yerda admin hal qiladi. Ikki rejim (lib/incidentMode.js, server CANCEL_APPROVAL_REQUIRED):
+ *   tasdiq (eski):   ✅ bekor qilishni tasdiqlash (+ xohlasa naqd to'lovni o'chirish / bloklash) · ❌ rad etish (buyurtma davom etadi)
+ *   standart (post): buyurtma restoran tomonidan DARHOL bekor qilingan; admin keyin: 🧾 mijoz aybdor (+ chora) · ℹ️ asossiz
  * "Cheklangan mijozlar" — naqd o'chirilgan yoki bloklanganlar, cheklovni olib tashlash.
  * Telegram guruhidagi "Ko'rib chiqish" tugmasi shu sahifani ?id=<hodisa> bilan ochadi.
  */
 const som = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 const dt = (d) => (d ? new Date(d).toLocaleString('ru-RU', { timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—');
-const STATUS = {
-  pending: { label: 'Kutilmoqda', cls: 'bg-amber-50 text-amber-700' },
-  approved: { label: 'Bekor qilindi', cls: 'bg-red-50 text-red-600' },
-  rejected: { label: 'Rad etildi', cls: 'bg-canvas text-muted' },
-};
 const ORDER_STATUS = { accepted: 'Qabul qilingan', preparing: 'Tayyorlanmoqda', ready: 'Tayyor', delivering: "Yo'lda" };
 const fullName = (s = {}) => [s.firstName, s.lastName].filter(Boolean).join(' ') || 'Mijoz';
 
@@ -85,7 +81,7 @@ export function IncidentsPage() {
                   <div className="truncate font-medium text-ink">{fullName(i.snapshot)}{i.snapshot?.username ? <span className="font-normal text-muted"> · @{i.snapshot.username}</span> : null}</div>
                   <div className="truncate text-xs text-muted">{i.restaurantName} · {i.orderLabel} · {som(i.order?.total)} so'm · {i.order?.paymentMethod === 'cash' ? 'Naqd' : 'Karta'}</div>
                 </div>
-                <span className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-medium ${STATUS[i.status].cls}`}>{STATUS[i.status].label}</span>
+                <span className={`flex-none rounded-full px-2 py-0.5 text-[11px] font-medium ${statusInfo(i).cls}`}>{statusInfo(i).label}</span>
               </div>
               <div className="mt-1.5 text-sm text-ink"><i className="ti ti-message-report text-muted" /> {i.reason}{i.note ? ` — ${i.note}` : ''}</div>
               <div className="mt-1 flex flex-wrap gap-x-3 text-[11px] text-muted">
@@ -124,13 +120,7 @@ function IncidentSheet({ id, onClose, onDone }) {
 
   const decide = async (approve) => {
     if (approve && (disableCash || block) && message.trim().length < 5) { setErr('Mijozga ko‘rsatiladigan sababni yozing'); return; }
-    const ok = await confirm({
-      title: approve ? 'Buyurtma bekor qilinsinmi?' : 'So‘rov rad etilsinmi?',
-      content: approve
-        ? [disableCash && 'mijozning naqd to‘lovi o‘chiriladi', block && 'mijoz bloklanadi'].filter(Boolean).join(', ') || 'Mijozga cheklov qo‘yilmaydi'
-        : 'Buyurtma bekor qilinmaydi, restoran davom ettiradi',
-      tone: approve ? 'danger' : 'warning',
-    });
+    const ok = await confirm(decisionTexts(data?.incident, { approve, disableCash, block }));
     if (!ok) return;
     setBusy(true); setErr(null);
     try {
@@ -209,7 +199,7 @@ function IncidentSheet({ id, onClose, onDone }) {
                   {data.history.map((h) => (
                     <div key={h._id} className="flex justify-between gap-2 py-0.5 text-xs">
                       <span className="text-ink">{h.restaurantName} · {h.orderLabel} — {h.reason}</span>
-                      <span className={`flex-none ${h.status === 'approved' ? 'text-red-600' : 'text-muted'}`}>{STATUS[h.status].label} · {dt(h.createdAt)}</span>
+                      <span className={`flex-none ${h.status === 'approved' ? 'text-red-600' : 'text-muted'}`}>{statusInfo(h).label} · {dt(h.createdAt)}</span>
                     </div>
                   ))}
                 </Block>
@@ -218,6 +208,7 @@ function IncidentSheet({ id, onClose, onDone }) {
               {inc.status === 'pending' ? (
                 <div className="rounded-2xl border border-line p-3">
                   <div className="mb-2 text-sm font-semibold text-ink">Qaror</div>
+                  {pendingBanner(inc) && <div className="mb-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">{pendingBanner(inc)}</div>}
                   <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={disableCash} onChange={(e) => setDisableCash(e.target.checked)} /> 💵 Naqd to‘lovni o‘chirish (keyin faqat karta bilan)</label>
                   <label className="flex items-center gap-2 py-1 text-sm"><input type="checkbox" checked={block} onChange={(e) => setBlock(e.target.checked)} /> ⛔ Mijozni bloklash (LokmaGo’dan foydalana olmaydi)</label>
                   {(disableCash || block) && (
@@ -231,7 +222,7 @@ function IncidentSheet({ id, onClose, onDone }) {
                 </div>
               ) : (
                 <div className={`rounded-2xl p-3 text-sm ${inc.status === 'approved' ? 'bg-red-50 text-red-700' : 'bg-canvas text-muted'}`}>
-                  <b>{STATUS[inc.status].label}</b> · {inc.decision?.by} · {dt(inc.decision?.at)}
+                  <b>{statusInfo(inc).label}</b> · {inc.decision?.by} · {dt(inc.decision?.at)}
                   {inc.decision?.cashDisabled && <div>💵 Naqd to‘lov o‘chirildi</div>}
                   {inc.decision?.blocked && <div>⛔ Mijoz bloklandi</div>}
                   {inc.decision?.customerMessage && <div className="mt-1 text-xs">Mijozga: “{inc.decision.customerMessage}”</div>}
@@ -243,9 +234,9 @@ function IncidentSheet({ id, onClose, onDone }) {
         </div>
         {inc?.status === 'pending' && (
           <div className="flex gap-2 border-t border-line px-5 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-            <button onClick={() => decide(false)} disabled={busy} className="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium text-ink disabled:opacity-50">❌ Rad etish</button>
+            <button onClick={() => decide(false)} disabled={busy} className="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium text-ink disabled:opacity-50">{decisionButtons(inc).no}</button>
             <button onClick={() => decide(true)} disabled={busy} className="flex-[1.4] rounded-xl bg-red-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50">
-              {busy ? 'Saqlanmoqda...' : '✅ Bekor qilishni tasdiqlash'}
+              {busy ? 'Saqlanmoqda...' : decisionButtons(inc).yes}
             </button>
           </div>
         )}

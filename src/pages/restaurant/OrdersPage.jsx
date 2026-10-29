@@ -281,7 +281,8 @@ export function RestaurantOrdersPage() {
           order={refusing}
           onClose={() => setRefusing(null)}
           onSent={(r) => {
-            setOrders((prev) => prev.map((x) => (x._id === refusing._id ? { ...x, cancelRequest: r.cancelRequest } : x)));
+            // Standart rejimda server buyurtmani DARHOL bekor qiladi va yangi `status` ni qaytaradi (eski server — qaytarmaydi)
+            setOrders((prev) => prev.map((x) => (x._id === refusing._id ? { ...x, cancelRequest: r.cancelRequest, ...(r.status ? { status: r.status } : {}) } : x)));
             setRefusing(null);
           }}
         />
