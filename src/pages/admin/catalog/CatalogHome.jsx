@@ -10,7 +10,7 @@ const SEARCH_MAX = 60;
  * guruh kartochkalari (telefonda 2 ta, 640 px dan 3 ta bir qatorda). Qidiruv: mos GURUHLAR (nomi, tavsifi yoki
  * pastki kategoriyasi bo'yicha) + mos MAHSULOTLAR (serverda, nom/brend bo'yicha).
  */
-export function CatalogHome({ groups, loading, truncated, onOpenGroup, onZip, onAdd, onEdit, onDelete, version }) {
+export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, onOpenGroup, onZip, onAdd, onEdit, onDelete, version }) {
   const [q, setQ] = useState('');
   const [found, setFound] = useState({ q: '', items: [], loading: false });
   const needle = q.trim().toLowerCase();
@@ -66,10 +66,15 @@ export function CatalogHome({ groups, loading, truncated, onOpenGroup, onZip, on
         </button>
       </div>
 
+      {counting && (
+        <div className="mb-4 flex items-center gap-2 rounded-xl bg-canvas px-3.5 py-2.5 text-xs text-muted" role="status">
+          <i className="ti ti-loader-2 animate-spin" /> Sonlar hisoblanmoqda… (server yangilanmagan — shu sabab sekinroq)
+        </div>
+      )}
       {truncated && (
         <div className="mb-4 rounded-xl bg-amber-50 px-3.5 py-2.5 text-xs text-amber-800">
-          Katalogda 500 tadan ko'p mahsulot bor — hozirgi server ro'yxatni 500 ta bilan kesadi, shuning uchun sonlar taxminiy.
-          Aniq sonlar uchun serverni yangilang (katalog hisoblagichi).
+          Ba'zi kategoriyalarda 500 tadan ko'p mahsulot bor — hozirgi server bitta so'rovda 500 tadan ortiq bermaydi, shuning uchun
+          sonlar taxminiy. Aniq sonlar uchun serverni yangilang (katalog hisoblagichi).
         </div>
       )}
 
@@ -86,7 +91,7 @@ export function CatalogHome({ groups, loading, truncated, onOpenGroup, onZip, on
         <div className="rounded-2xl border border-dashed border-line py-8 text-center text-sm text-muted">Mos kategoriya topilmadi</div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {shownGroups.map((g) => <GroupCard key={g.id} g={g} onOpen={() => onOpenGroup(g.id)} />)}
+          {shownGroups.map((g) => <GroupCard key={g.id} g={g} onOpen={() => onOpenGroup(g.id)} onWarm={() => onPrefetch?.(g)} />)}
         </div>
       )}
 

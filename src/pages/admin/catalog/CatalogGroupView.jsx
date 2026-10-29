@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { adminApi } from '@/api';
+import { loadGroup, peek } from '@/lib/catalogData';
 import { categoryLabel } from '@/constants/catalogGroups';
 import { filterProducts, sortProducts } from '@/lib/catalogCounts';
 import { groupCover } from '@/lib/catalogCovers';
@@ -15,9 +15,10 @@ const SORTS = [
  * pastki kategoriyalar CHIPLARI ("Barchasi 12", "Mol go'shti 4"…); saralash va filtr; mahsulot kartochkalari
  * (telefonda 2 ta, 640 px dan 3 ta bir qatorda).
  */
-export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onDelete, version }) {
-  const [products, setProducts] = useState([]);
-  const [loading, setLoading] = useState(true);
+export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onDelete, version, v2 }) {
+  // Brauzer keshida shu guruh bor bo'lsa — DARHOL ko'rsatiladi (orqada yangisi yuklanadi)
+  const [products, setProducts] = useState(() => peek(group.subs.map((s) => s.category)) || []);
+  const [loading, setLoading] = useState(() => !peek(group.subs.map((s) => s.category)));
   const [error, setError] = useState(null);
   const [sort, setSort] = useState('name');
   const [filter, setFilter] = useState({ status: 'all', image: 'all' });
@@ -27,18 +28,24 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
   const popRef = useRef(null);
   const cover = groupCover(group.id);
 
-  // Guruhning har bir kategoriyasi alohida so'raladi (server har so'rovda 500 tagacha beradi — katta katalogda ham to'liq)
+  /*
+   * Yuklash: yangi serverda BITTA so'rov (Redis keshidan, 500 kesishsiz); eski serverda kategoriyalar bo'yicha parallel.
+   * Kesh bor bo'lsa ro'yxat allaqachon ko'rinib turibdi — shunchaki orqada yangilanadi (loading ko'rsatilmaydi).
+   */
   const cats = useMemo(() => group.subs.map((s) => s.category), [group.subs]);
+  const hasData = useRef(products.length > 0);   // saqlash/o'chirishdan keyin ro'yxat "skelet"ga qaytib miltillamasin
+  useEffect(() => { hasData.current = products.length > 0; }, [products]);
   const load = useCallback(() => {
     if (!cats.length) { setProducts([]); setLoading(false); return () => {}; }
     let dead = false;
-    setLoading(true); setError(null);
-    Promise.all(cats.map((c) => adminApi.getCatalog(`?category=${encodeURIComponent(c)}`)))
-      .then((lists) => { if (!dead) setProducts(lists.flat()); })
+    setError(null);
+    if (!peek(cats) && !hasData.current) setLoading(true);
+    loadGroup(cats, { v2 })
+      .then((items) => { if (!dead) setProducts(items); })
       .catch((e) => { if (!dead) setError(e.message || 'Yuklab bo‘lmadi'); })
       .finally(() => { if (!dead) setLoading(false); });
     return () => { dead = true; };
-  }, [cats]);
+  }, [cats, v2]);
   useEffect(() => load(), [load, version]);
 
   // Filtr oynasi: tashqariga bosilsa / Escape — yopiladi

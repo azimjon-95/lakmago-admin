@@ -5,12 +5,15 @@ import { groupCover } from '@/lib/catalogCovers';
 const clamp = (n) => ({ display: '-webkit-box', WebkitLineClamp: n, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' });
 
 /** Guruh kartochkasi: rasm (yoki gradient+emoji), tepa-o'ngda soni, pastda nom va tavsif, o'qli tugma. */
-export function GroupCard({ g, onOpen }) {
+export function GroupCard({ g, onOpen, onWarm }) {
   const cover = groupCover(g.id);
   return (
     <button
       type="button"
       onClick={onOpen}
+      onPointerEnter={onWarm}
+      onTouchStart={onWarm}
+      onFocus={onWarm}
       className="group relative block aspect-[4/5] w-full overflow-hidden rounded-2xl text-left shadow-sm transition hover:shadow-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-400 sm:aspect-[4/3]"
       style={{ background: `linear-gradient(135deg, ${g.from}, ${g.to})` }}
     >

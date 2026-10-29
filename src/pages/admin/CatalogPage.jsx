@@ -4,6 +4,8 @@ import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
 import { summarizeGroups, groupById } from '@/constants/catalogGroups';
 import { countFromItems, LIST_LIMIT } from '@/lib/catalogCounts';
+import { CATALOG_CATEGORIES } from '@/constants/catalogCategories';
+import { clear as clearCatalogCache, countPerCategory, prefetchGroup } from '@/lib/catalogData';
 import { CatalogZipImportModal } from './CatalogZipImportModal';
 import { CatalogHome } from './catalog/CatalogHome';
 import { CatalogGroupView } from './catalog/CatalogGroupView';
@@ -16,8 +18,10 @@ import { CatalogProductForm } from './catalog/CatalogProductForm';
  *   /catalog                       — guruh kartochkalari (maketdagi chap ekran)
  *   /catalog?g=gosht[&c=<kateg.>]  — guruh ichi: muqova, chiplar, mahsulotlar (o'ng ekran)
  *
- * Sonlar: serverning /admin/catalog/counts (aniq). Server hali yangilanmagan bo'lsa (404) — oddiy ro'yxatdan
- * hisoblanadi (server ro'yxatni 500 ta bilan kesadi → `truncated` ogohlantirishi).
+ * Sonlar: serverning /admin/catalog/counts (aniq; server buni birinchi chaqiruvda butun katalogni Redis'ga yuklaydi,
+ * kartochka bosilganda esa faqat shu guruh Redis'dan keladi). Server hali yangilanmagan bo'lsa (404):
+ *   • katalog ≤ 500 — umumiy ro'yxatdan hisoblanadi;
+ *   • katalog > 500 — umumiy ro'yxat kesilgani uchun har bir kategoriya ALOHIDA so'raladi (aniq, lekin sekinroq).
  */
 export function CatalogPage() {
   const [params, setParams] = useSearchParams();
@@ -27,6 +31,8 @@ export function CatalogPage() {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [truncated, setTruncated] = useState(false);
+  const [v2, setV2] = useState(false);                // yangi server: hisoblagich + Redis keshi + ?categories=
+  const [counting, setCounting] = useState(false);    // eski server: sonlar kategoriyalar bo'yicha hisoblanmoqda
   const [loadError, setLoadError] = useState(null);
   const [version, setVersion] = useState(0);          // saqlash/o'chirishdan keyin ro'yxatlarni qayta yuklash
   const [zipOpen, setZipOpen] = useState(false);
@@ -35,12 +41,19 @@ export function CatalogPage() {
   const loadCounts = useCallback(async () => {
     try {
       const r = await adminApi.getCatalogCounts();
-      setRows(Array.isArray(r) ? r : r.counts || []); setTruncated(false); setLoadError(null);
+      setRows(Array.isArray(r) ? r : r.counts || []); setTruncated(false); setLoadError(null); setV2(true);
     } catch {
+      setV2(false);
       try {
         const list = await adminApi.getCatalog('');
-        setRows(countFromItems(list)); setTruncated(list.length >= LIST_LIMIT); setLoadError(null);
+        if (list.length >= LIST_LIMIT) {
+          setCounting(true);
+          const { rows: exact, truncated: still } = await countPerCategory(CATALOG_CATEGORIES.map((c) => c.value), list);
+          setRows(exact); setTruncated(still);
+        } else { setRows(countFromItems(list)); setTruncated(false); }
+        setLoadError(null);
       } catch (e) { setLoadError(e.message || 'Katalogni yuklab bo‘lmadi'); }
+      finally { setCounting(false); }
     } finally { setLoading(false); }
   }, []);
   useEffect(() => { loadCounts(); }, [loadCounts, version]);
@@ -54,7 +67,9 @@ export function CatalogPage() {
   const openGroup = (id) => setParams({ g: id });
   const setSub = (c) => setParams(c ? { g: groupId, c } : { g: groupId }, { replace: true });
   const back = () => setParams({});
-  const refresh = () => setVersion((v) => v + 1);
+  // Har qanday yozuvdan keyin brauzer keshi tozalanadi (eskirgan ro'yxat ko'rinmasin) va ro'yxatlar qayta yuklanadi
+  const refresh = () => { clearCatalogCache(); setVersion((v) => v + 1); };
+  const prefetch = useCallback((g) => prefetchGroup(g.subs.map((s) => s.category), { v2 }), [v2]);
 
   const remove = async (p) => {
     if (!await confirm({ title: `"${p.name}" o'chirilsinmi?` })) return;
@@ -86,12 +101,15 @@ export function CatalogPage() {
           onEdit={(p) => setEditing({ product: p })}
           onDelete={remove}
           version={version}
+          v2={v2}
         />
       ) : (
         <CatalogHome
           groups={groups}
           loading={loading}
+          counting={counting}
           truncated={truncated}
+          onPrefetch={prefetch}
           onOpenGroup={openGroup}
           onZip={() => setZipOpen(true)}
           onAdd={() => setEditing({ defaults: null })}
