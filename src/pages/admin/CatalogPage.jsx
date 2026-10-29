@@ -2,10 +2,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
-import { summarizeGroups, groupById } from '@/constants/catalogGroups';
+import { summarizeGroups, groupById, catsOfGroup } from '@/constants/catalogGroups';
 import { countFromItems, LIST_LIMIT } from '@/lib/catalogCounts';
 import { CATALOG_CATEGORIES } from '@/constants/catalogCategories';
-import { clear as clearCatalogCache, countPerCategory, prefetchGroup } from '@/lib/catalogData';
+import { clear as clearCatalogCache, countPerCategory } from '@/lib/catalogData';
+import { prefetchGroup } from '@/lib/catalogPager';
 import { CatalogZipImportModal } from './CatalogZipImportModal';
 import { CatalogHome } from './catalog/CatalogHome';
 import { CatalogGroupView } from './catalog/CatalogGroupView';
@@ -37,6 +38,7 @@ export function CatalogPage() {
   const [version, setVersion] = useState(0);          // saqlash/o'chirishdan keyin ro'yxatlarni qayta yuklash
   const [zipOpen, setZipOpen] = useState(false);
   const [editing, setEditing] = useState(null);       // null | { product } | { defaults }
+  const [change, setChange] = useState(null);         // { n, kind: upsert|remove|deactivate, ... } — ochiq ro'yxat joyida yangilanadi
 
   const loadCounts = useCallback(async () => {
     try {
@@ -69,14 +71,19 @@ export function CatalogPage() {
   const back = () => setParams({});
   // Har qanday yozuvdan keyin brauzer keshi tozalanadi (eskirgan ro'yxat ko'rinmasin) va ro'yxatlar qayta yuklanadi
   const refresh = () => { clearCatalogCache(); setVersion((v) => v + 1); };
-  const prefetch = useCallback((g) => prefetchGroup(g.subs.map((s) => s.category), { v2 }), [v2]);
+  /*
+   * Bitta mahsulot o'zgardi (saqlandi/o'chirildi): ro'yxat QAYTA YUKLANMAYDI — ochiq ro'yxat joyida yangilanadi (`change`),
+   * sonlar esa orqada jimgina yangilanadi. Faqat ZIP import kabi katta o'zgarishda `refresh()` (to'liq qayta yuklash).
+   */
+  const noteChange = useCallback((c) => { clearCatalogCache(); setChange({ n: Date.now() + Math.random(), ...c }); loadCounts(); }, [loadCounts]);
+  const prefetch = useCallback((g) => prefetchGroup(catsOfGroup(g), { v2 }), [v2]);
 
   const remove = async (p) => {
     if (!await confirm({ title: `"${p.name}" o'chirilsinmi?` })) return;
     try {
       const r = await adminApi.deleteCatalogProduct(p._id);
       if (r.deactivated) alert(r.message);
-      refresh();
+      noteChange(r.deactivated ? { kind: 'deactivate', id: p._id } : { kind: 'remove', id: p._id });
     } catch (e) { alert(e.message); }
   };
 
@@ -102,6 +109,7 @@ export function CatalogPage() {
           onDelete={remove}
           version={version}
           v2={v2}
+          change={change}
         />
       ) : (
         <CatalogHome
@@ -116,6 +124,8 @@ export function CatalogPage() {
           onEdit={(p) => setEditing({ product: p })}
           onDelete={remove}
           version={version}
+          v2={v2}
+          change={change}
         />
       )}
 
@@ -125,7 +135,7 @@ export function CatalogPage() {
           product={editing.product || null}
           defaults={editing.defaults || null}
           onClose={() => setEditing(null)}
-          onSaved={() => { setEditing(null); refresh(); }}
+          onSaved={(saved) => { setEditing(null); if (saved?._id) noteChange({ kind: 'upsert', product: saved }); else refresh(); }}
         />
       )}
     </>

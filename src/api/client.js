@@ -49,7 +49,8 @@ export async function apiFetch(path, options = {}) {
     } catch {
       // ignore
     }
-    throw new Error(msg);
+    // `status` — chaqiruvchi endpoint yo'qligini (404, eski server) aniqlab, zaxira yo'lga o'tishi uchun. Matn o'zgarmagan.
+    throw Object.assign(new Error(msg), { status: res.status });
   }
   return res.json();
 }

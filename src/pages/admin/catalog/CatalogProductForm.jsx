@@ -30,9 +30,10 @@ export function CatalogProductForm({ product, defaults = null, onClose, onSaved 
     setSaving(true); setErr(null);
     try {
       const payload = { ...form, name: form.name.trim() };
-      if (product) await adminApi.updateCatalogProduct(product._id, payload);
-      else await adminApi.createCatalogProduct(payload);
-      onSaved();
+      const saved = product
+        ? await adminApi.updateCatalogProduct(product._id, payload)
+        : await adminApi.createCatalogProduct(payload);
+      onSaved(saved);   // ro'yxat qayta yuklanmaydi — saqlangan mahsulot joyida yangilanadi
     } catch (e) {
       setErr(e.message);
     } finally {

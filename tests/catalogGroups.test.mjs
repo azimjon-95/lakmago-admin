@@ -59,3 +59,14 @@ test('tartiblash va filtr', () => {
   assert.deepEqual(filterProducts(l, { image: 'without' }).map((p) => p.name), ['Banan', 'Olma']);
   assert.deepEqual(filterProducts(l, { q: 'ban' }).map((p) => p.name), ['Banan']);
 });
+
+import { queryPage as qp, metaOf as mo, hash32 as h32, seededRank as sr } from '../src/lib/catalogPaging.js';
+test('FIXTURE: xesh va tasodifiy tartib SERVER bilan AYNAN BIR XIL (eski server uchun zaxira)', () => {
+  assert.equal(h32('abc'), 482950588);
+  assert.equal(sr('fixture1', 'id00000'), 2408853168);
+  const items = Array.from({ length: 12 }, (_, i) => ({ _id: `id${String(i).padStart(5, '0')}`, name: `Mahsulot ${String(i).padStart(4, '0')}`, category: 'meva', isActive: true, imageUrl: '', description: '', volume: '', usageCount: 0, createdAt: '2026-01-01' }));
+  const metas = items.map(mo);
+  const order = (seed) => qp(items, metas, { sort: 'random', seed, limit: 12 }).items.map((p) => p._id).join(',');
+  assert.equal(order('fixture1'), 'id00011,id00001,id00005,id00004,id00000,id00009,id00008,id00002,id00003,id00010,id00006,id00007');
+  assert.equal(order('kalit2'), 'id00002,id00011,id00001,id00007,id00000,id00008,id00009,id00010,id00003,id00005,id00004,id00006');
+});

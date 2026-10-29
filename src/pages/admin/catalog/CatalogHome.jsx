@@ -1,19 +1,27 @@
-import { useEffect, useMemo, useState } from 'react';
-import { adminApi } from '@/api';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { categoryLabel } from '@/constants/catalogGroups';
-import { GroupCard, ProductCard } from './CatalogCards';
+import { useCatalogPager } from '@/hooks/useCatalogPager';
+import { GroupCard, ProductCard, ProductCardSkeleton } from './CatalogCards';
+import { InfiniteGrid } from './InfiniteGrid';
 
-const SEARCH_MAX = 60;
+function useDebounced(value, ms) {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
 
 /*
  * "Umumiy katalog" bosh ko'rinishi (maket): sarlavha, qidiruv, [ZIP orqali | + Qo'shish], "Kategoriyalar N ta" va
  * guruh kartochkalari (telefonda 2 ta, 640 px dan 3 ta bir qatorda). Qidiruv: mos GURUHLAR (nomi, tavsifi yoki
- * pastki kategoriyasi bo'yicha) + mos MAHSULOTLAR (serverda, nom/brend bo'yicha).
+ * pastki kategoriyasi bo'yicha) + mos MAHSULOTLAR — BUTUN katalog bo'yicha, serverda (nom, tavsif, hajm), mosligi bo'yicha
+ * tartiblanadi va pastga aylantirganda 60 tadan davom etadi.
  */
-export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, onOpenGroup, onZip, onAdd, onEdit, onDelete, version }) {
+export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, onOpenGroup, onZip, onAdd, onEdit, onDelete, version, v2, change }) {
   const [q, setQ] = useState('');
-  const [found, setFound] = useState({ q: '', items: [], loading: false });
   const needle = q.trim().toLowerCase();
+  const dq = useDebounced(q.trim(), 300);
+  const search = useCatalogPager({ cats: [], q: dq, status: 'all', image: 'all', sort: 'relevance', seed: '' }, { enabled: dq.length >= 2, pageSize: 60, v2 });
+  const { removeLocal, upsertLocal, reload } = search;
 
   const shownGroups = useMemo(() => {
     if (!needle) return groups;
@@ -21,18 +29,17 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
       .some((s) => String(s).toLowerCase().includes(needle)));
   }, [groups, needle]);
 
-  // Mahsulot qidiruvi (serverda, 350 ms kutib). `version` — saqlash/o'chirishdan keyin qayta yuklash uchun.
+  // Katta o'zgarish (ZIP import) — qidiruv natijalari qayta yuklanadi; bitta mahsulot o'zgarsa — joyida yangilanadi
+  const firstVersion = useRef(version);
+  useEffect(() => { if (version !== firstVersion.current && dq.length >= 2) reload(); }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
+  const lastChange = useRef(null);
   useEffect(() => {
-    if (needle.length < 2) { setFound({ q: '', items: [], loading: false }); return undefined; }
-    let dead = false;
-    setFound((f) => ({ ...f, loading: true }));
-    const t = setTimeout(() => {
-      adminApi.getCatalog(`?q=${encodeURIComponent(q.trim())}`)
-        .then((items) => { if (!dead) setFound({ q: needle, items, loading: false }); })
-        .catch(() => { if (!dead) setFound({ q: needle, items: [], loading: false }); });
-    }, 350);
-    return () => { dead = true; clearTimeout(t); };
-  }, [needle, q, version]);
+    if (!change || change.n === lastChange.current) return;
+    lastChange.current = change.n;
+    if (change.kind === 'remove') removeLocal(change.id);
+    else if (change.kind === 'deactivate') upsertLocal({ _id: change.id, isActive: false });
+    else if (change.kind === 'upsert' && change.product) upsertLocal(change.product);
+  }, [change]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="mx-auto max-w-6xl p-4 sm:p-6">
@@ -95,23 +102,28 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
         </div>
       )}
 
-      {needle.length >= 2 && (
+      {dq.length >= 2 && (
         <section className="mt-9" aria-live="polite">
           <div className="mb-3 flex items-baseline justify-between">
             <h2 className="text-lg font-bold text-ink">Mahsulotlar</h2>
-            <span className="text-sm text-muted">{found.loading ? 'Qidirilmoqda…' : `${found.items.length} ta`}</span>
+            <span className="text-sm text-muted" data-testid="home-result-count">
+              {search.phase === 'loading' || search.phase === 'refreshing' ? 'Qidirilmoqda…' : `${search.total} ta`}
+            </span>
           </div>
-          {!found.loading && found.items.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-line py-8 text-center text-sm text-muted">«{q.trim()}» bo'yicha mahsulot topilmadi</div>
+          {search.phase !== 'loading' && search.phase !== 'refreshing' && search.items.length === 0 && !search.error ? (
+            <div className="rounded-2xl border border-dashed border-line py-8 text-center text-sm text-muted">«{dq}» bo'yicha mahsulot topilmadi</div>
+          ) : search.error && search.items.length === 0 ? (
+            <div className="rounded-2xl bg-red-50 px-4 py-6 text-center text-sm text-red-700" role="alert">
+              {search.error}
+              <button type="button" onClick={reload} className="ml-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 font-medium">Qayta urinish</button>
+            </div>
+          ) : search.phase === 'loading' && search.items.length === 0 ? (
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">{Array.from({ length: 6 }, (_, i) => <ProductCardSkeleton key={i} />)}</div>
           ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-                {found.items.slice(0, SEARCH_MAX).map((p) => (
-                  <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />
-                ))}
-              </div>
-              {found.items.length > SEARCH_MAX && <p className="mt-3 text-center text-xs text-muted">Yana {found.items.length - SEARCH_MAX} ta bor — qidiruvni aniqroq yozing</p>}
-            </>
+            <InfiniteGrid
+              pager={search}
+              renderCard={(p) => <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
+            />
           )}
         </section>
       )}

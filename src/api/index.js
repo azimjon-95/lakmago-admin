@@ -258,6 +258,8 @@ export const adminApi = {
   // Kategoriya bo'yicha sonlar (server yangilangach); eski serverda 404 — panel ro'yxatdan o'zi hisoblaydi
   getCatalogCounts: () => apiFetch('/admin/catalog/counts'),
   // Bir nechta kategoriya BIR so'rovda (yangi server: Redis keshidan, 500 kesishsiz)
+  // Sahifalab berish: tasodifiy-barqaror, qidiruv/filtr/saralash serverda (yangi server)
+  getCatalogPage: (qs) => apiFetch(`/admin/catalog/page?${qs}`),
   getCatalogGroup: (cats) => apiFetch(`/admin/catalog?categories=${encodeURIComponent(cats.join(','))}`),
   createCatalogProduct: (d) => apiFetch('/admin/catalog', { method: 'POST', body: JSON.stringify(d) }),
   updateCatalogProduct: (id, d) => apiFetch(`/admin/catalog/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),

@@ -46,6 +46,12 @@ CATALOG_GROUPS.forEach((g) => g.categories.forEach((c) => GROUP_OF.set(c, g.id))
 /** Kategoriya qiymati → guruh id (ro'yxatda yo'q bo'lsa 'boshqa'). */
 export const groupIdOfCategory = (value) => GROUP_OF.get(value) || OTHER_GROUP.id;
 
+/**
+ * Guruhning so'rov kategoriyalari. Oddiy guruhlarda — BARQAROR ro'yxat (sonlar o'zgarsa ham so'rov kaliti o'zgarmaydi:
+ * saqlash/o'chirishdan keyin ro'yxat qayta aralashib ketmaydi). "Boshqa" guruhida — mavjudlari.
+ */
+export const catsOfGroup = (g) => (g.categories?.length ? g.categories : (g.subs || []).map((s) => s.category));
+
 export const groupById = (id) => CATALOG_GROUPS.find((g) => g.id === id) || (id === OTHER_GROUP.id ? OTHER_GROUP : null);
 
 const LABELS = new Map(CATALOG_CATEGORIES.map((c) => [c.value, c.label]));

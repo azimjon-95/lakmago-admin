@@ -1,52 +1,72 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { loadGroup, peek } from '@/lib/catalogData';
-import { categoryLabel } from '@/constants/catalogGroups';
-import { filterProducts, sortProducts } from '@/lib/catalogCounts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { categoryLabel, catsOfGroup } from '@/constants/catalogGroups';
 import { groupCover } from '@/lib/catalogCovers';
-import { ProductCard } from './CatalogCards';
+import { newSeed, seedForOpen } from '@/lib/catalogPager';
+import { useCatalogPager } from '@/hooks/useCatalogPager';
+import { ProductCard, ProductCardSkeleton } from './CatalogCards';
+import { InfiniteGrid } from './InfiniteGrid';
 
 const SORTS = [
-  ['name', "Nomi bo'yicha (A–Z)"], ['name_desc', "Nomi bo'yicha (Z–A)"],
+  ['random', 'Aralash (tasodifiy)'], ['name', "Nomi bo'yicha (A–Z)"], ['name_desc', "Nomi bo'yicha (Z–A)"],
   ['usage', "Ko'p ishlatilgan"], ['new', "Yangi qo'shilgan"],
 ];
+const NO_FILTER = { status: 'all', image: 'all' };
+
+/** Qiymat o'zgarishini `ms` kechiktiradi (qidiruvda har harfga so'rov ketmasin). */
+function useDebounced(value, ms) {
+  const [v, setV] = useState(value);
+  useEffect(() => { const t = setTimeout(() => setV(value), ms); return () => clearTimeout(t); }, [value, ms]);
+  return v;
+}
 
 /*
- * Guruh ichi (maket, o'ng ekran): orqaga + nom + "N ta mahsulot" + qidiruv; muqova rasm; nom va tavsif;
- * pastki kategoriyalar CHIPLARI ("Barchasi 12", "Mol go'shti 4"…); saralash va filtr; mahsulot kartochkalari
- * (telefonda 2 ta, 640 px dan 3 ta bir qatorda).
+ * Guruh ichi: orqaga + nom + "N ta mahsulot" + qidiruv; muqova rasm; nom va tavsif; pastki kategoriyalar CHIPLARI;
+ * saralash va filtr; mahsulot kartochkalari (telefonda 2 ta, 640 px dan 3 ta bir qatorda).
+ *
+ * MA'LUMOT: guruhda minglab mahsulot bo'lishi mumkin, shuning uchun HAMMASI yuklanmaydi:
+ *   • ochilganda 100 ta, HAR SAFAR TASODIFIY (seed bilan: aylantirish davomida tartib barqaror);
+ *   • pastga tushganda skelet → keyingi 100 ta qo'shiladi (cheksiz aylantirish);
+ *   • qidiruv, filtr, saralash, chip — BUTUN to'plam bo'yicha (serverda), yuklangan 100 ta bilan cheklanmaydi;
+ *   • saqlash/o'chirish — ro'yxat qayta yuklanmaydi, joyida yangilanadi (`change`).
  */
-export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onDelete, version, v2 }) {
-  // Brauzer keshida shu guruh bor bo'lsa — DARHOL ko'rsatiladi (orqada yangisi yuklanadi)
-  const [products, setProducts] = useState(() => peek(group.subs.map((s) => s.category)) || []);
-  const [loading, setLoading] = useState(() => !peek(group.subs.map((s) => s.category)));
-  const [error, setError] = useState(null);
-  const [sort, setSort] = useState('name');
-  const [filter, setFilter] = useState({ status: 'all', image: 'all' });
+export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onDelete, version, v2, change }) {
+  const cats = useMemo(() => catsOfGroup(group), [group.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  const [seed, setSeed] = useState(() => seedForOpen(cats));
+  const [sort, setSort] = useState('random');
+  const [filter, setFilter] = useState(NO_FILTER);
   const [filterOpen, setFilterOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState('');
+  const dq = useDebounced(q.trim(), 300);
   const popRef = useRef(null);
   const cover = groupCover(group.id);
 
-  /*
-   * Yuklash: yangi serverda BITTA so'rov (Redis keshidan, 500 kesishsiz); eski serverda kategoriyalar bo'yicha parallel.
-   * Kesh bor bo'lsa ro'yxat allaqachon ko'rinib turibdi — shunchaki orqada yangilanadi (loading ko'rsatilmaydi).
-   */
-  const cats = useMemo(() => group.subs.map((s) => s.category), [group.subs]);
-  const hasData = useRef(products.length > 0);   // saqlash/o'chirishdan keyin ro'yxat "skelet"ga qaytib miltillamasin
-  useEffect(() => { hasData.current = products.length > 0; }, [products]);
-  const load = useCallback(() => {
-    if (!cats.length) { setProducts([]); setLoading(false); return () => {}; }
-    let dead = false;
-    setError(null);
-    if (!peek(cats) && !hasData.current) setLoading(true);
-    loadGroup(cats, { v2 })
-      .then((items) => { if (!dead) setProducts(items); })
-      .catch((e) => { if (!dead) setError(e.message || 'Yuklab bo‘lmadi'); })
-      .finally(() => { if (!dead) setLoading(false); });
-    return () => { dead = true; };
-  }, [cats, v2]);
-  useEffect(() => load(), [load, version]);
+  // Qidiruv bor va saralash "Aralash" bo'lsa — mosligi bo'yicha (relevance); foydalanuvchi boshqa saralash tanlagan bo'lsa — o'sha
+  const query = useMemo(() => ({
+    cats: sub ? [sub] : cats, q: dq, status: filter.status, image: filter.image,
+    sort: dq && sort === 'random' ? 'relevance' : sort, seed,
+  }), [sub, cats, dq, filter.status, filter.image, sort, seed]);
+  const pager = useCatalogPager(query, { v2 });
+  const { items, total, phase, error, reload, removeLocal, upsertLocal } = pager;
+
+  // ZIP import kabi katta o'zgarishdan keyin — to'liq qayta yuklash (bir xil seed: tartib o'zgarmaydi)
+  const firstVersion = useRef(version);
+  useEffect(() => { if (version !== firstVersion.current) reload(); }, [version, reload]);
+
+  // Bitta mahsulot saqlandi/o'chirildi: ro'yxat joyida yangilanadi
+  const lastChange = useRef(null);
+  useEffect(() => {
+    if (!change || change.n === lastChange.current) return;
+    lastChange.current = change.n;
+    if (change.kind === 'remove') removeLocal(change.id);
+    else if (change.kind === 'deactivate') upsertLocal({ _id: change.id, isActive: false });
+    else if (change.kind === 'upsert' && change.product) {
+      const p = change.product;
+      const belongs = cats.includes(p.category) && (!sub || sub === p.category);
+      if (!belongs) removeLocal(p._id);
+      else upsertLocal(p, { add: !dq && filter.status === 'all' && filter.image === 'all' });
+    }
+  }, [change]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Filtr oynasi: tashqariga bosilsa / Escape — yopiladi
   useEffect(() => {
@@ -56,10 +76,12 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
     return () => { document.removeEventListener('mousedown', off); document.removeEventListener('keydown', off); };
   }, [filterOpen]);
 
-  const inSub = useMemo(() => (sub ? products.filter((p) => p.category === sub) : products), [products, sub]);
-  const shown = useMemo(() => sortProducts(filterProducts(inSub, { ...filter, q }), sort), [inSub, filter, q, sort]);
   const activeFilters = (filter.status !== 'all' ? 1 : 0) + (filter.image !== 'all' ? 1 : 0);
-  const noPhoto = useMemo(() => products.filter((p) => !p.imageUrl).length, [products]);
+  const narrowed = Boolean(dq || activeFilters || sub);
+  const firstLoad = phase === 'loading' && items.length === 0;
+  const empty = phase !== 'loading' && phase !== 'refreshing' && items.length === 0 && !error;
+  const chooseSort = (v) => { setSort(v); if (v === 'random') setSeed(newSeed()); };
+  const reset = () => { setQ(''); setFilter(NO_FILTER); onSub(''); };
 
   return (
     <div className="mx-auto max-w-6xl pb-10">
@@ -82,7 +104,14 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
 
       {searchOpen && (
         <div className="px-4 pb-3 sm:px-6">
-          <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${group.label} ichidan qidirish…`} className="inp !rounded-xl !py-2.5" />
+          <div className="relative">
+            <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder={`${group.label} ichidan qidirish (${group.total} ta ichidan)…`} className="inp !rounded-xl !py-2.5 !pr-10" />
+            {q && (
+              <button type="button" onClick={() => setQ('')} aria-label="Tozalash" className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-canvas">
+                <i className="ti ti-x" />
+              </button>
+            )}
+          </div>
         </div>
       )}
 
@@ -115,10 +144,16 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
         <div className="mt-3 flex items-center gap-2">
           <label className="relative min-w-0 flex-1">
             <i className="ti ti-arrows-sort pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-muted" aria-hidden="true" />
-            <select value={sort} onChange={(e) => setSort(e.target.value)} aria-label="Saralash" className="inp !rounded-xl !py-2.5 !pl-10 font-medium">
+            <select value={sort} onChange={(e) => chooseSort(e.target.value)} aria-label="Saralash" className="inp !rounded-xl !py-2.5 !pl-10 font-medium">
               {SORTS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
             </select>
           </label>
+          {sort === 'random' && (
+            <button type="button" onClick={() => setSeed(newSeed())} aria-label="Qayta aralashtirish" title="Qayta aralashtirish"
+              className="flex h-[42px] w-[46px] flex-none items-center justify-center rounded-xl border border-line bg-white text-ink transition hover:bg-canvas">
+              <i className="ti ti-arrows-shuffle text-xl" />
+            </button>
+          )}
           <div className="relative flex-none" ref={popRef}>
             <button type="button" onClick={() => setFilterOpen((v) => !v)} aria-label="Filtr" aria-expanded={filterOpen}
               className={`relative flex h-[42px] w-[46px] items-center justify-center rounded-xl border transition ${activeFilters ? 'border-brand-400 bg-brand-50 text-brand-800' : 'border-line bg-white text-ink hover:bg-canvas'}`}>
@@ -130,8 +165,8 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
                 <FilterGroup title="Holat" value={filter.status} onChange={(v) => setFilter((f) => ({ ...f, status: v }))}
                   options={[['all', 'Hammasi'], ['active', 'Faol'], ['inactive', 'Nofaol']]} />
                 <FilterGroup title="Rasm" value={filter.image} onChange={(v) => setFilter((f) => ({ ...f, image: v }))}
-                  options={[['all', 'Hammasi'], ['with', 'Rasmli'], ['without', `Rasmsiz${noPhoto ? ` (${noPhoto})` : ''}`]]} />
-                {activeFilters > 0 && <button type="button" onClick={() => setFilter({ status: 'all', image: 'all' })} className="mt-1 w-full rounded-lg py-2 text-sm font-medium text-brand-600 hover:bg-canvas">Tozalash</button>}
+                  options={[['all', 'Hammasi'], ['with', 'Rasmli'], ['without', 'Rasmsiz']]} />
+                {activeFilters > 0 && <button type="button" onClick={() => setFilter(NO_FILTER)} className="mt-1 w-full rounded-lg py-2 text-sm font-medium text-brand-600 hover:bg-canvas">Tozalash</button>}
               </div>
             )}
           </div>
@@ -139,28 +174,41 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
       </section>
 
       <div className="mt-5 px-4 sm:px-6">
-        {loading ? (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">{Array.from({ length: 6 }, (_, i) => <div key={i} className="h-64 animate-pulse rounded-2xl bg-line" />)}</div>
-        ) : error ? (
-          <div className="rounded-2xl bg-red-50 px-4 py-6 text-center text-sm text-red-700">
+        {narrowed && phase !== 'loading' && !error && (
+          <p className="mb-3 text-sm text-muted" aria-live="polite" data-testid="result-count">
+            {dq ? <>«{dq}» bo'yicha </> : null}<b className="text-ink">{total}</b> ta {dq ? 'topildi' : 'mahsulot'}
+            {phase === 'refreshing' && <span className="ml-2 text-xs">yangilanmoqda…</span>}
+          </p>
+        )}
+
+        {firstLoad ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" aria-busy="true">{Array.from({ length: 12 }, (_, i) => <ProductCardSkeleton key={i} />)}</div>
+        ) : error && items.length === 0 ? (
+          <div className="rounded-2xl bg-red-50 px-4 py-6 text-center text-sm text-red-700" role="alert">
             {error}
-            <button type="button" onClick={load} className="ml-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 font-medium">Qayta urinish</button>
+            <button type="button" onClick={reload} className="ml-3 rounded-lg border border-red-200 bg-white px-3 py-1.5 font-medium">Qayta urinish</button>
           </div>
-        ) : products.length === 0 ? (
-          <div className="py-12 text-center">
-            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-3xl" aria-hidden="true">{group.emoji}</div>
-            <div className="font-semibold text-ink">Bu kategoriyada hali mahsulot yo'q</div>
-            <button type="button" onClick={onAdd} className="mt-4 rounded-xl bg-brand-400 px-5 py-2.5 text-sm font-semibold text-brand-text hover:bg-brand-600 hover:text-white"><i className="ti ti-plus mr-1.5" />Birinchi mahsulotni qo'shish</button>
-          </div>
-        ) : shown.length === 0 ? (
-          <div className="py-12 text-center text-sm text-muted">
-            Hech narsa topilmadi
-            <button type="button" onClick={() => { setQ(''); setFilter({ status: 'all', image: 'all' }); onSub(''); }} className="ml-2 font-semibold text-brand-600">Filtrni tozalash</button>
-          </div>
+        ) : empty ? (
+          narrowed ? (
+            <div className="py-12 text-center text-sm text-muted">
+              Hech narsa topilmadi
+              <button type="button" onClick={reset} className="ml-2 font-semibold text-brand-600">Filtrni tozalash</button>
+            </div>
+          ) : (
+            <div className="py-12 text-center">
+              <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-brand-50 text-3xl" aria-hidden="true">{group.emoji}</div>
+              <div className="font-semibold text-ink">Bu kategoriyada hali mahsulot yo'q</div>
+              <button type="button" onClick={onAdd} className="mt-4 rounded-xl bg-brand-400 px-5 py-2.5 text-sm font-semibold text-brand-text hover:bg-brand-600 hover:text-white"><i className="ti ti-plus mr-1.5" />Birinchi mahsulotni qo'shish</button>
+            </div>
+          )
         ) : (
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-            {shown.map((p) => <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />)}
-          </div>
+          <InfiniteGrid
+            pager={pager}
+            renderCard={(p) => <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
+          />
+        )}
+        {!pager.hasMore && items.length > 100 && phase === 'ready' && (
+          <p className="mt-6 text-center text-xs text-muted" data-testid="end-note">Hammasi ko'rsatildi · {total} ta</p>
         )}
       </div>
     </div>

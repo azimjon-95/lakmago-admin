@@ -48,6 +48,9 @@ export function ProductCard({ p, tag, onEdit, onDelete }) {
   return (
     <article
       onClick={onEdit}
+      data-id={p._id}
+      // Ekrandan tashqaridagi kartochkalar chizilmaydi — yuzlab kartochka qo'shilsa ham aylantirish silliq qoladi
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 300px' }}
       className={`group cursor-pointer overflow-hidden rounded-2xl border border-line bg-white shadow-sm transition hover:shadow-md ${inactive ? 'opacity-60' : ''}`}
     >
       <div className="relative aspect-[4/3] bg-canvas">
@@ -90,5 +93,20 @@ export function ProductCard({ p, tag, onEdit, onDelete }) {
         </div>
       </div>
     </article>
+  );
+}
+
+/** Yuklanayotgan mahsulot kartochkasi (haqiqiy kartochka bilan bir xil o'lcham — sahifa sakramaydi). */
+export function ProductCardSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-line bg-white shadow-sm" aria-hidden="true" data-skeleton="">
+      <div className="aspect-[4/3] animate-pulse bg-line/70" />
+      <div className="space-y-2 p-3 pt-4">
+        <div className="h-3.5 w-3/4 animate-pulse rounded bg-line/70" />
+        <div className="h-3 w-1/2 animate-pulse rounded bg-line/60" />
+        <div className="mt-3 h-6 w-2/3 animate-pulse rounded-lg bg-line/60" />
+        <div className="h-3 w-1/3 animate-pulse rounded bg-line/60" />
+      </div>
+    </div>
   );
 }
