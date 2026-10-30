@@ -1,10 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { adminApi } from '@/api';
-import { loadGoogleMaps, googleKeyFrom, ll } from '@/lib/googleMaps';
 
 /**
- * Google xaritada joylashuv tanlash.
+ * Yandex xaritada joylashuv tanlash.
  *
  * API kaliti serverdan olinadi (/api/maps/config) — kodda
  * saqlanmaydi. Manzil qidirish va aniqlash ham server orqali
@@ -13,13 +12,35 @@ import { loadGoogleMaps, googleKeyFrom, ll } from '@/lib/googleMaps';
 
 const DEFAULT_CENTER = [41.311081, 69.240562]; // Toshkent
 
+let loadPromise = null;
+
+function loadYmaps(apiKey) {
+  if (window.ymaps?.Map) return Promise.resolve(window.ymaps);
+  if (loadPromise) return loadPromise;
+
+  loadPromise = new Promise((resolve, reject) => {
+    const script = document.createElement('script');
+    script.src = `https://api-maps.yandex.ru/2.1/?apikey=${apiKey}&lang=ru_RU`;
+    script.async = true;
+    script.onload = () => {
+      if (!window.ymaps) return reject(new Error('Xarita yuklanmadi'));
+      window.ymaps.ready(() => resolve(window.ymaps));
+    };
+    script.onerror = () => {
+      loadPromise = null;
+      reject(new Error('Xaritaga ulanib bo‘lmadi'));
+    };
+    document.head.appendChild(script);
+  });
+  return loadPromise;
+}
+
 export function MapPicker({ lat, lng, address, onPick, onClose }) {
   useLockScroll();
 
   const boxRef = useRef(null);
   const mapRef = useRef(null);
   const markRef = useRef(null);
-  const mapsRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -42,31 +63,24 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
         const cfg = await adminApi.getMapsConfig();
         if (dead) return;
 
-        const key = googleKeyFrom(cfg);
-        if (!key) {
+        if (!cfg.enabled || !cfg.mapsKey) {
           setError('Xarita sozlanmagan');
           setLoading(false);
           return;
         }
 
-        const maps = await loadGoogleMaps(key);
+        const ymaps = await loadYmaps(cfg.mapsKey);
         if (dead || !boxRef.current) return;
 
         const start = picked ? [picked.lat, picked.lng] : DEFAULT_CENTER;
-        const map = new maps.Map(boxRef.current, {
-          center: ll(start),
+        const map = new ymaps.Map(boxRef.current, {
+          center: start,
           zoom: picked ? 17 : 12,
-          zoomControl: true,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          clickableIcons: false,
-          gestureHandling: 'greedy',
+          controls: ['zoomControl', 'geolocationControl'],
         });
         mapRef.current = map;
-        mapsRef.current = maps;
 
-        if (picked) addMarker(maps, start);
+        if (picked) addMarker(ymaps, start);
 
         // Joylashuv oldindan tanlanmagan bo'lsa foydalanuvchi
         // turgan joyni ko'rsatamiz — u yerdan izlash qulayroq.
@@ -76,8 +90,9 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
             (pos) => {
               if (dead || !mapRef.current) return;
               const { latitude, longitude } = pos.coords;
-              mapRef.current.panTo(ll([latitude, longitude]));
-              mapRef.current.setZoom(16);
+              mapRef.current.setCenter([latitude, longitude], 16, {
+                duration: 400,
+              });
               setNearMe(true);
             },
             () => {
@@ -87,9 +102,9 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
           );
         }
 
-        // Xaritani bosish — nuqta qo'yish (Google: e.latLng)
-        map.addListener('click', (e) => {
-          if (e.latLng) selectPoint(e.latLng.lat(), e.latLng.lng());
+        map.events.add('click', (e) => {
+          const [la, ln] = e.get('coords');
+          selectPoint(la, ln);
         });
 
         setLoading(false);
@@ -103,31 +118,32 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
 
     return () => {
       dead = true;
-      try { mapsRef.current?.event?.clearInstanceListeners(mapRef.current); } catch { /* */ }
-      if (markRef.current) { markRef.current.setMap(null); }
-      if (boxRef.current) boxRef.current.innerHTML = '';
+      mapRef.current?.destroy?.();
       mapRef.current = null;
-      mapsRef.current = null;
       markRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const addMarker = (maps, coords) => {
-    const pm = new maps.Marker({ position: ll(coords), map: mapRef.current, draggable: true });
+  const addMarker = (ymaps, coords) => {
+    const pm = new ymaps.Placemark(coords, {}, {
+      preset: 'islands#redDotIcon',
+      draggable: true,
+    });
+    mapRef.current.geoObjects.add(pm);
     markRef.current = pm;
-    pm.addListener('dragend', () => {
-      const p = pm.getPosition();
-      selectPoint(p.lat(), p.lng());
+    pm.events.add('dragend', () => {
+      const [la, ln] = pm.geometry.getCoordinates();
+      selectPoint(la, ln);
     });
   };
 
   const selectPoint = async (la, ln) => {
-    const maps = mapsRef.current;
-    if (!maps || !mapRef.current) return;
+    const ymaps = window.ymaps;
+    if (!ymaps || !mapRef.current) return;
 
-    if (markRef.current) markRef.current.setPosition(ll([la, ln]));
-    else addMarker(maps, [la, ln]);
+    if (markRef.current) markRef.current.geometry.setCoordinates([la, ln]);
+    else addMarker(ymaps, [la, ln]);
 
     setPicked({ lat: la, lng: ln, address: '' });
     setResolving(true);
@@ -156,7 +172,7 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
   };
 
   const goTo = (r) => {
-    if (mapRef.current) { mapRef.current.panTo(ll([r.lat, r.lng])); mapRef.current.setZoom(17); }
+    mapRef.current?.setCenter([r.lat, r.lng], 17);
     selectPoint(r.lat, r.lng);
     setResults([]);
     setQuery('');
@@ -167,7 +183,7 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        if (mapRef.current) { mapRef.current.panTo(ll([latitude, longitude])); mapRef.current.setZoom(17); }
+        mapRef.current?.setCenter([latitude, longitude], 17);
         selectPoint(latitude, longitude);
       },
       () => alert('Joylashuvni aniqlab bo‘lmadi'),
@@ -259,8 +275,8 @@ export function MapPicker({ lat, lng, address, onPick, onClose }) {
                 <i className="ti ti-map-off text-3xl text-muted mb-2 block" />
                 <div className="text-sm text-ink font-medium">{error}</div>
                 <p className="text-xs text-muted mt-2 leading-relaxed">
-                  Server .env fayliga <b>GOOGLE_MAPS_BROWSER_KEY</b> qo'shing (yoki admin build'ida <b>VITE_GOOGLE_MAPS_KEY</b>).
-                  Kalit Google Cloud Console → Credentials dan olinadi (Maps JavaScript API).
+                  Server .env fayliga <b>YANDEX_MAPS_KEY</b> qo'shing.
+                  Kalit developer.tech.yandex.ru dan olinadi.
                 </p>
               </div>
             </div>

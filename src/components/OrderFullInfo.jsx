@@ -80,7 +80,7 @@ export function OrderFullInfo({ order, compact = false }) {
             <div className="ml-[18px] mt-1 flex flex-wrap items-center gap-1.5">
               {hasCoords ? (
                 <>
-                  <a href={links.google} target="_blank" rel="noreferrer"
+                  <a href={links.yandex} target="_blank" rel="noreferrer"
                     className="inline-flex items-center gap-1 rounded-full bg-sky-50 px-2 py-[3px] font-semibold text-sky-700">
                     <i className="ti ti-map-2 text-[12px]" />Xaritada ochish
                   </a>

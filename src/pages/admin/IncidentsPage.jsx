@@ -171,7 +171,7 @@ function IncidentSheet({ id, onClose, onDone }) {
                   {s.addresses.map((a, k) => (
                     <div key={k} className="flex items-start justify-between gap-2 py-1 text-sm">
                       <span><b>{a.title || 'Manzil'}</b> — {a.address}{a.city ? `, ${a.city}` : ''}</span>
-                      {a.lat && a.lng && <a href={`https://www.google.com/maps?q=${a.lat},${a.lng}`} target="_blank" rel="noreferrer" className="flex-none text-xs text-brand-600">xarita</a>}
+                      {a.lat && a.lng && <a href={`https://yandex.uz/maps/?pt=${a.lng},${a.lat}&z=17`} target="_blank" rel="noreferrer" className="flex-none text-xs text-brand-600">xarita</a>}
                     </div>
                   ))}
                 </Block>
