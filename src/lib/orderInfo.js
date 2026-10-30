@@ -42,11 +42,10 @@ export function validCoords(lat, lng) {
   return !(a === 0 && b === 0);
 }
 
-/** Xarita havolalari (Yandex — ilova ham shuni ishlatadi; Google — zaxira). */
+/** Xarita havolalari (Google Maps). */
 export function mapLinks(lat, lng) {
   const a = Number(lat); const b = Number(lng);
   return {
-    yandex: `https://yandex.com/maps/?pt=${b},${a}&z=17&l=map`,
     google: `https://www.google.com/maps?q=${a},${b}`,
   };
 }

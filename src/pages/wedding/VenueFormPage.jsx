@@ -203,7 +203,7 @@ export function VenueFormPage() {
             <textarea className={`${inp} resize-none`} rows={3} value={f.description} onChange={(e) => set('description', e.target.value)} />
           </Field>
           <Field label="Kenglik (lat) *"><input className={inp} value={f.lat} onChange={(e) => set('lat', e.target.value)} inputMode="decimal" placeholder="41.2995" /></Field>
-          <Field label="Uzunlik (lng) *" hint={<>Google/Yandex xaritada nuqtani bosib nusxalang{f.lat && f.lng && <> · <a className="text-brand-600 underline" target="_blank" rel="noreferrer" href={`https://yandex.uz/maps/?pt=${f.lng},${f.lat}&z=17`}>xaritada ko'rish</a></>}</>}>
+          <Field label="Uzunlik (lng) *" hint={<>Google xaritada nuqtani bosib nusxalang{f.lat && f.lng && <> · <a className="text-brand-600 underline" target="_blank" rel="noreferrer" href={`https://www.google.com/maps?q=${f.lat},${f.lng}`}>xaritada ko'rish</a></>}</>}>
             <input className={inp} value={f.lng} onChange={(e) => set('lng', e.target.value)} inputMode="decimal" placeholder="69.2401" />
           </Field>
           <Field label="Ko'rinish">

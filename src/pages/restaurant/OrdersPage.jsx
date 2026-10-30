@@ -545,7 +545,7 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
                   {/* Xaritada ko'rish */}
                   {o.addressLat && o.addressLng && (
                     <a
-                      href={`https://yandex.uz/maps/?pt=${o.addressLng},${o.addressLat}&z=17&l=map`}
+                      href={`https://www.google.com/maps?q=${o.addressLat},${o.addressLng}`}
                       target="_blank" rel="noreferrer"
                       className="mt-1.5 inline-flex items-center gap-1.5 text-brand-600 hover:underline font-medium"
                     >

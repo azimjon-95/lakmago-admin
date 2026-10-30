@@ -184,7 +184,7 @@ export function RestaurantProfilePage() {
                 </div>
               </div>
               <a
-                href={`https://yandex.uz/maps/?pt=${form.lng},${form.lat}&z=17&l=map`}
+                href={`https://www.google.com/maps?q=${form.lat},${form.lng}`}
                 target="_blank" rel="noreferrer"
                 className="text-xs text-brand-600 hover:underline flex-none"
               >
