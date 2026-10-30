@@ -70,3 +70,13 @@ test('FIXTURE: xesh va tasodifiy tartib SERVER bilan AYNAN BIR XIL (eski server 
   assert.equal(order('fixture1'), 'id00011,id00001,id00005,id00004,id00000,id00009,id00008,id00002,id00003,id00010,id00006,id00007');
   assert.equal(order('kalit2'), 'id00002,id00011,id00001,id00007,id00000,id00008,id00009,id00010,id00003,id00005,id00004,id00006');
 });
+
+import { existsSync } from 'node:fs';
+test('har bir guruh kartochkasining muqova rasmi bor (src/assets/catalog-groups/<id>.webp)', () => {
+  const missing = CATALOG_GROUPS.filter((g) => !['webp', 'jpg', 'jpeg', 'png', 'avif'].some((e) => existsSync(new URL(`../src/assets/catalog-groups/${g.id}.${e}`, import.meta.url)))).map((g) => g.id);
+  assert.deepEqual(missing, [], `rasmsiz kartochkalar: ${missing.join(', ')}`);
+});
+test('uy-ro‘zg‘or va bolalar: 7 ta kartochka, kalitlar to‘g‘ri', () => {
+  const want = { bolalar_gigiyena: 'bolalar_gigiyena', bolalar_ovqat: 'bolalar_oziq_ovqatlari', uyrozgor: 'uy_rozgor_mahsulotlari', kimyo: 'maishiy_kimyo', tozalash: 'tozalash_vositalari', qogoz: 'qogoz_salfetka', oshxona: 'oshxona_xojalik_buyumlari' };
+  for (const [id, cat] of Object.entries(want)) assert.equal(groupIdOfCategory(cat), id, cat);
+});

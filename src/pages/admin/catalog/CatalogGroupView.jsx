@@ -128,6 +128,8 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
         <h2 className="text-2xl font-bold text-ink">{group.label}</h2>
         <p className="mt-1 text-sm text-muted">{group.hint}</p>
 
+        {/* Faqat bitta kategoriyali kartochkada (masalan «Maishiy kimyo») chiplar ortiqcha — yashiriladi */}
+        {group.subs.length > 1 && (
         <div className="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Pastki kategoriyalar">
           {[{ category: '', total: group.total }, ...group.subs].map((s) => {
             const on = (s.category || '') === (sub || '');
@@ -140,6 +142,7 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
             );
           })}
         </div>
+        )}
 
         <div className="mt-3 flex items-center gap-2">
           <label className="relative min-w-0 flex-1">

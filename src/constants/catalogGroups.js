@@ -4,7 +4,7 @@ import { CATALOG_CATEGORIES } from './catalogCategories.js';
  * ═══ KATALOG GURUHLARI (yuqori daraja) ═══
  *
  * Umumiy katalogda 70 ta tekis kategoriya bor (constants/catalogCategories.js, serverdagi bilan bir xil). 70 ta
- * kartochka ko'rinmaydi — ular 10 ta KATTA GURUHGA yig'iladi: guruh kartochkasi → ichida pastki kategoriyalar
+ * kartochka ko'rinmaydi — ular 16 ta KARTOCHKA (guruh)GA yig'iladi: guruh kartochkasi → ichida pastki kategoriyalar
  * (chiplar) → mahsulotlar. Server va ma'lumotlar bazasiga TEGILMAYDI: guruhlash faqat shu yerda.
  *
  * Qoida: har bir kategoriya FAQAT BITTA guruhda (tests/catalogGroups.test.mjs tekshiradi). Ro'yxatda yo'q yangi
@@ -32,10 +32,23 @@ export const CATALOG_GROUPS = [
     categories: ['ziravorlar', 'tuz', 'souslar', 'ketchup_mayonez', 'sirka', 'osimlik_yoglari', 'shakar_shirinlashtiruvchi'] },
   { id: 'tayyor', label: 'Tayyor va muzlatilgan', hint: 'Yarim tayyor, konserva, fast-food…', emoji: '🍱', from: '#3F3F46', to: '#B45309',
     categories: ['muzlatilgan_mahsulotlar', 'yarim_tayyor_mahsulotlar', 'konserva_mahsulotlari', 'fastfood_mahsulotlari', 'chips_snacklar', 'nonushta_mahsulotlari',
-      'milliy_oziq_ovqat', 'xorijiy_oziq_ovqat', 'parhezbop_mahsulotlar', 'bolalar_oziq_ovqatlari', 'ofis_korxona_oziq_ovqat', 'restoran_kafe_mahsulotlari'] },
-  { id: 'uyrozgor', label: "Uy-ro'zg'or", hint: 'Kimyo, gigiyena, idish, qadoq…', emoji: '🧴', from: '#134E4A', to: '#0EA5E9',
-    categories: ['maishiy_kimyo', 'shaxsiy_gigiyena', 'qogoz_salfetka', 'bir_martalik_idishlar', 'oshxona_xojalik_buyumlari', 'tozalash_vositalari', 'uy_rozgor_mahsulotlari',
-      'bolalar_gigiyena', 'uy_hayvonlari_ozuqasi', 'tamaki_mahsulotlari', 'sovgalik_qadoqlangan', 'qadoqlash_materiallari'] },
+      'milliy_oziq_ovqat', 'xorijiy_oziq_ovqat', 'parhezbop_mahsulotlar', 'ofis_korxona_oziq_ovqat', 'restoran_kafe_mahsulotlari'] },
+  // ── Uy-ro'zg'or va bolalar: 7 ta alohida kartochka (har birining o'z rasmi: src/assets/catalog-groups/<id>.webp) ──
+  { id: 'bolalar_gigiyena', label: 'Bolalar parvarishi / gigiyena', hint: 'Taglik, salfetka, krem, shampun…', emoji: '🍼', from: '#0F766E', to: '#5EEAD4',
+    categories: ['bolalar_gigiyena'] },
+  { id: 'bolalar_ovqat', label: 'Bolalar oziq-ovqatlari', hint: "Pyure, bo'tqa, aralashma…", emoji: '🥣', from: '#B45309', to: '#FCD34D',
+    categories: ['bolalar_oziq_ovqatlari'] },
+  // "Uy-ro'zg'or mahsulotlari" — umumiy kartochka: o'z kategoriyasi + boshqa kartochkaga kirmaganlar (hech narsa yo'qolmasin)
+  { id: 'uyrozgor', label: "Uy-ro'zg'or mahsulotlari", hint: 'Idish, qadoq, gigiyena, xo\'jalik…', emoji: '🏠', from: '#134E4A', to: '#0EA5E9',
+    categories: ['uy_rozgor_mahsulotlari', 'shaxsiy_gigiyena', 'bir_martalik_idishlar', 'uy_hayvonlari_ozuqasi', 'tamaki_mahsulotlari', 'sovgalik_qadoqlangan', 'qadoqlash_materiallari'] },
+  { id: 'kimyo', label: 'Maishiy kimyo', hint: 'Kir yuvish, idish yuvish, tozalash…', emoji: '🧴', from: '#1D4ED8', to: '#38BDF8',
+    categories: ['maishiy_kimyo'] },
+  { id: 'tozalash', label: 'Tozalash vositalari', hint: "Shvabra, paqir, cho'tka, qo'lqop…", emoji: '🧹', from: '#1E3A8A', to: '#2563EB',
+    categories: ['tozalash_vositalari'] },
+  { id: 'qogoz', label: "Qog'oz / salfetka", hint: "Tualet qog'ozi, salfetka, sochiq…", emoji: '🧻', from: '#BE185D', to: '#F9A8D4',
+    categories: ['qogoz_salfetka'] },
+  { id: 'oshxona', label: 'Oshxona buyumlari', hint: 'Qozon, tova, pichoq, idish-tovoq…', emoji: '🍳', from: '#44403C', to: '#A16207',
+    categories: ['oshxona_xojalik_buyumlari'] },
 ];
 
 export const OTHER_GROUP = { id: 'boshqa', label: 'Boshqa', hint: "Guruhga kirmagan mahsulotlar", emoji: '📦', from: '#44403C', to: '#78716C', categories: [] };

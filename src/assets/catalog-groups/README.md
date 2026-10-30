@@ -1,6 +1,6 @@
 # Katalog guruhlari — muqova rasmlari
 
-"Umumiy katalog" sahifasidagi 10 ta katta kartochka va guruh ichidagi yuqori rasm shu papkadan olinadi.
+"Umumiy katalog" sahifasidagi 16 ta kartochka va guruh ichidagi yuqori rasm shu papkadan olinadi.
 **Fayl shu papkaga tushishi bilan o'zi ulanadi — kodni o'zgartirish shart emas.** Rasm bo'lmasa kartochka
 gradient va emoji bilan ko'rinadi.
 
@@ -17,7 +17,13 @@ gradient va emoji bilan ko'rinadi.
 | `non.webp` | Non va qandolat | non, pishiriq, pechenye, shokolad, konfet |
 | `ziravor.webp` | Ziravorlar va souslar | ziravor, tuz, sous, yog', sirka |
 | `tayyor.webp` | Tayyor va muzlatilgan | yarim tayyor, konserva, fast-food, milliy |
-| `uyrozgor.webp` | Uy-ro'zg'or | kimyo, gigiyena, idish, qadoq |
+| `bolalar_gigiyena.webp` | Bolalar parvarishi / gigiyena | `bolalar_gigiyena` |
+| `bolalar_ovqat.webp` | Bolalar oziq-ovqatlari | `bolalar_oziq_ovqatlari` |
+| `uyrozgor.webp` | Uy-ro'zg'or mahsulotlari | `uy_rozgor_mahsulotlari` + gigiyena, bir martalik idish, qadoq va boshqalar |
+| `kimyo.webp` | Maishiy kimyo | `maishiy_kimyo` |
+| `tozalash.webp` | Tozalash vositalari | `tozalash_vositalari` |
+| `qogoz.webp` | Qog'oz / salfetka | `qogoz_salfetka` |
+| `oshxona.webp` | Oshxona buyumlari | `oshxona_xojalik_buyumlari` |
 | `boshqa.webp` | Boshqa | guruhga kirmagan mahsulotlar |
 
 `.webp`, `.jpg`, `.jpeg`, `.png`, `.avif` qabul qilinadi.
