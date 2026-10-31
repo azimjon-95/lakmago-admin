@@ -33,6 +33,17 @@ test('muzqaymoq — alohida kartochka (sut guruhida EMAS), kategoriyasi faqat o�
   assert.equal(groups.find((x) => x.id === 'sut').total, 4);
 });
 
+test('kolbasa_sosiska — alohida kartochka (go‘sht guruhida EMAS), go‘sht qolgan kategoriyalarini yo‘qotmagan', () => {
+  const g = CATALOG_GROUPS.find((x) => x.id === 'kolbasa');
+  assert.ok(g, 'kolbasa guruhi bor');
+  assert.deepEqual(g.categories, ['kolbasa_sosiska']);
+  assert.equal(groupIdOfCategory('kolbasa_sosiska'), 'kolbasa');
+  assert.deepEqual(CATALOG_GROUPS.find((x) => x.id === 'gosht').categories, ['gosht_mahsulotlari', 'parranda_goshti', 'baliq_dengiz_mahsulotlari']);
+  const { groups } = summarizeGroups([{ category: 'kolbasa_sosiska', total: 40, active: 39, withImage: 9 }, { category: 'parranda_goshti', total: 25, active: 25, withImage: 20 }]);
+  assert.equal(groups.find((x) => x.id === 'kolbasa').total, 40);
+  assert.equal(groups.find((x) => x.id === 'gosht').total, 25);
+});
+
 test('noma‘lum kategoriya → "Boshqa" (hech narsa yo‘qolmaydi)', () => {
   assert.equal(groupIdOfCategory('yangi_hali_yoq'), 'boshqa');
   assert.equal(groupIdOfCategory('gosht_mahsulotlari'), 'gosht');

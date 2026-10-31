@@ -15,7 +15,10 @@ import { CATALOG_CATEGORIES } from './catalogCategories.js';
  */
 export const CATALOG_GROUPS = [
   { id: 'gosht', label: "Go'sht mahsulotlari", hint: "Mol, qo'y, parranda, baliq…", emoji: '🥩', from: '#7A1F1F', to: '#C2410C',
-    categories: ['gosht_mahsulotlari', 'parranda_goshti', 'kolbasa_sosiska', 'baliq_dengiz_mahsulotlari'] },
+    categories: ['gosht_mahsulotlari', 'parranda_goshti', 'baliq_dengiz_mahsulotlari'] },
+  // Kolbasa va sosiska — alohida kartochka (avval "Go'sht mahsulotlari" ichida edi). Muqova: src/assets/catalog-groups/kolbasa.webp
+  { id: 'kolbasa', label: 'Kolbasa va sosiska', hint: 'Kolbasa, sosiska, vetchina, salami…', emoji: '🌭', from: '#9F1239', to: '#FB7185',
+    categories: ['kolbasa_sosiska'] },
   { id: 'sut', label: 'Sut mahsulotlari', hint: 'Sut, pishloq, qaymoq, tuxum…', emoji: '🥛', from: '#1E3A8A', to: '#60A5FA',
     categories: ['sut_mahsulotlari', 'pishloq_mahsulotlari', 'sariyog_margarin', 'tuxum'] },
   // Muzqaymoq — alohida kartochka (avval "Sut mahsulotlari" ichida edi). Muqova: src/assets/catalog-groups/muzqaymoq.webp
