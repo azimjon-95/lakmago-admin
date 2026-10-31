@@ -19,6 +19,20 @@ test('guruh id lari noyob, har birida nom, tavsif, emoji', () => {
   for (const g of CATALOG_GROUPS) { assert.ok(g.label && g.hint && g.emoji && g.categories.length, g.id); assert.notEqual(g.id, OTHER_GROUP.id); }
 });
 
+test('muzqaymoq — alohida kartochka (sut guruhida EMAS), kategoriyasi faqat o‘zida', () => {
+  const g = CATALOG_GROUPS.find((x) => x.id === 'muzqaymoq');
+  assert.ok(g, 'muzqaymoq guruhi bor');
+  assert.deepEqual(g.categories, ['muzqaymoq']);
+  assert.equal(groupIdOfCategory('muzqaymoq'), 'muzqaymoq');
+  assert.ok(!CATALOG_GROUPS.find((x) => x.id === 'sut').categories.includes('muzqaymoq'), 'sut guruhidan chiqarilgan');
+  // sut guruhi qolgan kategoriyalarini yo'qotmagan
+  assert.deepEqual(CATALOG_GROUPS.find((x) => x.id === 'sut').categories, ['sut_mahsulotlari', 'pishloq_mahsulotlari', 'sariyog_margarin', 'tuxum']);
+  // yig'indi: muzqaymoq mahsulotlari muzqaymoq kartochkasiga tushadi, sut kartochkasiga EMAS
+  const { groups } = summarizeGroups([{ category: 'muzqaymoq', total: 7, active: 5, withImage: 3 }, { category: 'tuxum', total: 4, active: 4, withImage: 4 }]);
+  assert.equal(groups.find((x) => x.id === 'muzqaymoq').total, 7);
+  assert.equal(groups.find((x) => x.id === 'sut').total, 4);
+});
+
 test('noma‘lum kategoriya → "Boshqa" (hech narsa yo‘qolmaydi)', () => {
   assert.equal(groupIdOfCategory('yangi_hali_yoq'), 'boshqa');
   assert.equal(groupIdOfCategory('gosht_mahsulotlari'), 'gosht');

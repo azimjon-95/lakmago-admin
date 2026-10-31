@@ -17,7 +17,10 @@ export const CATALOG_GROUPS = [
   { id: 'gosht', label: "Go'sht mahsulotlari", hint: "Mol, qo'y, parranda, baliq…", emoji: '🥩', from: '#7A1F1F', to: '#C2410C',
     categories: ['gosht_mahsulotlari', 'parranda_goshti', 'kolbasa_sosiska', 'baliq_dengiz_mahsulotlari'] },
   { id: 'sut', label: 'Sut mahsulotlari', hint: 'Sut, pishloq, qaymoq, tuxum…', emoji: '🥛', from: '#1E3A8A', to: '#60A5FA',
-    categories: ['sut_mahsulotlari', 'pishloq_mahsulotlari', 'sariyog_margarin', 'tuxum', 'muzqaymoq'] },
+    categories: ['sut_mahsulotlari', 'pishloq_mahsulotlari', 'sariyog_margarin', 'tuxum'] },
+  // Muzqaymoq — alohida kartochka (avval "Sut mahsulotlari" ichida edi). Muqova: src/assets/catalog-groups/muzqaymoq.webp
+  { id: 'muzqaymoq', label: 'Muzqaymoq', hint: 'Stakan, rojok, eskimo, tort-muzqaymoq…', emoji: '🍦', from: '#BE185D', to: '#F9A8D4',
+    categories: ['muzqaymoq'] },
   { id: 'sabzavot', label: 'Sabzavotlar', hint: "Yangi sabzavot va ko'katlar", emoji: '🥕', from: '#166534', to: '#65A30D',
     categories: ['yangi_sabzavot', 'kokatlar', 'tuzlama_marinad', 'tomat_mahsulotlari'] },
   { id: 'meva', label: 'Mevalar', hint: 'Mavsumiy va quruq mevalar', emoji: '🍎', from: '#B91C1C', to: '#F59E0B',
