@@ -7,7 +7,6 @@ import { countFromItems, LIST_LIMIT } from '@/lib/catalogCounts';
 import { CATALOG_CATEGORIES } from '@/constants/catalogCategories';
 import { clear as clearCatalogCache, countPerCategory } from '@/lib/catalogData';
 import { prefetchGroup } from '@/lib/catalogPager';
-import { CatalogZipImportModal } from './CatalogZipImportModal';
 import { CatalogHome } from './catalog/CatalogHome';
 import { ScrollTopButton } from '@/components/ScrollTopButton';
 import { CatalogGroupView } from './catalog/CatalogGroupView';
@@ -37,7 +36,6 @@ export function CatalogPage() {
   const [counting, setCounting] = useState(false);    // eski server: sonlar kategoriyalar bo'yicha hisoblanmoqda
   const [loadError, setLoadError] = useState(null);
   const [version, setVersion] = useState(0);          // saqlash/o'chirishdan keyin ro'yxatlarni qayta yuklash
-  const [zipOpen, setZipOpen] = useState(false);
   const [editing, setEditing] = useState(null);       // null | { product } | { defaults }
   const [change, setChange] = useState(null);         // { n, kind: upsert|remove|deactivate, ... } — ochiq ro'yxat joyida yangilanadi
 
@@ -74,7 +72,7 @@ export function CatalogPage() {
   const refresh = () => { clearCatalogCache(); setVersion((v) => v + 1); };
   /*
    * Bitta mahsulot o'zgardi (saqlandi/o'chirildi): ro'yxat QAYTA YUKLANMAYDI — ochiq ro'yxat joyida yangilanadi (`change`),
-   * sonlar esa orqada jimgina yangilanadi. Faqat ZIP import kabi katta o'zgarishda `refresh()` (to'liq qayta yuklash).
+   * sonlar esa orqada jimgina yangilanadi. Faqat katta o'zgarishda `refresh()` (to'liq qayta yuklash).
    */
   const noteChange = useCallback((c) => { clearCatalogCache(); setChange({ n: Date.now() + Math.random(), ...c }); loadCounts(); }, [loadCounts]);
   const prefetch = useCallback((g) => prefetchGroup(catsOfGroup(g), { v2 }), [v2]);
@@ -120,7 +118,6 @@ export function CatalogPage() {
           truncated={truncated}
           onPrefetch={prefetch}
           onOpenGroup={openGroup}
-          onZip={() => setZipOpen(true)}
           onAdd={() => setEditing({ defaults: null })}
           onEdit={(p) => setEditing({ product: p })}
           onDelete={remove}
@@ -130,7 +127,6 @@ export function CatalogPage() {
         />
       )}
 
-      {zipOpen && <CatalogZipImportModal onClose={() => setZipOpen(false)} onImported={refresh} />}
       {editing && (
         <CatalogProductForm
           product={editing.product || null}

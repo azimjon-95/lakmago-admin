@@ -36,5 +36,5 @@ gradient va emoji bilan ko'rinadi.
 
 ## Mahsulot rasmlari
 
-Alohida mahsulot rasmlari bu yerda emas: ular bazada saqlanadi. Qo'shish yo'llari: «ZIP orqali» (data.json + images/),
-yoki mahsulot kartochkasidagi «Rasm qo'shish». Guruh ichida filtr → «Rasmsiz» rasmi yo'q mahsulotlarni ko'rsatadi.
+Alohida mahsulot rasmlari bu yerda emas: ular bazada saqlanadi. Rasm qo'shish yo'li: mahsulot kartochkasidagi
+«Rasm qo'shish» (yoki mahsulotni tahrirlash oynasida). Guruh ichida filtr → «Rasmsiz» rasmi yo'q mahsulotlarni ko'rsatadi.

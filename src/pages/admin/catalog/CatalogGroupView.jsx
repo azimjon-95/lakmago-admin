@@ -49,7 +49,7 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
   const pager = useCatalogPager(query, { v2 });
   const { items, total, phase, error, reload, removeLocal, upsertLocal } = pager;
 
-  // ZIP import kabi katta o'zgarishdan keyin — to'liq qayta yuklash (bir xil seed: tartib o'zgarmaydi)
+  // Katta o'zgarishdan keyin (refresh) — to'liq qayta yuklash (bir xil seed: tartib o'zgarmaydi)
   const firstVersion = useRef(version);
   useEffect(() => { if (version !== firstVersion.current) reload(); }, [version, reload]);
 

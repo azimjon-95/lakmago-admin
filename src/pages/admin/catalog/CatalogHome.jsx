@@ -12,12 +12,12 @@ function useDebounced(value, ms) {
 }
 
 /*
- * "Umumiy katalog" bosh ko'rinishi (maket): sarlavha, qidiruv, [ZIP orqali | + Qo'shish], "Kategoriyalar N ta" va
+ * "Umumiy katalog" bosh ko'rinishi (maket): sarlavha, [qidiruv | + Qo'shish] bitta qatorda, "Kategoriyalar N ta · M mahsulot" va
  * guruh kartochkalari (telefonda 2 ta, 640 px dan 3 ta bir qatorda). Qidiruv: mos GURUHLAR (nomi, tavsifi yoki
  * pastki kategoriyasi bo'yicha) + mos MAHSULOTLAR — BUTUN katalog bo'yicha, serverda (nom, tavsif, hajm), mosligi bo'yicha
  * tartiblanadi va pastga aylantirganda 60 tadan davom etadi.
  */
-export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, onOpenGroup, onZip, onAdd, onEdit, onDelete, version, v2, change }) {
+export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, onOpenGroup, onAdd, onEdit, onDelete, version, v2, change }) {
   const [q, setQ] = useState('');
   const needle = q.trim().toLowerCase();
   const dq = useDebounced(q.trim(), 300);
@@ -30,7 +30,7 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
       .some((s) => String(s).toLowerCase().includes(needle)));
   }, [groups, needle]);
 
-  // Katta o'zgarish (ZIP import) — qidiruv natijalari qayta yuklanadi; bitta mahsulot o'zgarsa — joyida yangilanadi
+  // Katta o'zgarish (to'liq yangilash) — qidiruv natijalari qayta yuklanadi; bitta mahsulot o'zgarsa — joyida yangilanadi
   const firstVersion = useRef(version);
   useEffect(() => { if (version !== firstVersion.current && dq.length >= 2) reload(); }, [version]); // eslint-disable-line react-hooks/exhaustive-deps
   const lastChange = useRef(null);
@@ -49,27 +49,24 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
         <p className="mt-1 text-sm text-muted">Restoranlar shu ro'yxatdan tanlab o'z narxini qo'yadi</p>
       </div>
 
-      <div className="relative mb-3">
-        <i className="ti ti-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-muted" aria-hidden="true" />
-        <input
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="Mahsulot yoki kategoriya qidirish…"
-          aria-label="Katalogdan qidirish"
-          className="inp !rounded-2xl !py-3 !pl-10 !pr-10"
-        />
-        {q && (
-          <button type="button" onClick={() => setQ('')} aria-label="Tozalash" className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-canvas">
-            <i className="ti ti-x" />
-          </button>
-        )}
-      </div>
-
-      <div className="mb-7 grid grid-cols-2 gap-3">
-        <button type="button" onClick={onZip} className="flex items-center justify-center gap-2 rounded-2xl border border-line bg-white py-3.5 font-semibold text-ink transition hover:bg-canvas">
-          <i className="ti ti-file-zip text-lg" /> ZIP orqali
-        </button>
-        <button type="button" onClick={onAdd} className="flex items-center justify-center gap-2 rounded-2xl bg-brand-400 py-3.5 font-semibold text-brand-text transition hover:bg-brand-600 hover:text-white">
+      {/* Qidiruv + kichik "Qo'shish" — BITTA qatorda: tugma faqat o'z joyini oladi, qidiruv qolganini */}
+      <div className="mb-7 flex items-stretch gap-2">
+        <div className="relative min-w-0 flex-1">
+          <i className="ti ti-search pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-muted" aria-hidden="true" />
+          <input
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="Mahsulot qidirish…"
+            aria-label="Katalogdan qidirish"
+            className="inp !rounded-2xl !py-3 !pl-10 !pr-10"
+          />
+          {q && (
+            <button type="button" onClick={() => setQ('')} aria-label="Tozalash" className="absolute right-3 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-full text-muted hover:bg-canvas">
+              <i className="ti ti-x" />
+            </button>
+          )}
+        </div>
+        <button type="button" onClick={onAdd} data-testid="catalog-add" className="flex flex-none items-center justify-center gap-1.5 rounded-2xl bg-brand-400 px-4 text-sm font-semibold text-brand-text transition hover:bg-brand-600 hover:text-white active:scale-95">
           <i className="ti ti-plus text-lg" /> Qo'shish
         </button>
       </div>
