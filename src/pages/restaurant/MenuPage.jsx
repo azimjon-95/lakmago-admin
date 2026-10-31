@@ -7,6 +7,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
 import { catalogCategoryLabel } from '@/constants/catalogCategories';
+import { PanelCatalogBrowser } from './catalog/PanelCatalogBrowser';
 import { OptionGroupsEditor, validateOptionGroups, serializeOptionGroups } from '@/components/OptionGroupsEditor';
 import { isVariantGroup } from '@/lib/dishPricing';
 import { StoreMenuPage } from './StoreMenuPage';
@@ -165,11 +166,12 @@ function FoodMenuPage() {
         <div className="flex gap-2 flex-none">
           <button
             onClick={() => setCatalogOpen(true)}
-            className="border border-line text-muted font-medium px-3 py-2.5 rounded-xl hover:bg-canvas transition-colors flex items-center gap-2 whitespace-nowrap"
-            title="Ichimlik va tayyor mahsulotlar"
+            className="border border-brand-400 text-brand-600 font-semibold px-3.5 py-2.5 rounded-xl hover:bg-canvas active:scale-[0.98] transition flex items-center gap-2 whitespace-nowrap"
+            title="Umumiy katalogdan tayyor mahsulot tanlash"
+            data-testid="menu-catalog-btn"
           >
-            <i className="ti ti-package" />
-            <span className="hidden sm:inline">Katalogdan</span>
+            <i className="ti ti-category-2 text-lg" />
+            <span>Katalog</span>
           </button>
           <button
             onClick={() => setShowForm(true)}
@@ -711,8 +713,11 @@ function CatalogPicker({ onClose, onAdded }) {
   const [price, setPrice] = useState(null);
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState(null);
+  // Yangi server: guruh kartochkalari (PanelCatalogBrowser). Eski server (404) — avvalgi ro'yxat
+  const [legacy, setLegacy] = useState(false);
 
   useEffect(() => {
+    if (!legacy) return undefined;
     const t = setTimeout(() => {
       const qs = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
       panelApi.getPanelCatalog(qs)
@@ -721,7 +726,7 @@ function CatalogPicker({ onClose, onAdded }) {
         .finally(() => setLoading(false));
     }, q ? 350 : 0);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, legacy]);
 
   const add = async () => {
     if (!price || price <= 0) { setErr('Narx kiriting'); return; }
@@ -749,7 +754,7 @@ function CatalogPicker({ onClose, onAdded }) {
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[88dvh]"
+        className={`bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col ${!picked && !legacy ? 'h-[92dvh] sm:h-[85dvh]' : 'max-h-[88dvh]'}`}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-none">
           <div>
@@ -812,8 +817,14 @@ function CatalogPicker({ onClose, onAdded }) {
               </button>
             </div>
           </div>
+        ) : !legacy ? (
+          /* Guruh kartochkalari → ichida mahsulotlar (admin katalogi bilan bir xil) */
+          <PanelCatalogBrowser
+            onPick={(p) => { setPicked(p); setPrice(p.suggestedPrice || null); }}
+            onUnavailable={() => setLegacy(true)}
+          />
         ) : (
-          /* Ro'yxat */
+          /* Ro'yxat (eski server) */
           <>
             <div className="px-5 py-3 border-b border-line flex-none">
               <input

@@ -3,6 +3,7 @@ import { categoryLabel } from '@/constants/catalogGroups';
 import { useCatalogPager } from '@/hooks/useCatalogPager';
 import { GroupCard, ProductCard, ProductCardSkeleton } from './CatalogCards';
 import { InfiniteGrid } from './InfiniteGrid';
+import { countLabel } from '@/lib/catalogTotals';
 
 function useDebounced(value, ms) {
   const [v, setV] = useState(value);
@@ -87,7 +88,7 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
 
       <div className="mb-3 flex items-baseline justify-between">
         <h2 className="text-lg font-bold text-ink">Kategoriyalar</h2>
-        <span className="text-sm text-muted">{shownGroups.length} ta</span>
+        <span className="text-sm text-muted" data-testid="catalog-count">{counting && !loading ? `${shownGroups.length} ta · …` : countLabel(shownGroups)}</span>
       </div>
 
       {loading ? (

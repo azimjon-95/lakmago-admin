@@ -123,11 +123,12 @@ export function StoreMenuPage() {
           <button
             onClick={() => setCatalogOpen(true)}
             disabled={!meta}
-            title="Umumiy katalogdagi tayyor mahsulotlar"
-            className="border border-line text-muted font-medium px-3 py-2.5 rounded-xl hover:bg-canvas transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
+            title="Umumiy katalogdan tayyor mahsulot tanlash"
+            data-testid="menu-catalog-btn"
+            className="border border-brand-400 text-brand-600 font-semibold px-3.5 py-2.5 rounded-xl hover:bg-canvas active:scale-[0.98] transition flex items-center gap-2 whitespace-nowrap disabled:opacity-50"
           >
-            <i className="ti ti-package" />
-            <span className="hidden sm:inline">Katalogdan</span>
+            <i className="ti ti-category-2 text-lg" />
+            <span>Katalog</span>
           </button>
           <button
             onClick={() => setForm({})}

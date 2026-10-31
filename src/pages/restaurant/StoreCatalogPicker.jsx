@@ -5,6 +5,7 @@ import { MoneyInput } from '@/components/form/NumberInput';
 import { Img } from '@/components/Img';
 import { catalogCategoryLabel } from '@/constants/catalogCategories';
 import { BarcodeField } from './BarcodeField';
+import { PanelCatalogBrowser } from './catalog/PanelCatalogBrowser';
 
 /*
  * ═══ DO'KON: UMUMIY KATALOGDAN QO'SHISH ═══
@@ -27,8 +28,11 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
   const [loadErr, setLoadErr] = useState(null);
   const [q, setQ] = useState('');
   const [picked, setPicked] = useState(null);
+  // Yangi server: guruh kartochkalari. Eski server (404) — avvalgi ro'yxat
+  const [legacy, setLegacy] = useState(false);
 
   useEffect(() => {
+    if (!legacy) return undefined;
     const t = setTimeout(() => {
       const qs = q.trim() ? `?q=${encodeURIComponent(q.trim())}` : '';
       panelApi.getPanelCatalog(qs)
@@ -37,7 +41,7 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
         .finally(() => setLoading(false));
     }, q ? 350 : 0);
     return () => clearTimeout(t);
-  }, [q]);
+  }, [q, legacy]);
 
   // Katalog kategoriyasi bo'yicha guruh
   const grouped = useMemo(() => items.reduce((acc, p) => {
@@ -48,7 +52,7 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
 
   return (
     <div onClick={onClose} className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 sm:p-4">
-      <div onClick={(e) => e.stopPropagation()} className="bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col max-h-[90dvh]">
+      <div onClick={(e) => e.stopPropagation()} className={`bg-white w-full max-w-lg rounded-t-2xl sm:rounded-2xl flex flex-col ${!picked && !legacy ? 'h-[92dvh] sm:h-[85dvh]' : 'max-h-[90dvh]'}`}>
         <div className="flex items-center justify-between px-5 py-4 border-b border-line flex-none">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-ink">Katalogdan qo'shish</h2>
@@ -64,6 +68,8 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
             onBack={() => setPicked(null)}
             onAdded={onAdded}
           />
+        ) : !legacy ? (
+          <PanelCatalogBrowser onPick={setPicked} onUnavailable={() => setLegacy(true)} />
         ) : (
           <>
             <div className="px-5 py-3 border-b border-line flex-none">

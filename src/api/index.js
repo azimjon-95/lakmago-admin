@@ -144,6 +144,9 @@ export const panelApi = {
   getPendingTransfers: () => apiFetch('/panel/menu-transfers/pending/count'),
   getStoppedCount: () => apiFetch('/panel/dishes/stopped/count'),
   getPanelCatalog: (q = '') => apiFetch(`/panel/catalog${q}`),
+  // Guruhli katalog (restoran/do'kon): kategoriya sonlari va sahifalab mahsulotlar. ESKI serverda 404 → ilova eski ro'yxatga qaytadi
+  getPanelCatalogCounts: () => apiFetch('/panel/catalog/counts'),
+  getPanelCatalogPage: (qs) => apiFetch(`/panel/catalog/page?${qs}`),
   addFromCatalog: (id, data) => apiFetch(`/panel/catalog/${id}/add`, { method: 'POST', body: JSON.stringify(data) }),
   updateProfile: (data) => apiFetch('/panel/me', { method: 'PATCH', body: JSON.stringify(data) }),
   profile: () => apiFetch('/panel/me'),
