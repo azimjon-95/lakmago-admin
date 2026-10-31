@@ -34,12 +34,16 @@ export const CATALOG_GROUPS = [
     categories: ['guruch_don', 'un_mahsulotlari', 'makaron_mahsulotlari', 'dukkakli_mahsulotlar'] },
   { id: 'ichimlik', label: 'Ichimliklar', hint: 'Suv, sharbat, gazli, choy, qahva…', emoji: '🥤', from: '#0F172A', to: '#DC2626',
     categories: ['ichimliklar', 'mineral_suv', 'sharbatlar', 'gazli_ichimliklar', 'energetik_ichimliklar', 'choy', 'qahva', 'kakao'] },
-  { id: 'non', label: 'Non va qandolat', hint: 'Non, pirog, shirinlik, pechenye…', emoji: '🥐', from: '#78350F', to: '#EA9A3E',
-    categories: ['non_mahsulotlari', 'keks_pishiriqlar', 'pechenye', 'vafli', 'shirinliklar', 'konfetlar', 'shokolad', 'qandolat_mahsulotlari', 'pishirish_mahsulotlari'] },
+  { id: 'non', label: 'Non va qandolat', hint: 'Non, pirog, keks, pishiriqlar…', emoji: '🥐', from: '#78350F', to: '#EA9A3E',
+    categories: ['non_mahsulotlari', 'keks_pishiriqlar', 'qandolat_mahsulotlari', 'pishirish_mahsulotlari'] },
+  // Shirinlik va snacklar — BITTA kartochka (avval "Non va qandolat" va "Tayyor va muzlatilgan" ichida tarqoq edi).
+  // Muqova: src/assets/catalog-groups/shirinlik@*.webp
+  { id: 'shirinlik', label: 'Shirinlik va snacklar', hint: 'Shokolad, pechenye, konfet, chips…', emoji: '🍫', from: '#9D174D', to: '#F9A8D4',
+    categories: ['shokolad', 'konfetlar', 'pechenye', 'vafli', 'chips_snacklar', 'shirinliklar'] },
   { id: 'ziravor', label: 'Ziravorlar va souslar', hint: "Ziravor, tuz, sous, yog', sirka…", emoji: '🌶️', from: '#7C2D12', to: '#CA8A04',
     categories: ['ziravorlar', 'tuz', 'souslar', 'ketchup_mayonez', 'sirka', 'osimlik_yoglari', 'shakar_shirinlashtiruvchi'] },
   { id: 'tayyor', label: 'Tayyor va muzlatilgan', hint: 'Yarim tayyor, konserva, fast-food…', emoji: '🍱', from: '#3F3F46', to: '#B45309',
-    categories: ['muzlatilgan_mahsulotlar', 'yarim_tayyor_mahsulotlar', 'konserva_mahsulotlari', 'fastfood_mahsulotlari', 'chips_snacklar', 'nonushta_mahsulotlari',
+    categories: ['muzlatilgan_mahsulotlar', 'yarim_tayyor_mahsulotlar', 'konserva_mahsulotlari', 'fastfood_mahsulotlari', 'nonushta_mahsulotlari',
       'milliy_oziq_ovqat', 'xorijiy_oziq_ovqat', 'parhezbop_mahsulotlar', 'ofis_korxona_oziq_ovqat', 'restoran_kafe_mahsulotlari'] },
   // ── Uy-ro'zg'or va bolalar: 7 ta alohida kartochka (har birining o'z rasmi: src/assets/catalog-groups/<id>.webp) ──
   { id: 'bolalar_gigiyena', label: 'Bolalar parvarishi / gigiyena', hint: 'Taglik, salfetka, krem, shampun…', emoji: '🍼', from: '#0F766E', to: '#5EEAD4',

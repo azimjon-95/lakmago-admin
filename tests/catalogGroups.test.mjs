@@ -119,3 +119,19 @@ test('shaxsiy_gigiyena — alohida kartochka (uy-ro‘zg‘orda EMAS), uy-ro‘z
   assert.equal(groups.find((x) => x.id === 'shaxsiy').total, 55);
   assert.equal(groups.find((x) => x.id === 'uyrozgor').total, 9);
 });
+
+test('shirinlik: 6 kategoriya BITTA kartochkada (non va tayyor guruhlaridan ko‘chgan), qolganlari yo‘qolmagan', () => {
+  const g = CATALOG_GROUPS.find((x) => x.id === 'shirinlik');
+  assert.ok(g, 'shirinlik guruhi bor');
+  assert.deepEqual([...g.categories].sort(), ['chips_snacklar', 'konfetlar', 'pechenye', 'shirinliklar', 'shokolad', 'vafli']);
+  for (const c of g.categories) assert.equal(groupIdOfCategory(c), 'shirinlik', c);
+  assert.deepEqual(CATALOG_GROUPS.find((x) => x.id === 'non').categories, ['non_mahsulotlari', 'keks_pishiriqlar', 'qandolat_mahsulotlari', 'pishirish_mahsulotlari']);
+  const tayyor = CATALOG_GROUPS.find((x) => x.id === 'tayyor').categories;
+  assert.ok(!tayyor.includes('chips_snacklar') && tayyor.includes('fastfood_mahsulotlari') && tayyor.includes('nonushta_mahsulotlari') && tayyor.length === 10);
+  const { groups } = summarizeGroups([
+    { category: 'shokolad', total: 120, active: 100, withImage: 5 }, { category: 'pechenye', total: 80, active: 80, withImage: 5 },
+    { category: 'chips_snacklar', total: 60, active: 60, withImage: 5 }, { category: 'non_mahsulotlari', total: 30, active: 30, withImage: 5 },
+  ]);
+  assert.equal(groups.find((x) => x.id === 'shirinlik').total, 260, 'shokolad + pechenye + chips bitta kartochkada');
+  assert.equal(groups.find((x) => x.id === 'non').total, 30);
+});
