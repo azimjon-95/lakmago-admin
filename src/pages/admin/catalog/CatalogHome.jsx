@@ -98,7 +98,7 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
         <div className="rounded-2xl border border-dashed border-line py-8 text-center text-sm text-muted">Mos kategoriya topilmadi</div>
       ) : (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4">
-          {shownGroups.map((g) => <GroupCard key={g.id} g={g} onOpen={() => onOpenGroup(g.id)} onWarm={() => onPrefetch?.(g)} />)}
+          {shownGroups.map((g, i) => <GroupCard key={g.id} g={g} priority={i < 6} onOpen={() => onOpenGroup(g.id)} onWarm={() => onPrefetch?.(g)} />)}
         </div>
       )}
 
@@ -122,7 +122,7 @@ export function CatalogHome({ groups, loading, counting, truncated, onPrefetch, 
           ) : (
             <InfiniteGrid
               pager={search}
-              renderCard={(p) => <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
+              renderCard={(p, i) => <ProductCard key={p._id} p={p} priority={i < 6} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
             />
           )}
         </section>

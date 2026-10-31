@@ -10,8 +10,10 @@ import { CATALOG_CATEGORIES } from './catalogCategories.js';
  * Qoida: har bir kategoriya FAQAT BITTA guruhda (tests/catalogGroups.test.mjs tekshiradi). Ro'yxatda yo'q yangi
  * kategoriya qo'shilsa — avtomatik "Boshqa" guruhiga tushadi (hech narsa yo'qolmaydi).
  *
- * RASMLAR: guruh muqovasi `src/assets/catalog-groups/<id>.webp|jpg|png` (masalan gosht.webp) — fayl shu papkaga
- * tushishi bilan O'ZI ulanadi (lib/catalogCovers.js), kodni o'zgartirish shart emas. Rasm bo'lmasa — gradient + emoji.
+ * RASMLAR: guruh muqovasi `src/assets/catalog-groups/<id>@<kenglik>.webp` (masalan gosht@480.webp, gosht@720.webp,
+ * gosht@1200.webp) — brauzer ekran o'lchamiga mosini O'ZI tanlaydi (srcset: telefon ~25 KB oladi, 150 KB emas). Oddiy
+ * `<id>.webp` ham ishlaydi (variantsiz). Fayl papkaga tushishi bilan O'ZI ulanadi (lib/catalogCovers.js). Rasm bo'lmasa —
+ * gradient + emoji.
  */
 export const CATALOG_GROUPS = [
   { id: 'gosht', label: "Go'sht mahsulotlari", hint: "Mol, qo'y, parranda, baliq…", emoji: '🥩', from: '#7A1F1F', to: '#C2410C',
@@ -45,8 +47,11 @@ export const CATALOG_GROUPS = [
   { id: 'bolalar_ovqat', label: 'Bolalar oziq-ovqatlari', hint: "Pyure, bo'tqa, aralashma…", emoji: '🥣', from: '#B45309', to: '#FCD34D',
     categories: ['bolalar_oziq_ovqatlari'] },
   // "Uy-ro'zg'or mahsulotlari" — umumiy kartochka: o'z kategoriyasi + boshqa kartochkaga kirmaganlar (hech narsa yo'qolmasin)
+  // Shaxsiy gigiyena — alohida kartochka (avval "Uy-ro'zg'or" ichida edi). Muqova: src/assets/catalog-groups/shaxsiy@*.webp
+  { id: 'shaxsiy', label: 'Shaxsiy gigiyena', hint: 'Shampun, sovun, tish pastasi, krem…', emoji: '🧼', from: '#6D28D9', to: '#C4B5FD',
+    categories: ['shaxsiy_gigiyena'] },
   { id: 'uyrozgor', label: "Uy-ro'zg'or mahsulotlari", hint: 'Idish, qadoq, gigiyena, xo\'jalik…', emoji: '🏠', from: '#134E4A', to: '#0EA5E9',
-    categories: ['uy_rozgor_mahsulotlari', 'shaxsiy_gigiyena', 'bir_martalik_idishlar', 'uy_hayvonlari_ozuqasi', 'tamaki_mahsulotlari', 'sovgalik_qadoqlangan', 'qadoqlash_materiallari'] },
+    categories: ['uy_rozgor_mahsulotlari', 'bir_martalik_idishlar', 'uy_hayvonlari_ozuqasi', 'tamaki_mahsulotlari', 'sovgalik_qadoqlangan', 'qadoqlash_materiallari'] },
   { id: 'kimyo', label: 'Maishiy kimyo', hint: 'Kir yuvish, idish yuvish, tozalash…', emoji: '🧴', from: '#1D4ED8', to: '#38BDF8',
     categories: ['maishiy_kimyo'] },
   { id: 'tozalash', label: 'Tozalash vositalari', hint: "Shvabra, paqir, cho'tka, qo'lqop…", emoji: '🧹', from: '#1E3A8A', to: '#2563EB',

@@ -18,7 +18,7 @@ import { optimizeUrl } from '@/lib/cloudinary';
  * kenglik. Retina ekranlar uchun CSS o'lchamining ~2 barobari
  * beriladi (44px katakcha -> w=96).
  */
-export function Img({ src, w = 400, alt = '', className, style, ...rest }) {
+export function Img({ src, w = 400, alt = '', className, style, priority = false, ...rest }) {
   if (!src) return null;
 
   return (
@@ -30,7 +30,8 @@ export function Img({ src, w = 400, alt = '', className, style, ...rest }) {
        * async: dekodlash asosiy oqimni bloklamaydi — uzun
        * ro'yxatlarda skroll silliq qoladi.
        */
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : undefined}   // birinchi ekrandagi rasmlar kutmaydi
       decoding="async"
       className={className}
       style={style}

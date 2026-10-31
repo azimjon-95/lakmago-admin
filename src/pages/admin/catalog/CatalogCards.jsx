@@ -1,12 +1,12 @@
 import { Img } from '@/components/Img';
-import { groupCover } from '@/lib/catalogCovers';
+import { groupCoverImg, CARD_SIZES } from '@/lib/catalogCovers';
 
 // overflow-wrap: anywhere — "mahsulotlari" kabi uzun so'z tor kartada o'ng tomondan KESILMAY, bo'linib tushadi
 const clamp = (n) => ({ display: '-webkit-box', WebkitLineClamp: n, WebkitBoxOrient: 'vertical', overflow: 'hidden', overflowWrap: 'anywhere' });
 
 /** Guruh kartochkasi: rasm (yoki gradient+emoji), tepa-o'ngda soni, pastda nom va tavsif, o'qli tugma. */
-export function GroupCard({ g, onOpen, onWarm }) {
-  const cover = groupCover(g.id);
+export function GroupCard({ g, onOpen, onWarm, priority = false }) {
+  const cover = groupCoverImg(g.id);
   return (
     <button
       type="button"
@@ -18,7 +18,7 @@ export function GroupCard({ g, onOpen, onWarm }) {
       style={{ background: `linear-gradient(135deg, ${g.from}, ${g.to})` }}
     >
       {cover ? (
-        <img src={cover} alt="" loading="lazy" decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
+        <img src={cover.src} srcSet={cover.srcSet || undefined} sizes={cover.srcSet ? CARD_SIZES : undefined} alt="" width="1200" height="900" loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} decoding="async" className="absolute inset-0 h-full w-full object-cover transition duration-300 group-hover:scale-105" />
       ) : (
         <span className="absolute inset-0 flex select-none items-center justify-center pb-8 text-7xl opacity-30" aria-hidden="true">{g.emoji}</span>
       )}
@@ -42,7 +42,7 @@ export function GroupCard({ g, onOpen, onWarm }) {
  * ostida nom, tavsif, kategoriya "tegi" va (narx o'rniga — katalogda narx yo'q) nechta restoranda ishlatilgani.
  * Rasmsiz mahsulotda "Rasm qo'shish" — bosilsa tahrirlash oynasi (rasm yuklash birinchi maydon) ochiladi.
  */
-export function ProductCard({ p, tag, onEdit, onDelete }) {
+export function ProductCard({ p, tag, onEdit, onDelete, priority = false }) {
   const inactive = p.isActive === false;
   const stop = (fn) => (e) => { e.stopPropagation(); fn(); };
   return (
@@ -55,7 +55,7 @@ export function ProductCard({ p, tag, onEdit, onDelete }) {
     >
       <div className="relative aspect-[4/3] bg-canvas">
         {p.imageUrl ? (
-          <Img src={p.imageUrl} w={480} className="absolute inset-0 h-full w-full object-cover" />
+          <Img src={p.imageUrl} w={480} priority={priority} className="absolute inset-0 h-full w-full object-cover" />
         ) : (
           <span className="absolute inset-0 flex flex-col items-center justify-center gap-1 text-muted">
             <i className="ti ti-photo-plus text-3xl" aria-hidden="true" />

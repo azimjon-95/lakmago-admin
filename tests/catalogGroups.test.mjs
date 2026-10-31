@@ -96,12 +96,26 @@ test('FIXTURE: xesh va tasodifiy tartib SERVER bilan AYNAN BIR XIL (eski server 
   assert.equal(order('kalit2'), 'id00002,id00011,id00001,id00007,id00000,id00008,id00009,id00010,id00003,id00005,id00004,id00006');
 });
 
-import { existsSync } from 'node:fs';
-test('har bir guruh kartochkasining muqova rasmi bor (src/assets/catalog-groups/<id>.webp)', () => {
-  const missing = CATALOG_GROUPS.filter((g) => !['webp', 'jpg', 'jpeg', 'png', 'avif'].some((e) => existsSync(new URL(`../src/assets/catalog-groups/${g.id}.${e}`, import.meta.url)))).map((g) => g.id);
+import { existsSync, readdirSync } from 'node:fs';
+test('har bir guruh kartochkasining muqova rasmi bor (src/assets/catalog-groups/<id>.webp yoki <id>@<kenglik>.webp)', () => {
+  const files = readdirSync(new URL('../src/assets/catalog-groups/', import.meta.url));
+  const has = (id) => files.some((f) => new RegExp(`^${id}(@\\d+)?\\.(webp|jpe?g|png|avif)$`, 'i').test(f));
+  const missing = CATALOG_GROUPS.filter((g) => !has(g.id)).map((g) => g.id);
   assert.deepEqual(missing, [], `rasmsiz kartochkalar: ${missing.join(', ')}`);
 });
 test('uy-ro‘zg‘or va bolalar: 7 ta kartochka, kalitlar to‘g‘ri', () => {
   const want = { bolalar_gigiyena: 'bolalar_gigiyena', bolalar_ovqat: 'bolalar_oziq_ovqatlari', uyrozgor: 'uy_rozgor_mahsulotlari', kimyo: 'maishiy_kimyo', tozalash: 'tozalash_vositalari', qogoz: 'qogoz_salfetka', oshxona: 'oshxona_xojalik_buyumlari' };
   for (const [id, cat] of Object.entries(want)) assert.equal(groupIdOfCategory(cat), id, cat);
+});
+
+test('shaxsiy_gigiyena — alohida kartochka (uy-ro‘zg‘orda EMAS), uy-ro‘zg‘or qolgan kategoriyalarini yo‘qotmagan', () => {
+  const g = CATALOG_GROUPS.find((x) => x.id === 'shaxsiy');
+  assert.ok(g, 'shaxsiy guruhi bor');
+  assert.deepEqual(g.categories, ['shaxsiy_gigiyena']);
+  assert.equal(groupIdOfCategory('shaxsiy_gigiyena'), 'shaxsiy');
+  const home = CATALOG_GROUPS.find((x) => x.id === 'uyrozgor').categories;
+  assert.ok(!home.includes('shaxsiy_gigiyena') && home.includes('uy_rozgor_mahsulotlari') && home.includes('bir_martalik_idishlar'));
+  const { groups } = summarizeGroups([{ category: 'shaxsiy_gigiyena', total: 55, active: 50, withImage: 12 }, { category: 'uy_rozgor_mahsulotlari', total: 9, active: 9, withImage: 9 }]);
+  assert.equal(groups.find((x) => x.id === 'shaxsiy').total, 55);
+  assert.equal(groups.find((x) => x.id === 'uyrozgor').total, 9);
 });

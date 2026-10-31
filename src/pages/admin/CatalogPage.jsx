@@ -9,6 +9,7 @@ import { clear as clearCatalogCache, countPerCategory } from '@/lib/catalogData'
 import { prefetchGroup } from '@/lib/catalogPager';
 import { CatalogZipImportModal } from './CatalogZipImportModal';
 import { CatalogHome } from './catalog/CatalogHome';
+import { ScrollTopButton } from '@/components/ScrollTopButton';
 import { CatalogGroupView } from './catalog/CatalogGroupView';
 import { CatalogProductForm } from './catalog/CatalogProductForm';
 
@@ -138,6 +139,8 @@ export function CatalogPage() {
           onSaved={(saved) => { setEditing(null); if (saved?._id) noteChange({ kind: 'upsert', product: saved }); else refresh(); }}
         />
       )}
+      {/* Pastga tushilganda chiqadi, bosilsa yumshoq yuqoriga qaytaradi */}
+      <ScrollTopButton />
     </>
   );
 }

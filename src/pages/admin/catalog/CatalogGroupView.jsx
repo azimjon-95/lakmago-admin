@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { categoryLabel, catsOfGroup } from '@/constants/catalogGroups';
-import { groupCover } from '@/lib/catalogCovers';
+import { groupCoverImg, BANNER_SIZES } from '@/lib/catalogCovers';
 import { newSeed, seedForOpen } from '@/lib/catalogPager';
 import { useCatalogPager } from '@/hooks/useCatalogPager';
 import { ProductCard, ProductCardSkeleton } from './CatalogCards';
@@ -39,7 +39,7 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
   const [q, setQ] = useState('');
   const dq = useDebounced(q.trim(), 300);
   const popRef = useRef(null);
-  const cover = groupCover(group.id);
+  const cover = groupCoverImg(group.id);
 
   // Qidiruv bor va saralash "Aralash" bo'lsa — mosligi bo'yicha (relevance); foydalanuvchi boshqa saralash tanlagan bo'lsa — o'sha
   const query = useMemo(() => ({
@@ -118,7 +118,7 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
       {/* Muqova */}
       <div className="relative mx-4 h-44 overflow-hidden rounded-2xl sm:mx-6 sm:h-56" style={{ background: `linear-gradient(135deg, ${group.from}, ${group.to})` }}>
         {cover
-          ? <img src={cover} alt="" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
+          ? <img src={cover.src} srcSet={cover.srcSet || undefined} sizes={cover.srcSet ? BANNER_SIZES : undefined} alt="" fetchPriority="high" decoding="async" className="absolute inset-0 h-full w-full object-cover" />
           : <span className="absolute inset-0 flex select-none items-center justify-center text-8xl opacity-30" aria-hidden="true">{group.emoji}</span>}
         <span className="absolute inset-0 bg-gradient-to-t from-black/35 to-transparent" />
       </div>
@@ -207,7 +207,7 @@ export function CatalogGroupView({ group, sub, onSub, onBack, onAdd, onEdit, onD
         ) : (
           <InfiniteGrid
             pager={pager}
-            renderCard={(p) => <ProductCard key={p._id} p={p} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
+            renderCard={(p, i) => <ProductCard key={p._id} p={p} priority={i < 6} tag={categoryLabel(p.category)} onEdit={() => onEdit(p)} onDelete={() => onDelete(p)} />}
           />
         )}
         {!pager.hasMore && items.length > 100 && phase === 'ready' && (
