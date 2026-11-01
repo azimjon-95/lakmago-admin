@@ -156,6 +156,12 @@ export const panelApi = {
   getDishes: () => apiFetch('/panel/dishes'),
   createDish: (data) => apiFetch('/panel/dishes', { method: 'POST', body: JSON.stringify(data) }),
   updateDish: (id, data) => apiFetch(`/panel/dishes/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  // Bildirishnomalar (yangi buyurtma push sozlamalari, qurilmalar, jurnal)
+  getNotifySettings: () => apiFetch('/panel/notification-settings'),
+  saveNotifySettings: (body) => apiFetch('/panel/notification-settings', { method: 'PUT', body: JSON.stringify(body) }),
+  getDevices: () => apiFetch('/panel/devices'),
+  testPush: () => apiFetch('/panel/devices/test', { method: 'POST' }),
+  getNotificationLog: () => apiFetch('/panel/notifications/recent?limit=50'),
   toggleStop: (id, stop) => apiFetch(`/panel/dishes/${id}/stop`, { method: 'PATCH', body: JSON.stringify({ stop }) }),
   deleteDish: (id) => apiFetch(`/panel/dishes/${id}`, { method: 'DELETE' }),
 

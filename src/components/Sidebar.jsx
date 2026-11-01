@@ -95,6 +95,11 @@ const restaurantNav = [
     badge:"stopped"
   },
   {
+    to:"/notifications",
+    icon:"ti-bell-ringing",
+    label:"Bildirishnomalar",
+  },
+  {
     to:"/menu-transfer",
     icon:"ti-transfer",
     label:"Ko'chirish",
@@ -383,6 +388,7 @@ const PREFETCH = {
   '/menu': () => import('@/pages/restaurant/MenuPage'),
   '/dine-in': () => import('@/pages/restaurant/DineInPage'),
   '/stop-list': () => import('@/pages/restaurant/StopListPage'),
+  '/notifications': () => import('@/pages/restaurant/NotificationSettingsPage'),
   '/orders': () => import('@/pages/admin/OrdersMonitorPage'),
   '/restaurants': () => import('@/pages/admin/RestaurantsPage'),
 };
