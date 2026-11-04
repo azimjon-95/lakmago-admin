@@ -338,6 +338,10 @@ export const adminApi = {
 
   // Kuryerlar ro'yxati (2026-08)
   getCouriers: () => apiFetch('/admin/couriers'),
+  // Kuryer akkauntlari (mobil ilova, login/parol)
+  getCourierAccounts: () => apiFetch('/admin/courier-accounts'),
+  createCourierAccount: (data) => apiFetch('/admin/courier-accounts', { method: 'POST', body: JSON.stringify(data) }),
+  updateCourierAccount: (id, data) => apiFetch(`/admin/courier-accounts/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   createCourier: (data) => apiFetch('/admin/couriers', { method: 'POST', body: JSON.stringify(data) }),
   updateCourier: (id, data) => apiFetch(`/admin/couriers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteCourier: (id) => apiFetch(`/admin/couriers/${id}`, { method: 'DELETE' }),
