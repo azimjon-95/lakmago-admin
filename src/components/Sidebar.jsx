@@ -39,6 +39,7 @@ const adminNav = [
 
   // ── OPERATSIYALAR ──
   { group: "Operatsiyalar", to: "/couriers", icon: "ti-moped", label: "Kuryerlar", page: "couriers" },
+  { group: "Operatsiyalar", to: "/courier-accounts", icon: "ti-id-badge-2", label: "LokmaGo kuryerlari", page: "couriers" },
   { group: "Operatsiyalar", to: "/dine-in-admin", icon: "ti-armchair", label: "Dine-in", page: "dinein" },
   // Botga ulangan restoranlar va ularga xabar yuborish
   { group: "Operatsiyalar", to: "/bot", icon: "ti-brand-telegram", label: "Restoran botlari", page: "bot", adminOnly: true },

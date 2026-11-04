@@ -14,7 +14,8 @@ try {
   const { LokmaCourierBar } = await server.ssrLoadModule('/src/components/restaurant/LokmaCourierBar.jsx');
   const { RestaurantDeliverySection } = await server.ssrLoadModule('/src/pages/admin/RestaurantDeliverySection.jsx');
   const { DistrictPicker } = await server.ssrLoadModule('/src/components/delivery/DistrictPicker.jsx');
-  const { CouriersPage } = await server.ssrLoadModule('/src/pages/admin/CouriersPage.jsx');
+  const { CourierAccountsPage: CouriersPage } = await server.ssrLoadModule('/src/pages/admin/CourierAccountsPage.jsx');
+  const { CourierLiveMap } = await server.ssrLoadModule('/src/components/delivery/CourierLiveMap.jsx');
   const { useAuth } = await server.ssrLoadModule('/src/store/auth.js');
   /*
    * Zustand SSR'da (getServerSnapshot) BOSHLANG'ICH holatni o'qiydi — setState ko'rinmaydi. Testda rolni ikkalasiga yozamiz:
@@ -51,7 +52,7 @@ try {
   check('xodim: "faqat bosh admin" yozuvi, rejim tugmalari o‘chirilgan', html.includes('faqat bosh admin') && (html.match(/disabled=""/g) || []).length >= 3);
   setRole('admin');
   html = r(RestaurantDeliverySection, { restaurant: { ...rest, courierMode: 'own' } });
-  check('own rejimida tekin/foiz bloki ko‘rinmaydi', !html.includes('Tekin yetkazish'));
+  check('own rejimida tekin/foiz bloki ko‘rinmaydi, kuryer biriktirish bloki bor', !html.includes('Tekin yetkazish') && html.includes('data-testid="bound-couriers"') && html.includes('Biriktirilgan kuryerlar'));
 
   // ── Tuman tanlagich ──
   html = r(DistrictPicker, { multiple: true, value: ['pop', 'chust'], onChange() {} });
@@ -59,9 +60,10 @@ try {
 
   // ── Kuryerlar sahifasi ──
   html = r(CouriersPage, {});
-  check('kuryerlar sahifasi: admin uchun 3 bo‘lim (Sozlamalar bilan)', html.includes('Kuryerlar') && html.includes('Quti') && html.includes('Sozlamalar'));
+  check('kuryerlar sahifasi: admin uchun 5 bo‘lim (Jonli, Quti, Nazorat, Sozlamalar)', ['Kuryerlar', 'Jonli', 'Quti', 'Nazorat', 'Sozlamalar'].every((t) => html.includes(t)));
+  check('jonli xarita komponenti chiziladi (yuklanmoqda holati)', r(CourierLiveMap, { couriers: [], selectedId: null }).includes('courier-live-map'));
   setRole('staff');
-  check('xodim uchun "Sozlamalar" bo‘limi yo‘q', !r(CouriersPage, {}).includes('Sozlamalar'));
+  check('xodim uchun "Sozlamalar" bo‘limi yo‘q, Jonli va Nazorat bor', !r(CouriersPage, {}).includes('Sozlamalar') && r(CouriersPage, {}).includes('Jonli') && r(CouriersPage, {}).includes('Nazorat'));
 } finally {
   await server.close();
 }

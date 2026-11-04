@@ -20,6 +20,23 @@ export function RestaurantDeliverySection({ restaurant }) {
   const [globalPercent, setGlobalPercent] = useState(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState(null);
+  // Biriktirilgan kuryerlar: bo'sh emas bo'lsa FAQAT shular shu restoranning LokmaGo buyurtmalarini oladi
+  const [accounts, setAccounts] = useState([]);
+  const [bound, setBound] = useState((restaurant?.exclusiveCouriers || []).map(String));
+  const [bindMsg, setBindMsg] = useState(null);
+  const [binding, setBinding] = useState(false);
+  useEffect(() => {
+    adminApi.getCourierAccounts().then((r) => setAccounts((r.couriers || []).filter((c) => c.isActive))).catch(() => {});
+  }, []);
+  const toggleBound = (id) => setBound((b) => (b.includes(id) ? b.filter((x) => x !== id) : [...b, id]));
+  const saveBound = async () => {
+    setBinding(true); setBindMsg(null);
+    try {
+      await adminApi.setRestaurantCouriers(restaurant._id, bound);
+      setBindMsg({ type: 'ok', text: bound.length ? `Saqlandi. Endi bu restoran buyurtmalarini faqat ${bound.length} ta kuryer tashiydi.` : 'Saqlandi. Cheklov yo‘q — tumani mos hamma kuryer oladi.' });
+    } catch (e) { setBindMsg({ type: 'err', text: e?.status === 403 ? 'Kuryer biriktirish «kuryerlar» bo‘limi xodimlariga ruxsat etilgan' : (e?.message || 'Saqlanmadi') }); }
+    setBinding(false);
+  };
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -125,6 +142,34 @@ export function RestaurantDeliverySection({ restaurant }) {
         <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-brand-400 px-4 py-2 text-sm font-semibold text-brand-text disabled:opacity-60">
           {saving ? 'Saqlanmoqda…' : 'Saqlash'}
         </button>
+      </div>
+
+      {/* ═══ Biriktirilgan kuryerlar: shu restoranning taomini FAQAT ular tashiydi ═══ */}
+      <div className="mt-6 border-t border-line pt-5" data-testid="bound-couriers">
+        <div className="text-sm font-medium text-ink mb-1">Biriktirilgan kuryerlar</div>
+        <p className="text-[11px] text-muted mb-3">
+          Hech kim tanlanmasa — tumani mos hamma LokmaGo kuryeri oladi. Kimdir tanlansa — bu restoranning buyurtmalarini FAQAT shu kuryerlar ko‘radi va oladi
+          (ularning ish tumani qaerda bo‘lishidan qat‘i nazar).{mode === 'own' && ' Hozir restoran «O‘z kuryeri» rejimida — biriktirish LokmaGo kuryeri yoki «Ikkalasi» rejimida ishlaydi.'}
+        </p>
+        {accounts.length === 0 ? <div className="text-xs text-muted">Faol kuryer akkaunti yo‘q</div> : (
+          <div className="flex flex-wrap gap-1.5">
+            {accounts.map((c) => {
+              const on = bound.includes(c.id);
+              return (
+                <button key={c.id} type="button" onClick={() => toggleBound(c.id)} aria-pressed={on}
+                  className={`rounded-full border px-3 py-1 text-xs font-medium transition ${on ? 'border-brand-400 bg-brand-tint text-brand-600' : 'border-line bg-surface text-ink hover:bg-canvas'}`}>
+                  {on && <i className="ti ti-check mr-1" />}{c.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {bindMsg && <div className={`mt-3 text-sm rounded-xl px-4 py-2.5 ${bindMsg.type === 'ok' ? 'text-green-600 bg-green-50' : 'text-red-600 bg-red-50'}`}>{bindMsg.text}</div>}
+        <div className="mt-3 flex justify-end">
+          <button type="button" onClick={saveBound} disabled={binding} className="rounded-lg border border-brand-400 px-4 py-2 text-sm font-semibold text-brand-600 disabled:opacity-60">
+            {binding ? 'Saqlanmoqda…' : 'Kuryerlarni saqlash'}
+          </button>
+        </div>
       </div>
     </section>
   );
