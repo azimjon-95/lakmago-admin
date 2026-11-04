@@ -6,6 +6,7 @@ import { MapPicker } from '@/components/MapPicker';
 import { ImageUpload } from '@/components/ImageUpload';
 import { useTempValue } from '@/hooks/useTempFlag';
 import { RestaurantPayoutSection } from './RestaurantPayoutSection';
+import { RestaurantDeliverySection } from './RestaurantDeliverySection';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
@@ -30,6 +31,7 @@ export function RestaurantSettingsPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [form, setForm] = useState(null);
+  const [restaurant, setRestaurant] = useState(null);
   const [saving, setSaving] = useState(false);
   const payoutRef = useRef(null);
   const [mapOpen, setMapOpen] = useState(false);
@@ -39,6 +41,7 @@ export function RestaurantSettingsPage() {
     adminApi.getRestaurants()
       .then((list) => {
         const r = list.find((x) => x._id === id);
+        if (r) setRestaurant(r);
         if (r) {
           setForm({
             openTime: r.openTime || '09:00',
@@ -278,6 +281,9 @@ export function RestaurantSettingsPage() {
             </div>
           )}
         </section>
+
+        {/* ═══ HUDUD va KIM YETKAZADI — o'z saqlash tugmasi bilan (RestaurantDeliverySection.jsx) ═══ */}
+        {restaurant && <RestaurantDeliverySection restaurant={restaurant} />}
 
         {/*
           ═══ MOLIYA — TO'LOV REKVIZITI ═══

@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "test:catalog": "node --test tests/catalogGroups.test.mjs tests/coverSet.test.mjs tests/catalogTotals.test.mjs",
-    "test:incident-mode": "node --test tests/incidentMode.test.mjs"
+    "test:incident-mode": "node --test tests/incidentMode.test.mjs",
+    "test:delivery-ui": "node tests/deliveryUi.render.mjs"
   },
   "dependencies": {
     "@fontsource/inter-tight": "^5.3.0",

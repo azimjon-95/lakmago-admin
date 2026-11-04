@@ -9,6 +9,7 @@ import { resolveNotification } from '@/lib/notificationCenter';
 import { Img } from '@/components/Img';
 import { useTempFlag, useTempValue } from '@/hooks/useTempFlag';
 import { OrdersBillingTabs } from '@/components/restaurant/OrdersBillingTabs';
+import { LokmaCourierBar } from '@/components/restaurant/LokmaCourierBar';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -205,6 +206,16 @@ export function RestaurantOrdersPage() {
   // Kuryerga yuborish — modal ochiladi, haqiqiy yuborish shu
   // modal ichida (CourierDispatchModal)
   const [dispatchingOrder, setDispatchingOrder] = useState(null);
+  /*
+   * Yetkazish rejimi (LokmaGo admini belgilaydi): 'own' | 'lokma' | 'both'. Eski serverda endpoint yo'q (404) —
+   * unda hech narsa o'zgarmaydi (kartada qo'shimcha blok chiqmaydi).
+   */
+  const { data: courierCfg } = useQuery({
+    queryKey: ['panel-courier-settings'],
+    queryFn: () => panelApi.getCourierSettings(),
+    staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
   // "Mijoz rad etdi" oynasi
   const [refusing, setRefusing] = useState(null);
 
@@ -253,7 +264,7 @@ export function RestaurantOrdersPage() {
               </div>
             )}
             {active.map((o) => (
-              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onDispatch={setDispatchingOrder} onRefuse={setRefusing} />
+              <OrderCard key={o._id} order={o} flash={flashId === o._id} busy={busyIds.has(o._id)} onAdvance={advance} onCancel={cancel} onDispatch={setDispatchingOrder} onRefuse={setRefusing} courierMode={courierCfg?.courierMode} onReload={load} />
             ))}
           </div>
 
@@ -307,7 +318,9 @@ export function RestaurantOrdersPage() {
  * "To'lov qabul qilindi" tugmasi YO'Q: naqd to'lov buyurtma yakunlanganda server
  * tomonidan AVTOMATIK "to'langan" bo'ladi.
  */
-export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispatch, onRefuse }) {
+export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispatch, onRefuse, courierMode, onReload }) {
+  // LokmaGo kuryeri yetkazadi: «Kuryerga yuborish» va «Yo'lda» restoranda YO'Q — kuryer taomni olganda o'zi belgilaydi
+  const lokmaDelivers = o.fulfillment === 'delivery' && o.courierParty === 'lokma';
   const isCash = o.paymentMethod === 'cash';
   const needsCashConfirm = o.status === 'pending' && isCash;
   const customerPhone = o.phone || o.customer?.phone || '';
@@ -584,6 +597,9 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
         </div>
       )}
 
+      {/* Kim yetkazadi: LokmaGo kuryeri holati / 'both' rejimida tanlov */}
+      <LokmaCourierBar order={o} courierMode={courierMode} onChanged={onReload} />
+
       {/* Amal tugmalari */}
       {meta.next && (
         <div className="px-4 pb-4 flex gap-2">
@@ -597,7 +613,11 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
             Olib ketish (pickup) buyurtmalarida kuryer kerak emas —
             ular eski, oddiy tugma bilan davom etadi.
           */}
-          {o.status === 'ready' && o.fulfillment === 'delivery' ? (
+          {o.status === 'ready' && lokmaDelivers ? (
+            <div className="min-w-0 flex-1 truncate rounded-xl bg-canvas py-3 text-center text-sm font-semibold text-muted">
+              {o.lokmaCourier?.assigned ? '🛵 Kuryer keladi — taomni bering' : '🔎 LokmaGo kuryeri kutilmoqda'}
+            </div>
+          ) : o.status === 'ready' && o.fulfillment === 'delivery' ? (
             <button
               onClick={() => onDispatch(o)}
               disabled={busy}
@@ -680,7 +700,7 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
             </div>
           ) : (
             <div className="text-center text-sm text-purple-600 bg-purple-50 py-2.5 rounded-lg">
-              🛵 {o.courierName} yo'lda — mijoz qabul qilishini kuting
+              🛵 {(lokmaDelivers ? o.lokmaCourier?.name : o.courierName) || 'Kuryer'} yo'lda — mijoz qabul qilishini kuting
             </div>
           )}
         </div>

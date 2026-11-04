@@ -1,5 +1,5 @@
 import { io } from 'socket.io-client';
-import { SOCKET_URL } from '@/api/client';
+import { SOCKET_URL, getToken } from '@/api/client';
 
 // Butun panel uchun BITTA socket ulanishi.
 let socket = null;
@@ -8,6 +8,11 @@ const rooms = new Set();
 export function getSocket() {
   if (!socket) {
     socket = io(SOCKET_URL, {
+      /*
+       * XAVFSIZLIK: server admin/restoran xonasiga FAQAT token bilan qo'shadi (sockets/panelSocketAuth.js).
+       * Funksiya shaklida — har (qayta) ulanishda JORIY token olinadi (qayta login, token yangilanishi).
+       */
+      auth: (cb) => cb(getToken() ? { token: getToken() } : {}),
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionDelay: 1000,

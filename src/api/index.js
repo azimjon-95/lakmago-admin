@@ -18,6 +18,9 @@ export const panelApi = {
   // Kuryer tizimi (2026-08, BOSQICH 1 — ulashish orqali)
   createDeliveryLink: (orderId) => apiFetch(`/panel/orders/${orderId}/create-delivery-link`, { method: 'POST' }),
   getDispatchStatus: (orderId) => apiFetch(`/panel/orders/${orderId}/dispatch-status`),
+  // Yetkazish rejimi (LokmaGo belgilaydi) va 'both' rejimida buyurtma bo'yicha tanlov
+  getCourierSettings: () => apiFetch('/panel/courier-settings'),
+  setCourierParty: (orderId, party) => apiFetch(`/panel/orders/${orderId}/courier-party`, { method: 'POST', body: JSON.stringify({ party }) }),
   setDeliveryMarkup: (percent) => apiFetch('/panel/delivery-markup', {
     method: 'PATCH', body: JSON.stringify({ deliveryMarkupPercent: percent }),
   }),
@@ -345,6 +348,25 @@ export const adminApi = {
   createCourier: (data) => apiFetch('/admin/couriers', { method: 'POST', body: JSON.stringify(data) }),
   updateCourier: (id, data) => apiFetch(`/admin/couriers/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteCourier: (id) => apiFetch(`/admin/couriers/${id}`, { method: 'DELETE' }),
+
+  // LokmaGo kuryerlari va yetkazish rejimi (2026-11) — server: controllers/delivery.js
+  getDistricts: () => apiFetch('/districts'),
+  getCourierLedger: (id) => apiFetch(`/admin/courier-accounts/${id}/ledger`),
+  addCourierLedger: (id, data) => apiFetch(`/admin/courier-accounts/${id}/ledger`, { method: 'POST', body: JSON.stringify(data) }),
+  getCourierPool: (district) => apiFetch(`/admin/courier-pool${district ? `?district=${encodeURIComponent(district)}` : ''}`),
+  assignCourier: (orderId, courierId) => apiFetch(`/admin/orders/${orderId}/courier-assign`, { method: 'POST', body: JSON.stringify({ courierId }) }),
+  releaseCourier: (orderId) => apiFetch(`/admin/orders/${orderId}/courier-release`, { method: 'POST' }),
+  // Nazorat: jonli joylashuv, kuryer yo'li, buyurtma izi, shubhali voqealar; restoranga kuryer biriktirish
+  getCourierLive: () => apiFetch('/admin/courier-accounts/live'),
+  getCourierTrack: (id, from, to) => apiFetch(`/admin/courier-accounts/${id}/track?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  getCourierTrace: (orderId) => apiFetch(`/admin/orders/${orderId}/courier-trace`),
+  getCourierEvents: () => apiFetch('/admin/courier-events'),
+  setRestaurantCouriers: (restaurantId, courierIds) => apiFetch(`/admin/restaurants/${restaurantId}/couriers`, { method: 'PUT', body: JSON.stringify({ courierIds }) }),
+  getCourierSettings: () => apiFetch('/admin/courier-settings'),
+  updateCourierSettings: (data) => apiFetch('/admin/courier-settings', { method: 'PATCH', body: JSON.stringify(data) }),
+  // Rejim, tekin yetkazish, foiz — FAQAT bosh admin; tuman — restoranlar bo'limi xodimi ham
+  updateRestaurantCourierSettings: (id, data) => apiFetch(`/admin/restaurants/${id}/courier-settings`, { method: 'PATCH', body: JSON.stringify(data) }),
+  updateRestaurantDistrict: (id, district) => apiFetch(`/admin/restaurants/${id}/district`, { method: 'PATCH', body: JSON.stringify({ district }) }),
 
   // Reklama (banner) so'rovlari — tasdiqlash/rad etish
   getAllAds: (status) => apiFetch(`/admin/ads${status ? `?status=${status}` : ''}`),
