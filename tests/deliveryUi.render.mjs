@@ -64,6 +64,14 @@ try {
   check('jonli xarita komponenti chiziladi (yuklanmoqda holati)', r(CourierLiveMap, { couriers: [], selectedId: null }).includes('courier-live-map'));
   setRole('staff');
   check('xodim uchun "Sozlamalar" bo‘limi yo‘q, Jonli va Nazorat bor', !r(CouriersPage, {}).includes('Sozlamalar') && r(CouriersPage, {}).includes('Jonli') && r(CouriersPage, {}).includes('Nazorat'));
+  // ── Eski «Kuryerlar» (Telegram reyestri) butunlay o'chirilgan: ikkita menyu elementi yo'q ──
+  const fs = await import('node:fs');
+  check('eski CouriersPage.jsx fayli yo‘q', !fs.existsSync('src/pages/admin/CouriersPage.jsx'));
+  const side = fs.readFileSync('src/components/Sidebar.jsx', 'utf8');
+  check('menyuda faqat bitta kuryer bandi («LokmaGo kuryerlari»)', (side.match(/to: "\/courier[-\w]*"/g) || []).length === 1 && side.includes('LokmaGo kuryerlari') && !side.includes('label: "Kuryerlar"'));
+  const api = fs.readFileSync('src/api/index.js', 'utf8');
+  check('eski reyestr API chaqiruvlari yo‘q', !/getCouriers|createCourier\b|updateCourier\b|deleteCourier/.test(api) && !api.includes("'/admin/couriers'"));
+  check('eski /couriers manzili yangi sahifaga yo‘naltiriladi', /path="\/couriers" element=\{<Navigate to="\/courier-accounts"/.test(fs.readFileSync('src/App.jsx', 'utf8')));
 } finally {
   await server.close();
 }

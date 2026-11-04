@@ -47,7 +47,6 @@ const BillingPage = lazy(() => import('@/pages/admin/BillingPage').then((m) => (
 const BotBroadcastPage = lazy(() => import('@/pages/admin/BotBroadcastPage').then((m) => ({ default: m.BotBroadcastPage })));
 const StaffPage = lazy(() => import('@/pages/admin/StaffPage').then((m) => ({ default: m.StaffPage })));
 const CourierAccountsPage = lazy(() => import('@/pages/admin/CourierAccountsPage').then((m) => ({ default: m.CourierAccountsPage })));
-const CouriersPage = lazy(() => import('@/pages/admin/CouriersPage').then((m) => ({ default: m.CouriersPage })));
 const CatalogPage = lazy(() => import('@/pages/admin/CatalogPage').then((m) => ({ default: m.CatalogPage })));
 const PromoAdminPage = lazy(() => import('@/pages/admin/PromoAdminPage').then((m) => ({ default: m.PromoAdminPage })));
 const DineInAdminPage = lazy(() => import('@/pages/admin/DineInAdminPage').then((m) => ({ default: m.DineInAdminPage })));
@@ -185,7 +184,8 @@ function AdminRoutes() {
         <Route path="/billing" element={<Guarded page="billing"><BillingPage /></Guarded>} />
         <Route path="/bot" element={<Guarded page="bot"><BotBroadcastPage /></Guarded>} />
         <Route path="/staff" element={<Guarded page="staff"><StaffPage /></Guarded>} />
-        <Route path="/couriers" element={<Guarded page="couriers"><CouriersPage /></Guarded>} />
+        {/* Eski «Kuryerlar» (Telegram reyestri) o'chirildi; eski havola yangi sahifaga yo'naltiriladi */}
+        <Route path="/couriers" element={<Navigate to="/courier-accounts" replace />} />
         <Route path="/courier-accounts" element={<Guarded page="couriers"><CourierAccountsPage /></Guarded>} />
         <Route path="/catalog" element={<Guarded page="catalog"><CatalogPage /></Guarded>} />
         <Route path="/promo-admin" element={<Guarded page="marketing"><PromoAdminPage /></Guarded>} />

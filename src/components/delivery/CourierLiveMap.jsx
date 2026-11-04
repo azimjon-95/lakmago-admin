@@ -10,7 +10,7 @@ import { loadYmaps } from './ymaps';
 const COLOR = { ok: '#16a34a', stale: '#d97706', none: '#dc2626' };
 const CENTER = [40.9983, 71.6726];        // Namangan
 
-export function CourierLiveMap({ couriers, selectedId, onSelect, track }) {
+export function CourierLiveMap({ couriers, selectedId, onSelect, track, className = 'h-[420px]' }) {
   const boxRef = useRef(null);
   const mapRef = useRef(null);
   const layerRef = useRef(null);
@@ -74,7 +74,7 @@ export function CourierLiveMap({ couriers, selectedId, onSelect, track }) {
   }, [couriers, selectedId, track, state.loading]);
 
   return (
-    <div className="relative h-[420px] w-full overflow-hidden rounded-xl border border-line bg-canvas" data-testid="courier-live-map">
+    <div className={`relative w-full overflow-hidden rounded-2xl border border-line bg-canvas ${className}`} data-testid="courier-live-map">
       <div ref={boxRef} className="h-full w-full" />
       {state.loading && <div className="absolute inset-0 flex items-center justify-center text-sm text-muted">Xarita yuklanmoqda…</div>}
       {state.error && <div className="absolute inset-0 flex items-center justify-center px-6 text-center text-sm text-red-600">{state.error}</div>}

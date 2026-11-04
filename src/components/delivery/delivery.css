@@ -1,0 +1,39 @@
+/* LokmaGo kuryerlari sahifasi — mobil birinchi (ui.jsx). Faqat shu sahifadagi komponentlar ishlatadi. */
+@keyframes cs-sheet-up { from { transform: translateY(100%); } to { transform: translateY(0); } }
+@keyframes cs-pop { from { transform: scale(0.96); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+@keyframes cs-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cs-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes cs-shimmer { 0% { background-position: -300px 0; } 100% { background-position: 300px 0; } }
+
+.cs-backdrop { animation: cs-fade 0.2s ease-out; }
+.cs-sheet { animation: cs-sheet-up 0.3s cubic-bezier(0.22, 1, 0.36, 1); will-change: transform; }
+@media (min-width: 640px) { .cs-sheet { animation: cs-pop 0.2s ease-out; } }
+.cs-live-dot { animation: cs-pulse 2s ease-in-out infinite; }
+.cs-skeleton {
+  background: linear-gradient(90deg, #efece4 0%, #f8f6f1 50%, #efece4 100%);
+  background-size: 600px 100%; animation: cs-shimmer 1.4s linear infinite; border-radius: 12px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-backdrop, .cs-sheet, .cs-live-dot, .cs-skeleton { animation: none; }
+}
+
+/* Teginish: bosilganda yumshoq "cho'kish"; hover faqat sichqonchali qurilmalarda (telefonda yopishib qolmasin) */
+.cs-tap { transition: transform 0.12s ease, background-color 0.15s ease, opacity 0.15s ease; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+.cs-tap:active { transform: scale(0.97); }
+@media (hover: hover) { .cs-tap.cs-hover:hover { background-color: #f1eee6; } }
+.cs-tap:focus-visible, .cs-input:focus-visible { outline: 2px solid #ef9f27; outline-offset: 2px; }
+
+/* Maydon: 16px (iOS yaqinlashtirmasin), 48px balandlik (barmoq uchun) */
+.cs-input {
+  width: 100%; min-height: 48px; padding: 10px 14px; font-size: 16px; line-height: 1.3; color: #1a1a17;
+  background: #f7f5f0; border: 1.5px solid transparent; border-radius: 14px; transition: border-color 0.15s, background-color 0.15s;
+}
+.cs-input.cs-on-canvas { background: #fff; border-color: #eae7df; }   /* sahifa foni (canvas) ustida: oq fon + chiziq, aks holda ko'rinmaydi */
+.cs-input.cs-on-canvas:focus { border-color: #ef9f27; }
+.cs-input::placeholder { color: #9a988f; }
+.cs-input:focus { background: #fff; border-color: #ef9f27; outline: none; }
+.cs-input[aria-invalid="true"] { border-color: #ef4444; background: #fff5f5; }
+
+/* Suzuvchi "+" tugma pastki menyudan yuqorida (menyu balandligi 72px + safe-area) */
+.cs-fab { bottom: calc(84px + env(safe-area-inset-bottom, 0px)); }
+@media (min-width: 1024px) { .cs-fab { bottom: 32px; } }
