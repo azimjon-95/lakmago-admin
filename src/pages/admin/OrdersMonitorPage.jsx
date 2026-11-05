@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { fmtMeters } from '@/lib/distance';
 import { adminApi } from '@/api';
 import { getSocket, joinAdmin } from '@/lib/socket';
 
@@ -126,6 +127,11 @@ export function OrdersMonitorPage() {
                   <div className="text-right">
                     <div className="font-semibold text-ink">{som(total)} so'm</div>
                     <div className="text-[11px] text-muted">{first.address}</div>
+                    {first.deviceCheck?.status === 'far' && (
+                      <div className={`text-[11px] font-semibold ${first.deviceCheck.confirmedFar ? 'text-muted' : 'text-red-600'}`} data-testid="monitor-device-far">
+                        <i className="ti ti-alert-triangle" /> mijoz {fmtMeters(first.deviceCheck.distanceM)} uzoqda{first.deviceCheck.confirmedFar ? ' (o‘zi tasdiqlagan)' : ''}
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -29,6 +29,7 @@ try {
   // ── Buyurtma kartasi: kim yetkazadi ──
   check('o‘z kuryeri (own) — blok chiqmaydi', r(LokmaCourierBar, { order: { ...base, courierParty: 'restaurant' }, courierMode: 'own' }) === '');
   check('olib ketish — blok chiqmaydi', r(LokmaCourierBar, { order: { ...base, fulfillment: 'pickup', courierParty: 'lokma' }, courierMode: 'lokma' }) === '');
+  const fs0 = await import('node:fs');
   let html = r(LokmaCourierBar, { order: { ...base, courierParty: 'lokma', lokmaCourier: { assigned: false } }, courierMode: 'lokma' });
   check('lokma, qutida — "kuryer qidirilmoqda", tanlov YO‘Q', html.includes('qidirilmoqda') && !html.includes('O‘zim yetkazaman'));
   html = r(LokmaCourierBar, { order: { ...base, courierParty: 'lokma', lokmaCourier: { assigned: true, name: 'Vali', phone: '+998901234567' } }, courierMode: 'both' });
@@ -64,6 +65,19 @@ try {
   check('jonli xarita komponenti chiziladi (yuklanmoqda holati)', r(CourierLiveMap, { couriers: [], selectedId: null }).includes('courier-live-map'));
   setRole('staff');
   check('xodim uchun "Sozlamalar" bo‘limi yo‘q, Jonli va Nazorat bor', !r(CouriersPage, {}).includes('Sozlamalar') && r(CouriersPage, {}).includes('Jonli') && r(CouriersPage, {}).includes('Nazorat'));
+  // ── «Mijoz manzildan uzoqda» ogohlantirishi (restoran buyurtma kartasi) ──
+  const { DeviceFarNote } = await server.ssrLoadModule('/src/components/restaurant/DeviceFarNote.jsx');
+  const { fmtMeters } = await server.ssrLoadModule('/src/lib/distance.js');
+  const o0 = { status: 'accepted', fulfillment: 'delivery', phone: '+998901234567', deviceCheck: { status: 'far', distanceM: 8200, confirmedFar: false } };
+  html = r(DeviceFarNote, { order: o0 });
+  check('uzoq (tasdiqlanmagan): qizil ogohlantirish, masofa, qo‘ng‘iroq tugmasi', html.includes('data-testid="device-far"') && html.includes('8,2 km') && html.includes('tel:+998901234567') && html.includes('Pishirishdan oldin'));
+  html = r(DeviceFarNote, { order: { ...o0, deviceCheck: { status: 'far', distanceM: 8200, confirmedFar: true } } });
+  check('mijoz o‘zi tasdiqlagan: xotirjam eslatma (qo‘ng‘iroq talab qilinmaydi)', html.includes('data-testid="device-far-confirmed"') && !html.includes('tel:') && html.includes('o‘zi tasdiqlagan'));
+  check('olib ketish / yakunlangan / boshqa holat: ko‘rinmaydi', [{ ...o0, fulfillment: 'pickup' }, { ...o0, status: 'delivered' }, { ...o0, deviceCheck: { status: 'near', distanceM: 300 } }, { ...o0, deviceCheck: { status: 'unknown' } }, { ...o0, deviceCheck: undefined }].every((x) => r(DeviceFarNote, { order: x }) === ''));
+  check('masofa formati', fmtMeters(8200) === '8,2 km' && fmtMeters(640) === '640 m' && fmtMeters(NaN) === '');
+  const mon = fs0.readFileSync('src/pages/admin/OrdersMonitorPage.jsx', 'utf8');
+  check('admin monitor: uzoq mijoz belgisi bor', mon.includes('monitor-device-far') && mon.includes("first.deviceCheck?.status === 'far'"));
+
   // ── Eski «Kuryerlar» (Telegram reyestri) butunlay o'chirilgan: ikkita menyu elementi yo'q ──
   const fs = await import('node:fs');
   check('eski CouriersPage.jsx fayli yo‘q', !fs.existsSync('src/pages/admin/CouriersPage.jsx'));
