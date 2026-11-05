@@ -10,6 +10,7 @@ import { Img } from '@/components/Img';
 import { useTempFlag, useTempValue } from '@/hooks/useTempFlag';
 import { OrdersBillingTabs } from '@/components/restaurant/OrdersBillingTabs';
 import { LokmaCourierBar } from '@/components/restaurant/LokmaCourierBar';
+import { DeviceFarNote } from '@/components/restaurant/DeviceFarNote';
 
 const som = (n) => (n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
 
@@ -573,6 +574,9 @@ export function OrderCard({ order: o, flash, busy, onAdvance, onCancel, onDispat
           )}
         </div>
       </div>
+
+            {/* Mijoz manzildan uzoqda (≥500 m) — pishirishdan oldin aniqlash */}
+      <DeviceFarNote order={o} />
 
             {/* NAQD: mijoz bilan tasdiqlash ogohlantirishi — aynan "Qabul qildim" tepasida */}
       {needsCashConfirm && (
