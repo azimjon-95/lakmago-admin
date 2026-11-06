@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { validateVideo, formatMB, MAX_VIDEO_BYTES } from '@/lib/adVideo';
+import { validateVideo, formatMB, MAX_VIDEO_BYTES, readVideoMeta, aspectLabel } from '@/lib/adVideo';
 
 /*
  * Reklama uchun video tanlash. Fayl YUKLANMAYDI — faqat tanlanadi va
@@ -12,6 +12,8 @@ export function VideoPicker({ value, onChange, disabled = false, label = 'Video 
   const inputRef = useRef(null);
   const [err, setErr] = useState('');
   const [previewUrl, setPreviewUrl] = useState('');
+  const [meta, setMeta] = useState(null);
+  useEffect(() => { let on = true; setMeta(null); readVideoMeta(value).then((m) => { if (on) setMeta(m); }); return () => { on = false; }; }, [value]);
 
   // Ko'rish uchun vaqtinchalik havola — almashganda/yopilganda bo'shatiladi
   useEffect(() => {
@@ -46,18 +48,22 @@ export function VideoPicker({ value, onChange, disabled = false, label = 'Video 
 
       {value ? (
         <div className="rounded-xl border border-line overflow-hidden bg-canvas">
-          <video
-            src={previewUrl}
-            controls
-            muted
-            playsInline
-            preload="metadata"
-            className="w-full bg-black"
-            style={{ maxHeight: 220 }}
-          />
+          {/* O'Z NISBATIDA: vertikal (reels 9:16) video tor va baland, gorizontal — keng; majburan cho'zilmaydi */}
+          <div className="flex justify-center bg-black">
+            <video
+              src={previewUrl}
+              controls
+              muted
+              playsInline
+              preload="metadata"
+              className="block bg-black"
+              style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: 'min(52vh, 420px)' }}
+              data-testid="video-preview"
+            />
+          </div>
           <div className="flex items-center justify-between gap-3 px-3 py-2 text-xs">
             <span className="min-w-0 truncate text-ink" title={value.name}>
-              <i className="ti ti-video mr-1.5 text-muted" />{value.name} · {formatMB(value.size)}
+              <i className="ti ti-video mr-1.5 text-muted" />{formatMB(value.size)}{meta ? ` · ${meta.width}×${meta.height} · ${aspectLabel(meta)}` : ''}
             </span>
             <span className="flex flex-none gap-3">
               <button type="button" onClick={pick} disabled={disabled} className="text-brand-600 hover:underline disabled:opacity-40">Almashtirish</button>
