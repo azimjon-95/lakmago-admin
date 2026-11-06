@@ -46,6 +46,8 @@ export function BroadcastComposer({ target, onClose, onSent }) {
       buttonText: buttonText.trim(),
       buttonUrl: buttonUrl.trim(),
       pin,
+      // Tanlangan chatlar (GroupsPage → «Reklama yuborish» tanlovi). Bo'lmasa — reklamasi yoqilgan hamma chat
+      ...(target.all && Array.isArray(target.chatIds) ? { chatIds: target.chatIds } : {}),
     };
     // Tugma matni bor lekin URL yo'q bo'lsa — tugmani yubormaymiz
     if (payload.buttonText && !payload.buttonUrl) { payload.buttonText = ''; }
@@ -77,7 +79,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
         setStage('telegram');
         setProgress(1);
         if (uploadId) {
-          const body = { text: payload.text, buttonText: payload.buttonText, buttonUrl: payload.buttonUrl, pin, uploadId };
+          const body = { text: payload.text, buttonText: payload.buttonText, buttonUrl: payload.buttonUrl, pin, uploadId, ...(payload.chatIds ? { chatIds: payload.chatIds } : {}) };
           try {
             r = target.all
               ? await adminApi.broadcastVideoToAll(body)
@@ -93,6 +95,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
           form.append('buttonText', payload.buttonText);
           form.append('buttonUrl', payload.buttonUrl);
           form.append('pin', String(pin));
+          if (payload.chatIds) form.append('chatIds', JSON.stringify(payload.chatIds));
           form.append('video', activeVideo, activeVideo.name);
           setStage('upload');
           const opts = { onProgress: setProgress };
@@ -107,7 +110,9 @@ export function BroadcastComposer({ target, onClose, onSent }) {
       }
       if (target.all) {
         const why = r.failures?.length ? `\n${r.failures.map((f) => `• ${f.title || f.chatId}: ${f.error}`).join('\n')}` : '';
-        alert(`Yuborildi: ${r.sent}/${r.total} guruh${r.failed ? `, ${r.failed} xato` : ''}${why}`);
+        const REASON = { ads_disabled: 'reklama o‘chirilgan', not_admin: 'bot admin emas', inactive: 'faol emas' };
+        const skip = r.skipped?.length ? `\nO‘tkazib yuborildi: ${r.skipped.map((x) => `${x.title || x.chatId} (${REASON[x.reason] || x.reason})`).join(', ')}` : '';
+        alert(`Yuborildi: ${r.sent}/${r.total} chat${r.failed ? `, ${r.failed} xato` : ''}${why}${skip}`);
       }
       onSent?.();
       onClose();
@@ -136,7 +141,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
           <div>
             <h3 className="text-lg font-semibold text-ink">Reklama yuborish</h3>
             <p className="text-xs text-muted mt-0.5">
-              {target.all ? 'Barcha faol guruhlarga' : `Guruh: ${target.title || target.chatId}`}
+              {target.all ? (Array.isArray(target.chatIds) ? `${target.chatIds.length} ta tanlangan chatga` : 'Reklamasi yoqilgan barcha chatlarga') : `Guruh: ${target.title || target.chatId}`}
             </p>
           </div>
           <button onClick={onClose} disabled={sending} className="text-muted hover:text-ink disabled:opacity-40" aria-label="Yopish"><i className="ti ti-x text-xl" /></button>
