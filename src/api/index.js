@@ -407,6 +407,10 @@ export const adminApi = {
   addGroup: (chatId) => apiFetch('/admin/groups/add', { method: 'POST', body: JSON.stringify({ chatId }) }),
   resendGroupPromo: (chatId) => apiFetch(`/admin/groups/${chatId}/resend`, { method: 'POST' }),
   runGroupCheck: () => apiFetch('/admin/groups/check', { method: 'POST' }),
+  // Restoran guruhi/kanali: restoran biriktirish (null — ajratish), pinni yangilash, umumiy reklamani yoqish/o'chirish
+  setGroupRestaurant: (chatId, restaurantId) => apiFetch(`/admin/groups/${chatId}/restaurant`, { method: 'PUT', body: JSON.stringify({ restaurantId }) }),
+  repinGroupRestaurant: (chatId) => apiFetch(`/admin/groups/${chatId}/restaurant/repin`, { method: 'POST' }),
+  setGroupAds: (chatId, adsEnabled) => apiFetch(`/admin/groups/${chatId}/ads`, { method: 'PATCH', body: JSON.stringify({ adsEnabled }) }),
   // Moslashuvchan reklama (rasm/matn/tugma)
   broadcastToGroup: (chatId, data) => apiFetch(`/admin/groups/${chatId}/broadcast`, { method: 'POST', body: JSON.stringify(data) }),
   broadcastToAll: (data) => apiFetch('/admin/groups/broadcast-all', { method: 'POST', body: JSON.stringify(data) }),
