@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { adminApi } from '@/api';
 import { ImageUpload } from '@/components/ImageUpload';
 import { VideoPicker } from '@/components/VideoPicker';
-import { validateVideo, videoTypeOf } from '@/lib/adVideo';
+import { validateVideo, videoTypeOf, readVideoMeta, videoMetaFields } from '@/lib/adVideo';
 import { useLockScroll } from '@/hooks/useLockScroll';
 import { Img } from '@/components/Img';
 
@@ -31,6 +31,9 @@ export function BroadcastComposer({ target, onClose, onSent }) {
 
   const activeImage = mediaKind === 'image' ? imageUrl : '';
   const activeVideo = mediaKind === 'video' ? videoFile : null;
+  // Videoning ko'rinadigan o'lchami → serverga → Telegram (bo'lmasa guruhda ezilgan ko'rinadi)
+  const [videoMeta, setVideoMeta] = useState(null);
+  useEffect(() => { let on = true; setVideoMeta(null); readVideoMeta(activeVideo).then((m) => { if (on) setVideoMeta(m); }); return () => { on = false; }; }, [activeVideo]);
   const canSend = Boolean(text.trim() || activeImage || activeVideo) && !sending;
 
   const send = async () => {
@@ -79,7 +82,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
         setStage('telegram');
         setProgress(1);
         if (uploadId) {
-          const body = { text: payload.text, buttonText: payload.buttonText, buttonUrl: payload.buttonUrl, pin, uploadId, ...(payload.chatIds ? { chatIds: payload.chatIds } : {}) };
+          const body = { text: payload.text, buttonText: payload.buttonText, buttonUrl: payload.buttonUrl, pin, uploadId, ...videoMetaFields(videoMeta), ...(payload.chatIds ? { chatIds: payload.chatIds } : {}) };
           try {
             r = target.all
               ? await adminApi.broadcastVideoToAll(body)
@@ -96,6 +99,7 @@ export function BroadcastComposer({ target, onClose, onSent }) {
           form.append('buttonUrl', payload.buttonUrl);
           form.append('pin', String(pin));
           if (payload.chatIds) form.append('chatIds', JSON.stringify(payload.chatIds));
+          for (const [k, v] of Object.entries(videoMetaFields(videoMeta))) form.append(k, String(v));
           form.append('video', activeVideo, activeVideo.name);
           setStage('upload');
           const opts = { onProgress: setProgress };
@@ -284,5 +288,6 @@ function VideoPreview({ file }) {
     setUrl(u);
     return () => URL.revokeObjectURL(u);
   }, [file]);
-  return <video src={url} muted playsInline preload="metadata" controls className="w-full bg-black" style={{ maxHeight: 180 }} />;
+  // Telegram'dagidek: video o'z nisbatida (vertikal reels tor va baland), majburan cho'zilmaydi
+  return <div className="flex justify-center bg-black"><video src={url} muted playsInline preload="metadata" controls className="block bg-black" style={{ width: 'auto', height: 'auto', maxWidth: '100%', maxHeight: 360 }} /></div>;
 }
