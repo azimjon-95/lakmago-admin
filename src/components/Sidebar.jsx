@@ -36,6 +36,7 @@ const adminNav = [
   { group: "Marketing & kontent", to: "/gift-bonuses", icon: "ti-gift", label: "Sovg‘a-bonuslar", page: "banners" },
   { group: "Marketing & kontent", to: "/promo-admin", icon: "ti-speakerphone", label: "Mijoz jalb qilish", page: "marketing" },
   { group: "Marketing & kontent", to: "/catalog", icon: "ti-package", label: "Katalog", page: "catalog" },
+  { group: "Marketing & kontent", to: "/market-categories", icon: "ti-category", label: "Market kategoriyalari", page: "market-categories" },
 
   // ── OPERATSIYALAR ──
   { group: "Operatsiyalar", to: "/courier-accounts", icon: "ti-moped", label: "LokmaGo kuryerlari", page: "couriers" },

@@ -35,6 +35,11 @@ export const panelApi = {
   getProfile: () => apiFetch('/panel/me'),
   // Lokma Market — do'kon mahsulot kategoriyalari (server: constants/marketCategories.js)
   getMarketCategories: () => apiFetch('/market/categories'),
+  // Markaziy market kategoriyalari (admin boshqaradi)
+  getMarketCategoryList: () => apiFetch('/admin/market-categories'),
+  createMarketCategory: (data) => apiFetch('/admin/market-categories', { method: 'POST', body: JSON.stringify(data) }),
+  updateMarketCategory: (key, data) => apiFetch(`/admin/market-categories/${encodeURIComponent(key)}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteMarketCategory: (key) => apiFetch(`/admin/market-categories/${encodeURIComponent(key)}`, { method: 'DELETE' }),
   // Do'kon uchun unikal shtrix-kod (hech narsa saqlanmaydi)
   generateBarcode: () => apiFetch('/panel/barcode', { method: 'POST' }),
   // Dine-in

@@ -140,8 +140,11 @@ export function StoreCatalogPicker({ meta, onClose, onAdded }) {
 
 function AddForm({ product, meta, onBack, onAdded }) {
   const sug = product.market || {};
+  // Katalog kaliti: katalogdan kelgan kategoriya markaziy ro'yxatda bo'lsa — shu, aks holda bo'sh (tanlanadi)
+  const catalogList = (meta.catalogCategories || []).map((c) => ({ value: c.key, label: c.uz, emoji: c.emoji || '🛒' }));
+  const suggested = catalogList.some((c) => c.value === product.category) ? product.category : '';
   const [f, setF] = useState({
-    marketCategory: sug.marketCategory || 'boshqa',
+    catalogCategory: suggested,
     unit: sug.unit || 'dona',
     price: product.suggestedPrice || null,
     oldPrice: null,
@@ -152,9 +155,6 @@ function AddForm({ product, meta, onBack, onAdded }) {
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
-  const catByGroup = useMemo(() => meta.groups.map((g) => ({
-    ...g, items: meta.categories.filter((c) => c.group === g.value),
-  })).filter((g) => g.items.length), [meta]);
   const unitLabel = meta.units.find((u) => u.value === f.unit)?.label || f.unit;
 
   const add = async () => {
@@ -166,7 +166,7 @@ function AddForm({ product, meta, onBack, onAdded }) {
       await panelApi.addFromCatalog(product._id, {
         price: Number(f.price),
         ...(f.oldPrice > 0 ? { oldPrice: Number(f.oldPrice) } : {}),
-        marketCategory: f.marketCategory,
+        catalogCategory: f.catalogCategory,
         unit: f.unit,
         packSize: f.packSize.trim(),
         barcode: f.barcode.trim(),
@@ -192,13 +192,10 @@ function AddForm({ product, meta, onBack, onAdded }) {
         </div>
       </div>
 
-      <Field label="Market kategoriyasi" hint="Katalogdan avtomatik tanlandi — kerak bo'lsa o'zgartiring">
-        <select value={f.marketCategory} onChange={(e) => set('marketCategory', e.target.value)} className="inp">
-          {catByGroup.map((g) => (
-            <optgroup key={g.value} label={g.label}>
-              {g.items.map((c) => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
-            </optgroup>
-          ))}
+      <Field label="Market kategoriyasi *" hint="Markaziy ro'yxatdan tanlang (Market kategoriyalari sahifasi)">
+        <select value={f.catalogCategory} onChange={(e) => set('catalogCategory', e.target.value)} className="inp">
+          <option value="">— tanlang —</option>
+          {catalogList.map((c) => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
         </select>
       </Field>
 
