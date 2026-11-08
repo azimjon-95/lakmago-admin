@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { adminApi } from '@/api';
 import { confirm } from '@/components/ui/confirm';
+import { slugifyKey } from '@/lib/marketKey';
+import { makeRoundImage } from '@/lib/roundImage';
+import { uploadImage } from '@/lib/cloudinary';
 
 /*
  * ═══ MARKET KATEGORIYALARI — MARKAZIY RO'YXAT ═══
@@ -9,7 +12,38 @@ import { confirm } from '@/components/ui/confirm';
  * Kalit (ID) yaratilgandan keyin o'zgarmaydi. Ishlatilayotgan kategoriyani o'chirib bo'lmaydi — nofaol qiling.
  */
 const KEY_RE = /^[a-z0-9_]{2,60}$/;
-const empty = { key: '', nameUz: '', nameUzc: '', nameRu: '', emoji: '🛒', imageUrl: '', order: '', isActive: true };
+const empty = { key: '', nameUz: '', nameUzc: '', nameRu: '', emoji: '🛒', imageUrl: '', cardUrl: '', description: '', order: '', isActive: true };
+
+// Yumaloq rasm yuklovchi: tanlash → doiraga kesish → Cloudinary (market-categories papkasi)
+function RoundUpload({ label, value, busy, onBusy, onChange, onError }) {
+  const pick = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    onBusy(true);
+    try {
+      const round = await makeRoundImage(file, 512);
+      const up = await uploadImage(round, 'market-categories');
+      onChange(up.url);
+    } catch (err) { onError(err.message || 'Rasm yuklanmadi'); }
+    finally { onBusy(false); }
+  };
+  return (
+    <div className="text-sm">
+      <div className="mb-1">{label} <span className="text-muted">(yumaloq kesiladi)</span></div>
+      <div className="flex items-center gap-3">
+        <span className="w-16 h-16 rounded-full bg-canvas border border-line overflow-hidden flex items-center justify-center flex-none">
+          {value ? <img src={value} alt="" className="w-full h-full object-cover" /> : <i className="ti ti-photo text-muted text-xl" />}
+        </span>
+        <label className={`px-3 py-2 rounded-xl border border-line text-sm cursor-pointer hover:bg-canvas ${busy ? 'opacity-50 pointer-events-none' : ''}`}>
+          {busy ? 'Yuklanmoqda…' : (value ? 'Almashtirish' : 'Rasm tanlash')}
+          <input type="file" accept="image/*" onChange={pick} className="hidden" />
+        </label>
+        {value && <button type="button" onClick={() => onChange('')} className="text-sm text-red-600">O‘chirish</button>}
+      </div>
+    </div>
+  );
+}
 
 export function MarketCategoriesPage() {
   const [rows, setRows] = useState([]);
@@ -17,6 +51,7 @@ export function MarketCategoriesPage() {
   const [err, setErr] = useState('');
   const [editing, setEditing] = useState(null);   // null | { mode: 'new' | 'edit', data }
   const [busy, setBusy] = useState(false);
+  const [uploading, setUploading] = useState('');
 
   const load = useCallback(async () => {
     setLoading(true); setErr('');
@@ -31,17 +66,19 @@ export function MarketCategoriesPage() {
   const save = async () => {
     const d = editing.data;
     if (!d.nameUz.trim()) { setErr('Lotincha nomi kiritilishi shart'); return; }
-    if (editing.mode === 'new' && !KEY_RE.test(d.key.trim().toLowerCase())) {
-      setErr('Kalit: faqat a–z, 0–9 va _ (2–60 belgi). Masalan: choy, sut_mahsulotlari'); return;
+    if (uploading) { setErr('Rasm yuklanmoqda — tugashini kuting'); return; }
+    if (editing.mode === 'new' && !KEY_RE.test((d.key || '').trim().toLowerCase())) {
+      setErr('Kalit: faqat a–z, 0–9 va _ (2–60 belgi). Nomni yozing yoki kalitni qo‘lda kiriting'); return;
     }
     const body = {
       nameUz: d.nameUz.trim(), nameUzc: d.nameUzc.trim(), nameRu: d.nameRu.trim(),
-      emoji: d.emoji.trim() || '🛒', imageUrl: d.imageUrl.trim(), isActive: !!d.isActive,
+      emoji: d.emoji.trim() || '🛒', imageUrl: d.imageUrl || '', cardUrl: d.cardUrl || '',
+      description: (d.description || '').trim(), isActive: !!d.isActive,
       ...(d.order !== '' && d.order !== null ? { order: Number(d.order) } : {}),
     };
     setBusy(true); setErr('');
     try {
-      if (editing.mode === 'new') await adminApi.createMarketCategory({ ...body, key: d.key.trim().toLowerCase() });
+      if (editing.mode === 'new') await adminApi.createMarketCategory({ ...body, key: (d.key || '').trim().toLowerCase() });
       else await adminApi.updateMarketCategory(editing.data.key, body);
       setEditing(null); await load();
     } catch (e) { setErr(e.message || 'Saqlab bo‘lmadi'); }
@@ -68,7 +105,7 @@ export function MarketCategoriesPage() {
           <h1 className="text-xl font-semibold text-ink">Market kategoriyalari</h1>
           <p className="text-sm text-muted mt-0.5">Bitta ro‘yxat: do‘kon formasi, Market qatori va qidiruv shu yerdan. Faol: {activeCount} / {rows.length}</p>
         </div>
-        <button onClick={() => setEditing({ mode: 'new', data: { ...empty, order: (rows.at(-1)?.order || 0) + 10 } })}
+        <button onClick={() => setEditing({ mode: 'new', keyTouched: false, data: { ...empty, order: (rows.at(-1)?.order || 0) + 10 } })}
           className="bg-brand-400 text-brand-text font-medium px-4 py-2 rounded-xl hover:bg-brand-600 hover:text-white transition-colors">
           <i className="ti ti-plus" /> Yangi kategoriya
         </button>
@@ -93,7 +130,7 @@ export function MarketCategoriesPage() {
                 className={`relative h-6 w-11 rounded-full flex-none transition-colors ${r.isActive ? 'bg-green-500' : 'bg-gray-300'}`} title={r.isActive ? 'Faol' : 'Nofaol'}>
                 <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${r.isActive ? 'left-[22px]' : 'left-0.5'}`} />
               </button>
-              <button onClick={() => setEditing({ mode: 'edit', data: { ...r, order: r.order, imageUrl: r.imageUrl || '' } })}
+              <button onClick={() => setEditing({ mode: 'edit', data: { ...empty, ...r, order: r.order, imageUrl: r.imageUrl || '', cardUrl: r.cardUrl || '', description: r.description || '' } })}
                 className="px-2.5 py-1.5 border border-line rounded-lg text-sm text-muted hover:bg-canvas"><i className="ti ti-pencil" /></button>
               <button onClick={() => remove(r)} disabled={r.usage > 0}
                 className="px-2.5 py-1.5 border border-line rounded-lg text-sm text-red-600 hover:bg-red-50 disabled:opacity-40"><i className="ti ti-trash" /></button>
@@ -108,47 +145,61 @@ export function MarketCategoriesPage() {
             className="w-full sm:max-w-lg bg-white rounded-t-2xl sm:rounded-2xl p-5 max-h-[90vh] overflow-y-auto">
             <h3 className="text-lg font-semibold text-ink mb-4">{editing.mode === 'new' ? 'Yangi kategoriya' : `Tahrirlash: ${editing.data.key}`}</h3>
             <div className="grid gap-3">
-              <label className="text-sm">Kalit (ID) {editing.mode === 'edit' && <span className="text-muted">— o‘zgarmaydi</span>}
-                <input value={editing.data.key} disabled={editing.mode === 'edit'} placeholder="masalan: choy"
-                  onChange={(e) => setEditing({ ...editing, data: { ...editing.data, key: e.target.value } })}
+              <label className="text-sm">Nomi (lotin) *
+                <input value={editing.data.nameUz} placeholder="masalan: Sut mahsulotlari"
+                  onChange={(e) => {
+                    const nameUz = e.target.value;
+                    setEditing((ed) => ({ ...ed, data: { ...ed.data, nameUz, ...(ed.mode === 'new' && !ed.keyTouched ? { key: slugifyKey(nameUz) } : {}) } }));
+                  }}
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
+              </label>
+              <label className="text-sm">Kalit (ID) {editing.mode === 'new' ? <span className="text-muted">— nomdan avtomatik, xohlasangiz o‘zgartiring</span> : <span className="text-muted">— o‘zgarmaydi</span>}
+                <input value={editing.data.key} disabled={editing.mode === 'edit'} placeholder="nomdan avtomatik yasaladi"
+                  onChange={(e) => setEditing((ed) => ({ ...ed, keyTouched: true, data: { ...ed.data, key: e.target.value.toLowerCase() } }))}
                   className="w-full mt-1 px-3 py-2 rounded-xl border border-line font-mono text-sm disabled:bg-canvas" />
               </label>
               <div className="grid grid-cols-2 gap-3">
-                <label className="text-sm">Nomi (lotin) *
-                  <input value={editing.data.nameUz} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, nameUz: e.target.value } })}
+                <label className="text-sm">Nomi (kirill)
+                  <input value={editing.data.nameUzc} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, nameUzc: e.target.value } })}
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
                 </label>
+                <label className="text-sm">Nomi (ruscha)
+                  <input value={editing.data.nameRu} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, nameRu: e.target.value } })}
+                    className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
+                </label>
+              </div>
+              <label className="text-sm">Tavsif <span className="text-muted">({(editing.data.description || '').length}/300)</span>
+                <textarea rows={3} maxLength={300} value={editing.data.description}
+                  onChange={(e) => setEditing({ ...editing, data: { ...editing.data, description: e.target.value } })}
+                  placeholder="Mijoz kategoriyani ochganda ko‘radigan qisqa matn"
+                  className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <RoundUpload label="Ikon" value={editing.data.imageUrl} busy={uploading === 'icon'}
+                  onBusy={(v) => setUploading(v ? 'icon' : '')} onError={setErr}
+                  onChange={(url) => setEditing({ ...editing, data: { ...editing.data, imageUrl: url } })} />
+                <RoundUpload label="Karta rasmi" value={editing.data.cardUrl} busy={uploading === 'card'}
+                  onBusy={(v) => setUploading(v ? 'card' : '')} onError={setErr}
+                  onChange={(url) => setEditing({ ...editing, data: { ...editing.data, cardUrl: url } })} />
+              </div>
+              <div className="grid grid-cols-3 gap-3 items-end">
                 <label className="text-sm">Emoji
                   <input value={editing.data.emoji} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, emoji: e.target.value } })}
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
                 </label>
-              </div>
-              <label className="text-sm">Nomi (kirill)
-                <input value={editing.data.nameUzc} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, nameUzc: e.target.value } })}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
-              </label>
-              <label className="text-sm">Nomi (ruscha)
-                <input value={editing.data.nameRu} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, nameRu: e.target.value } })}
-                  className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
-              </label>
-              <label className="text-sm">Rasm havolasi (https, ixtiyoriy)
-                <input value={editing.data.imageUrl} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, imageUrl: e.target.value } })}
-                  placeholder="https://…" className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
-              </label>
-              <div className="grid grid-cols-2 gap-3 items-end">
                 <label className="text-sm">Tartib
                   <input type="number" min="0" value={editing.data.order} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, order: e.target.value } })}
                     className="w-full mt-1 px-3 py-2 rounded-xl border border-line text-sm" />
                 </label>
                 <label className="text-sm flex items-center gap-2 pb-2">
                   <input type="checkbox" checked={!!editing.data.isActive} onChange={(e) => setEditing({ ...editing, data: { ...editing.data, isActive: e.target.checked } })} />
-                  Faol (mijozga ko‘rinadi)
+                  Faol
                 </label>
               </div>
             </div>
             <div className="flex gap-2 mt-5">
               <button onClick={() => setEditing(null)} disabled={busy} className="flex-1 rounded-xl border border-line py-2.5 text-sm">Bekor</button>
-              <button onClick={save} disabled={busy} className="flex-[2] rounded-xl bg-brand-400 text-brand-text py-2.5 text-sm font-semibold disabled:opacity-50">
+              <button onClick={save} disabled={busy || !!uploading} className="flex-[2] rounded-xl bg-brand-400 text-brand-text py-2.5 text-sm font-semibold disabled:opacity-50">
                 {busy ? 'Saqlanmoqda...' : 'Saqlash'}
               </button>
             </div>
