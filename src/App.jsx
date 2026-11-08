@@ -1,4 +1,5 @@
 import { useEffect, lazy, Suspense } from 'react';
+import { MarketCategoriesPage } from './pages/admin/MarketCategoriesPage';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from '@/store/auth';
 import { Sidebar } from '@/components/Sidebar';
@@ -188,6 +189,7 @@ function AdminRoutes() {
         <Route path="/couriers" element={<Navigate to="/courier-accounts" replace />} />
         <Route path="/courier-accounts" element={<Guarded page="couriers"><CourierAccountsPage /></Guarded>} />
         <Route path="/catalog" element={<Guarded page="catalog"><CatalogPage /></Guarded>} />
+        <Route path="/market-categories" element={<AdminOnly><MarketCategoriesPage /></AdminOnly>} />
         <Route path="/promo-admin" element={<Guarded page="marketing"><PromoAdminPage /></Guarded>} />
         <Route path="/dine-in-admin" element={<Guarded page="dinein"><DineInAdminPage /></Guarded>} />
         <Route path="/morning-checks" element={<Guarded page="restaurants"><MorningChecksPage /></Guarded>} />

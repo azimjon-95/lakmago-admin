@@ -45,7 +45,11 @@ export function StoreMenuPage() {
       .catch((e) => setMetaErr(e.message || 'Kategoriyalarni yuklab bo‘lmadi'));
   }, [load]);
 
-  const catMap = useMemo(() => new Map((meta?.categories || []).map((c) => [c.value, c])), [meta]);
+  // Kategoriyalar — YAGONA markaziy ro'yxat (admin: Market kategoriyalari). Server: meta.catalogCategories
+  const catalogList = useMemo(() => (meta?.catalogCategories || []).map((c) => ({
+    value: c.key, label: c.uz, emoji: c.emoji || '🛒', icon: 'ti-shopping-cart',
+  })), [meta]);
+  const catMap = useMemo(() => new Map(catalogList.map((c) => [c.value, c])), [catalogList]);
   const unitLabel = useCallback(
     (u) => (meta?.units || []).find((x) => x.value === u)?.label || u || 'dona',
     [meta],
@@ -55,7 +59,7 @@ export function StoreMenuPage() {
   const visible = useMemo(() => {
     const term = q.trim().toLowerCase();
     return products.filter((p) => {
-      if (cat !== 'all' && (p.marketCategory || '_') !== cat) return false;
+      if (cat !== 'all' && (p.catalogCategory || '_') !== cat) return false;
       if (!term) return true;
       return [p.name, p.barcode].filter(Boolean).join(' ').toLowerCase().includes(term);
     });
@@ -65,11 +69,11 @@ export function StoreMenuPage() {
   const grouped = useMemo(() => {
     const by = new Map();
     for (const p of visible) {
-      const k = p.marketCategory && catMap.has(p.marketCategory) ? p.marketCategory : '_';
+      const k = p.catalogCategory && catMap.has(p.catalogCategory) ? p.catalogCategory : '_';
       if (!by.has(k)) by.set(k, []);
       by.get(k).push(p);
     }
-    const order = (meta?.categories || []).map((c) => c.value);
+    const order = catalogList.map((c) => c.value);
     const keys = [...by.keys()].sort((a, b) => {
       const ai = a === '_' ? 1e9 : order.indexOf(a); const bi = b === '_' ? 1e9 : order.indexOf(b);
       return ai - bi;
@@ -85,10 +89,10 @@ export function StoreMenuPage() {
   const usedCats = useMemo(() => {
     const counts = new Map();
     for (const p of products) {
-      const k = p.marketCategory && catMap.has(p.marketCategory) ? p.marketCategory : '_';
+      const k = p.catalogCategory && catMap.has(p.catalogCategory) ? p.catalogCategory : '_';
       counts.set(k, (counts.get(k) || 0) + 1);
     }
-    const order = (meta?.categories || []).map((c) => c.value);
+    const order = catalogList.map((c) => c.value);
     return [...counts.entries()].sort(([a], [b]) => (a === '_' ? 1e9 : order.indexOf(a)) - (b === '_' ? 1e9 : order.indexOf(b)));
   }, [products, catMap, meta]);
 
@@ -195,7 +199,7 @@ export function StoreMenuPage() {
                   <div className="w-14 h-14 rounded-xl overflow-hidden flex items-center justify-center flex-none bg-canvas">
                     {p.imageUrl
                       ? <Img src={p.imageUrl} w={200} className="w-full h-full object-cover" />
-                      : <span className="text-2xl">{catMap.get(p.marketCategory)?.emoji || '🛒'}</span>}
+                      : <span className="text-2xl">{catMap.get(p.catalogCategory)?.emoji || '🛒'}</span>}
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 min-w-0">
@@ -282,7 +286,7 @@ function ProductForm({ product, meta, onClose, onSaved }) {
     imageUrl: product?.imageUrl || '',
     name: product?.name || '',
     description: product?.description || '',
-    marketCategory: product?.marketCategory || '',
+    catalogCategory: product?.catalogCategory || '',
     price: product?.price ?? null,
     oldPrice: product?.oldPrice ?? null,
     unit: product?.unit || 'dona',
@@ -293,14 +297,11 @@ function ProductForm({ product, meta, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
-  const catByGroup = useMemo(() => meta.groups.map((g) => ({
-    ...g, items: meta.categories.filter((c) => c.group === g.value),
-  })).filter((g) => g.items.length), [meta]);
-  const chosen = meta.categories.find((c) => c.value === f.marketCategory);
+  const chosen = catalogList.find((c) => c.value === f.catalogCategory);
 
   const submit = async () => {
     if (!f.name.trim()) { setErr('Mahsulot nomini kiriting'); return; }
-    if (!f.marketCategory) { setErr('Kategoriyani tanlang'); return; }
+    if (!f.catalogCategory) { setErr('Kategoriyani tanlang'); return; }
     if (!f.price || Number(f.price) <= 0) { setErr('Narxni kiriting'); return; }
     if (f.oldPrice && Number(f.oldPrice) <= Number(f.price)) {
       setErr('Eski narx hozirgi narxdan katta bo‘lishi kerak (chegirma uchun)'); return;
@@ -312,7 +313,7 @@ function ProductForm({ product, meta, onClose, onSaved }) {
         // Do'kon sahifasida mahsulotlar shu sarlavha ostida guruhlanadi
         section: chosen?.label || 'Mahsulotlar',
         category: 'boshqa',
-        marketCategory: f.marketCategory,
+        catalogCategory: f.catalogCategory,
         icon: chosen?.icon || 'ti-shopping-cart',
         name: f.name.trim(),
         description: f.description.trim(),
@@ -353,13 +354,9 @@ function ProductForm({ product, meta, onClose, onSaved }) {
         </Field>
 
         <Field label="Kategoriya *" hint="Mijoz Lokma Market'da shu kategoriya orqali topadi">
-          <select value={f.marketCategory} onChange={(e) => set('marketCategory', e.target.value)} className="inp">
+          <select value={f.catalogCategory} onChange={(e) => set('catalogCategory', e.target.value)} className="inp">
             <option value="">— tanlang —</option>
-            {catByGroup.map((g) => (
-              <optgroup key={g.value} label={g.label}>
-                {g.items.map((c) => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
-              </optgroup>
-            ))}
+            {catalogList.map((c) => <option key={c.value} value={c.value}>{c.emoji} {c.label}</option>)}
           </select>
         </Field>
 

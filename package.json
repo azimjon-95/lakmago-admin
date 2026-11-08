@@ -11,7 +11,8 @@
     "test:incident-mode": "node --test tests/incidentMode.test.mjs",
     "test:delivery-ui": "node tests/deliveryUi.render.mjs",
     "test:groups": "node tests/groups.render.mjs",
-    "test:advideo": "node --test tests/adVideo.test.mjs"
+    "test:advideo": "node --test tests/adVideo.test.mjs",
+    "test:market-categories": "node --test tests/marketCategories.admin.mjs"
   },
   "dependencies": {
     "@fontsource/inter-tight": "^5.3.0",
