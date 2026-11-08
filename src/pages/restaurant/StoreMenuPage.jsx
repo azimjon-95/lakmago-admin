@@ -297,6 +297,8 @@ function ProductForm({ product, meta, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const set = (k, v) => setF((x) => ({ ...x, [k]: v }));
 
+  // Forma alohida komponent: ro'yxatni shu yerda meta dan hisoblaymiz (ota komponentdagi o'zgaruvchi ko'rinmaydi)
+  const catalogList = (meta?.catalogCategories || []).map((c) => ({ value: c.key, label: c.uz, emoji: c.emoji || '🛒' }));
   const chosen = catalogList.find((c) => c.value === f.catalogCategory);
 
   const submit = async () => {
