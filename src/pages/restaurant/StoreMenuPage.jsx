@@ -289,6 +289,7 @@ function ProductForm({ product, meta, onClose, onSaved }) {
     catalogCategory: product?.catalogCategory || '',
     price: product?.price ?? null,
     oldPrice: product?.oldPrice ?? null,
+    oldPrice: product?.oldPrice ?? null,
     unit: product?.unit || 'dona',
     packSize: product?.packSize || '',
     barcode: product?.barcode || '',
@@ -365,6 +366,9 @@ function ProductForm({ product, meta, onClose, onSaved }) {
         <div className="grid grid-cols-2 gap-3">
           <Field label="Narx (so'm) *">
             <MoneyInput value={f.price} onChange={(v) => set('price', v)} placeholder="12 000" />
+          </Field>
+          <Field label="Eski narx (chegirma)">
+            <MoneyInput value={f.oldPrice} onChange={(v) => set('oldPrice', v)} placeholder="ixtiyoriy" />
           </Field>
           <Field label="Narx nima uchun">
             <select value={f.unit} onChange={(e) => set('unit', e.target.value)} className="inp">
