@@ -354,6 +354,9 @@ export const adminApi = {
 
   // LokmaGo kuryerlari va yetkazish rejimi (2026-11) — server: controllers/delivery.js
   getDistricts: () => apiFetch('/districts'),
+  // Katalog hududi (kuryer tumanidan alohida) — server koordinatadan aniqlaydi; override faqat bosh admin, sabab bilan
+  districtPreview: (lat, lng) => apiFetch(`/admin/district-preview?lat=${encodeURIComponent(lat)}&lng=${encodeURIComponent(lng)}`),
+  setServiceDistrictOverride: (id, districtId, reason) => apiFetch(`/admin/restaurants/${id}/service-district`, { method: 'PATCH', body: JSON.stringify({ districtId, reason }) }),
   getCourierLedger: (id) => apiFetch(`/admin/courier-accounts/${id}/ledger`),
   addCourierLedger: (id, data) => apiFetch(`/admin/courier-accounts/${id}/ledger`, { method: 'POST', body: JSON.stringify(data) }),
   getCourierPool: (district) => apiFetch(`/admin/courier-pool${district ? `?district=${encodeURIComponent(district)}` : ''}`),

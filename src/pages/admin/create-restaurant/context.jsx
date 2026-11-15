@@ -1,3 +1,4 @@
+import { DISTRICT_BOUNDARIES_UI } from '@/lib/districtFlags';
 import { createContext, useContext, useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { adminApi } from '@/api';
@@ -9,6 +10,7 @@ export const useCreateForm = () => useContext(Ctx);
 const EMPTY = {
   name: '', cuisine: '', category: 'milliy', kind: 'restaurant', imageUrl: '',
   phone: '', address: '', landmark: '', lat: '', lng: '',
+  serviceAreaDistrictIds: [],   // katalog hududi (ixtiyoriy; flag o'chiq bo'lsa yuborilmaydi)
   deliveryMin: 25, deliveryMax: 40, deliveryFee: null,
   freeDeliveryThreshold: null, minOrderAmount: null,
   shopTypes: [], pickupEnabled: true, pickupDiscountPercent: 0, prepMinutes: 20,
@@ -60,6 +62,8 @@ export function CreateRestaurantLayout() {
       // Koordinata matn — songa aylantiramiz
       if (form.lat) payload.lat = Number(form.lat); else delete payload.lat;
       if (form.lng) payload.lng = Number(form.lng); else delete payload.lng;
+      // Katalog hududi: faqat UI yoqilgan va tanlangan bo'lsa (server o'z tumanini o'zi qo'shadi va tozalaydi)
+      if (!DISTRICT_BOUNDARIES_UI || !payload.serviceAreaDistrictIds?.length) delete payload.serviceAreaDistrictIds;
 
       // Bo'sh raqam maydonlari (null) — serverga 0 sifatida yuboriladi.
       // Foydalanuvchi maydonni bo'sh qoldirsa "belgilanmagan" degani.
@@ -73,7 +77,9 @@ export function CreateRestaurantLayout() {
           payload[f] = 0;
         }
       }
-      await adminApi.createRestaurant(payload);
+      const created = await adminApi.createRestaurant(payload);
+      // Tuman aniqlanmagani uchun faollashtirilmagan bo'lsa — admin sababini ko'rsin (restoran yaratilgan)
+      if (created?.districtWarning) window.alert(`${created.districtWarning.message}`);
       navigate('/restaurants');
     } catch (e) {
       setErr(e.message);

@@ -7,6 +7,7 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { useTempValue } from '@/hooks/useTempFlag';
 import { RestaurantPayoutSection } from './RestaurantPayoutSection';
 import { RestaurantDeliverySection } from './RestaurantDeliverySection';
+import { RestaurantServiceAreaSection } from './RestaurantServiceAreaSection';
 
 // Restoran sozlamalari — ish tartibi, xizmat haqi, bron.
 // Bu ma'lumotlar mijoz ilovasida restoran sahifasida ko'rinadi.
@@ -283,6 +284,8 @@ export function RestaurantSettingsPage() {
         </section>
 
         {/* ═══ HUDUD va KIM YETKAZADI — o'z saqlash tugmasi bilan (RestaurantDeliverySection.jsx) ═══ */}
+        {/* Katalog hududi (flag yoqilgan bo'lsa) — kuryer tumanidan alohida (RestaurantServiceAreaSection.jsx) */}
+        {restaurant && <RestaurantServiceAreaSection restaurant={restaurant} />}
         {restaurant && <RestaurantDeliverySection restaurant={restaurant} />}
 
         {/*
