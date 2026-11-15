@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useCreateForm } from './context';
 import { Field, NumField } from './fields';
 import { MapPicker } from '@/components/MapPicker';
+import { ServiceAreaPicker } from '@/components/delivery/ServiceAreaPicker';
 
 export function Step2Address() {
   const [mapOpen, setMapOpen] = useState(false);
@@ -66,6 +67,12 @@ export function Step2Address() {
                 <i className="ti ti-map-2" /> Xaritada tekshirish
               </a>
             )}
+            {/* Katalog hududi (flag yoqilgan bo'lsa): server koordinatadan tumanni aniqlaydi — kuryer tumani emas */}
+            <ServiceAreaPicker
+              lat={form.lat} lng={form.lng}
+              value={form.serviceAreaDistrictIds}
+              onChange={(ids) => set('serviceAreaDistrictIds', ids)}
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 pt-4 border-t border-line">

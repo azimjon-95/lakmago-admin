@@ -72,7 +72,7 @@ export function RestaurantDeliverySection({ restaurant }) {
       <p className="text-xs text-muted mb-4">Restoran qaysi tumanda va buyurtmani kim yetkazadi</p>
 
       <div className="mb-5">
-        <div className="text-sm font-medium text-ink mb-2">Tuman</div>
+        <div className="text-sm font-medium text-ink mb-2">Kuryer xizmati tumani</div>
         <DistrictPicker value={district} onChange={setDistrict} />
       </div>
 
