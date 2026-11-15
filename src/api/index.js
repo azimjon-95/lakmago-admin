@@ -388,7 +388,7 @@ export const adminApi = {
   updateSettings: (data) => apiFetch('/admin/settings', { method: 'PATCH', body: JSON.stringify(data) }),
 
   // Daromad hisobi
-  getRevenue: () => apiFetch('/admin/revenue'),
+  getRevenue: (month) => apiFetch(month && month !== 'all' ? `/admin/revenue?month=${encodeURIComponent(month)}` : '/admin/revenue'),
 
   // LokmaGo sovg'a-bonusi (masalan 100 000 so'mdan 1 l Coca-Cola; puli restoranga qoplanadi)
   // Baza zaxirasi: holat (xato sabablari bilan) va "hozir zaxira olish"
