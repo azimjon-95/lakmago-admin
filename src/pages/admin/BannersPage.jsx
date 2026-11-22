@@ -5,8 +5,9 @@ import { useLockScroll } from '@/hooks/useLockScroll';
 import { ImageUpload } from '@/components/ImageUpload';
 import { confirm } from '@/components/ui/confirm';
 import { Img } from '@/components/Img';
+import { BannerDistrictPicker, useSupportedDistricts } from '@/components/BannerDistrictPicker';
 
-const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '', placement: 'home' };
+const EMPTY = { title: '', eyebrow: '', cta: "Ko'rish", bg: '#411E00', imageUrl: '', icon: 'ti-gift', hasButton: false, linkUrl: '', placement: 'home', districtIds: [] };
 
 // Banner qayerda chiqadi — server: Banner.placement
 const PLACEMENTS = [
@@ -45,7 +46,7 @@ export function BannersPage() {
 
   const openNew = () => { setForm(EMPTY); setEditing('new'); };
   const openEdit = (b) => {
-    setForm({ title: b.title || '', eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift', hasButton: b.hasButton || false, linkUrl: b.linkUrl || '', placement: b.placement || 'home' });
+    setForm({ title: b.title || '', eyebrow: b.eyebrow || '', cta: b.cta || "Ko'rish", bg: b.bg || '#411E00', imageUrl: b.imageUrl || '', icon: b.icon || 'ti-gift', hasButton: b.hasButton || false, linkUrl: b.linkUrl || '', placement: b.placement || 'home', districtIds: b.districtIds || [] });
     setEditing(b);
   };
 
@@ -174,6 +175,9 @@ export function BannersPage() {
               </div>
             </div>
 
+            {/* 0b. Qaysi tumanlarda (flag yoqilgan bo'lsa) */}
+            <BannerDistrictPicker value={form.districtIds} linkUrl={form.linkUrl} onChange={(districtIds) => setForm({ ...form, districtIds })} />
+
             {/* 1. Rasm — asosiy */}
             <div className="mb-4">
               <ImageUpload
@@ -253,6 +257,7 @@ function BannerCard({ banner: b, onEdit, onDelete, showOwner }) {
             {b.placement === 'market' ? 'Lokma Market' : 'Bosh sahifa'}
           </span>
         )}
+        <BannerDistrictTags ids={b.districtIds} />
         {showOwner && <div className="text-xs text-muted mt-0.5"><i className="ti ti-building-store text-[11px]" /> {b.restaurantName || 'Restoran'}</div>}
       </div>
       <div className="flex items-center gap-2 flex-none">
@@ -266,5 +271,16 @@ function BannerCard({ banner: b, onEdit, onDelete, showOwner }) {
         </button>
       </div>
     </div>
+  );
+}
+
+function BannerDistrictTags({ ids }) {
+  const supported = useSupportedDistricts();
+  if (!ids?.length || !supported.length) return null;
+  const name = (id) => supported.find((d) => d.id === id)?.name || id;
+  return (
+    <span className="mt-1 ml-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-medium bg-blue-50 text-blue-700">
+      <i className="ti ti-map-pin text-[11px]" /> {ids.map(name).join(', ')}
+    </span>
   );
 }
