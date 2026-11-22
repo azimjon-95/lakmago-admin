@@ -21,6 +21,7 @@ const TYPE_META = {
   waiter_call:  { label: 'Chaqiruv',   icon: 'ti-bell',            color: '#E14B42' },
   bill_request: { label: 'Hisob',      icon: 'ti-receipt',         color: '#34C759' },
   support:      { label: 'Yordam',     icon: 'ti-message',         color: '#8E8E93' },
+  finance:      { label: 'Moliya',     icon: 'ti-alert-triangle',  color: '#E14B42' },   // masalan: kelishuvsiz restoran (0%)
 };
 
 /**
@@ -37,6 +38,7 @@ function routeFor(n) {
   if (n.refType === 'reservation') return '/reservations';
   if (n.refType === 'table') return '/dine-in-live';
   if (n.type === 'hall_order') return '/dine-in-live';
+  if (n.type === 'finance') return '/billing';
   return '/';
 }
 
