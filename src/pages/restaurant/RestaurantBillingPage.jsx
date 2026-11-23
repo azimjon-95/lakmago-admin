@@ -3,77 +3,73 @@ import { useQuery } from '@tanstack/react-query';
 import { panelApi } from '@/api';
 import { useAuth } from '@/store/auth';
 import { OrdersBillingTabs } from '@/components/restaurant/OrdersBillingTabs';
-
-const som = (n) => Math.round(n ?? 0).toLocaleString('ru-RU').replace(/,/g, ' ');
+import { tashkentToday, addDaysYmd } from '@/lib/billingPeriod';
+import { som } from '@/components/restaurant/report/format';
+import { PeriodStatement } from '@/components/restaurant/report/PeriodStatement';
+import { AccountCard } from '@/components/restaurant/report/AccountCard';
+import { OrderList } from '@/components/restaurant/report/OrderList';
+import { DailyTable } from '@/components/restaurant/report/DailyTable';
+import { PayoutHistory } from '@/components/restaurant/report/PayoutHistory';
 
 /*
- * Sana → 'YYYY-MM-DD' (input[type=date] va so'rov uchun bir xil
- * shakl). Mahalliy vaqt zonasi bilan — toISOString() UTC'ga
- * o'tkazib, kechqurun kunni bir kun oldinga suradi.
+ * ═══════════════════════════════════════════════════════════
+ * RESTORAN — HISOBOTLAR
+ * ═══════════════════════════════════════════════════════════
+ *
+ * 2026-11-23 audit: server hisobot endpointlari string restaurantId
+ * sababli buyurtmalarni umuman topmasdi — restoran doim "0 ta
+ * buyurtma" ko'rardi. Server tuzatildi (services/restaurantReport.js);
+ * bu sahifa endi restoranga kerakli hamma narsani ko'rsatadi:
+ *
+ *   1. Hisob varaqasi — taom savdosi, komissiyangiz, ulushingiz,
+ *      pul qayerda (karta — LokmaGo o'tkazadi, naqd — sizda),
+ *      davr natijasi
+ *   2. Umumiy hisob (barcha vaqt) — alohida, davrga bog'liq emas
+ *   3. Ko'rsatkichlar — buyurtmalar, o'rtacha chek, jarayondagilar,
+ *      bekorlar, turi bo'yicha
+ *   4. Har bir buyurtma — raqam, vaqt, to'lov, taom/komissiya/ulush
+ *   5. Kunlik jadval, eng ko'p sotilganlar, o'tkazmalar tarixi
+ *
+ * Sana — TOSHKENT kuni ("YYYY-MM-DD"), qurilma vaqt zonasidan
+ * qat'i nazar. Hech narsa shu yerda hisoblanmaydi — hammasi serverdan.
  */
-function toDateInput(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
-const LEDGER_LABEL = {
-  payment_in: 'Mijoz to‘lovi',
-  commission: 'Komissiya',
-  restaurant_due: 'Ulush hisoblandi',
-  payout: 'O‘tkazma',
-  refund: 'Qaytarish',
-  adjustment: 'Tuzatish',
-  waiter_payout: 'Ofitsiant haqi',
-};
-
 export function RestaurantBillingPage() {
   const user = useAuth((s) => s.user);
 
-  /*
-   * Standart oraliq — BUGUN. Talab shu edi: "aniq sanalar
-   * orqali xohlagan kunini ko'ra olsin, default bugun".
-   */
-  const today = useMemo(() => toDateInput(new Date()), []);
+  const today = useMemo(() => tashkentToday(), []);
   const [from, setFrom] = useState(today);
   const [to, setTo] = useState(today);
-  const isToday = from === today && to === today;
+
+  const presets = useMemo(() => ({
+    today: [today, today],
+    yesterday: [addDaysYmd(today, -1), addDaysYmd(today, -1)],
+    week: [addDaysYmd(today, -6), today],
+    month: [`${today.slice(0, 8)}01`, today],
+  }), [today]);
+  const activePreset = Object.keys(presets).find((k) => presets[k][0] === from && presets[k][1] === to);
+  const applyPreset = (k) => { setFrom(presets[k][0]); setTo(presets[k][1]); };
 
   const summaryQ = useQuery({
     queryKey: ['panel', 'billing', 'summary', from, to],
-    queryFn: () => panelApi.getBillingSummary(`${from}T00:00:00`, `${to}T23:59:59`),
+    queryFn: () => panelApi.getBillingSummary(from, to),
   });
-
+  const ordersQ = useQuery({
+    queryKey: ['panel', 'billing', 'orders', from, to],
+    queryFn: () => panelApi.getBillingOrders(from, to),
+  });
   const dailyQ = useQuery({
     queryKey: ['panel', 'billing', 'daily', from, to],
-    queryFn: () => panelApi.getBillingDaily(`${from}T00:00:00`, `${to}T23:59:59`),
+    queryFn: () => panelApi.getBillingDaily(from, to),
+  });
+  const payoutsQ = useQuery({
+    queryKey: ['panel', 'billing', 'payouts'],
+    queryFn: () => panelApi.getBillingLedger({ type: 'payout', limit: 20 }),
   });
 
   const orders = summaryQ.data?.orders;
+  const finance = summaryQ.data?.finance;
   const payout = summaryQ.data?.payout;
-  const daily = dailyQ.data || [];
-
-  /*
-   * "Tez tanlash" tugmalari — bugun/kecha/shu oy. Buxgalter
-   * har safar kalendar bilan o'ynashi shart emas, eng ko'p
-   * so'raladigan oraliqlar bir bosishda tayyor.
-   */
-  const applyPreset = (preset) => {
-    const now = new Date();
-    if (preset === 'today') {
-      setFrom(today); setTo(today);
-    } else if (preset === 'yesterday') {
-      const y = new Date(now); y.setDate(y.getDate() - 1);
-      setFrom(toDateInput(y)); setTo(toDateInput(y));
-    } else if (preset === 'week') {
-      const w = new Date(now); w.setDate(w.getDate() - 6);
-      setFrom(toDateInput(w)); setTo(today);
-    } else if (preset === 'month') {
-      setFrom(toDateInput(new Date(now.getFullYear(), now.getMonth(), 1)));
-      setTo(today);
-    }
-  };
+  const multiDay = from !== to;
 
   return (
     <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-7xl">
@@ -87,22 +83,22 @@ export function RestaurantBillingPage() {
       {/* ═══ SANA TANLASH ═══ */}
       <div className="flex flex-wrap items-center gap-2 mb-5">
         <div className="flex gap-1.5">
-          <PresetBtn active={isToday} onClick={() => applyPreset('today')}>Bugun</PresetBtn>
-          <PresetBtn onClick={() => applyPreset('yesterday')}>Kecha</PresetBtn>
-          <PresetBtn onClick={() => applyPreset('week')}>7 kun</PresetBtn>
-          <PresetBtn onClick={() => applyPreset('month')}>Shu oy</PresetBtn>
+          <PresetBtn active={activePreset === 'today'} onClick={() => applyPreset('today')}>Bugun</PresetBtn>
+          <PresetBtn active={activePreset === 'yesterday'} onClick={() => applyPreset('yesterday')}>Kecha</PresetBtn>
+          <PresetBtn active={activePreset === 'week'} onClick={() => applyPreset('week')}>7 kun</PresetBtn>
+          <PresetBtn active={activePreset === 'month'} onClick={() => applyPreset('month')}>Shu oy</PresetBtn>
         </div>
 
         <div className="flex items-center gap-1.5 ml-auto">
           <input
-            type="date" value={from} max={to}
-            onChange={(e) => setFrom(e.target.value)}
+            type="date" value={from} max={to} aria-label="Boshlanish sanasi"
+            onChange={(e) => e.target.value && setFrom(e.target.value)}
             className="rb-date"
           />
           <span className="text-muted text-sm">—</span>
           <input
-            type="date" value={to} min={from} max={today}
-            onChange={(e) => setTo(e.target.value)}
+            type="date" value={to} min={from} max={today} aria-label="Tugash sanasi"
+            onChange={(e) => e.target.value && setTo(e.target.value)}
             className="rb-date"
           />
         </div>
@@ -112,82 +108,71 @@ export function RestaurantBillingPage() {
         <div className="text-muted text-sm py-10 text-center">Yuklanmoqda...</div>
       ) : summaryQ.isError ? (
         <div className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">
-          Hisobotni yuklab bo‘lmadi
+          Hisobotni yuklab bo‘lmadi{summaryQ.error?.message ? `: ${summaryQ.error.message}` : ''}. Sahifani yangilab ko‘ring.
         </div>
       ) : (
         <>
-          {/* ═══ ASOSIY KARTALAR ═══ */}
-          {/*
-            BIRINCHI QATOR — restoran egasi ertalab ochib eng avval
-            ko'radigan to'rt raqam. Tushum birinchi o'rinda: "bugun
-            qancha ishladim" eng ko'p so'raladigan savol.
-          */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
-            <StatCard
-              icon="ti-wallet"
-              label="Tushum"
-              value={som(orders?.revenue)}
-              suffix="so'm"
-              hint={`${orders?.ordersTotal ?? 0} ta buyurtma`}
-              accent
-            />
-            <StatCard
-              icon="ti-receipt"
-              label="O‘rtacha chek"
-              value={som(orders?.avgCheck)}
-              suffix="so'm"
-              hint="Bitta buyurtmaga"
-            />
-            <StatCard
-              icon="ti-cash"
-              label="Naqd"
-              value={som(orders?.cash?.amount)}
-              suffix="so'm"
-              hint={`${orders?.cash?.count ?? 0} ta buyurtma`}
-            />
-            <StatCard
-              icon="ti-credit-card"
-              label="Karta orqali"
-              value={som(orders?.card?.amount)}
-              suffix="so'm"
-              hint={`${orders?.card?.count ?? 0} ta buyurtma`}
-            />
+          {/* ═══ HISOB VARAQASI + UMUMIY HISOB ═══ */}
+          <div className="grid gap-3 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)] mb-3">
+            <PeriodStatement period={summaryQ.data?.period} orders={orders} finance={finance} />
+            <AccountCard payout={payout} />
           </div>
 
-          {/*
-            IKKINCHI QATOR — balans va sifat ko'rsatkichlari.
-            Bekor qilinganlar ataylab shu yerda: u pul emas, lekin
-            e'tibor talab qiladigan signal.
-          */}
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-            <BalanceCard payout={payout} />
+          {/* ═══ KO'RSATKICHLAR ═══ */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+            <StatCard
+              icon="ti-receipt"
+              label="Yakunlangan buyurtmalar"
+              value={orders?.ordersTotal ?? 0}
+              suffix="ta"
+              hint={`Naqd ${orders?.cash?.count ?? 0} · Karta ${orders?.card?.count ?? 0}`}
+            />
+            <StatCard
+              icon="ti-chart-bar"
+              label="O‘rtacha chek"
+              value={som(orders?.avgFood)}
+              suffix="so‘m"
+              hint="Taom summasi, bitta buyurtmaga"
+            />
+            <StatCard
+              icon="ti-clock"
+              label="Hozir jarayonda"
+              value={orders?.active ?? 0}
+              suffix="ta"
+              hint="Hali yakunlanmagan (hozirgi holat)"
+            />
             <StatCard
               icon="ti-x"
               label="Bekor qilingan"
               value={orders?.cancelled ?? 0}
               suffix="ta"
-              hint={cancelHint(orders)}
+              hint={orders?.cancelled ? `${som(orders.cancelledFood)} so‘mlik taom` : 'Muammo yo‘q'}
               warn={(orders?.cancelled ?? 0) > 0}
-            />
-            <StatCard
-              icon="ti-moped"
-              label="Yetkazish"
-              value={orders?.delivery ?? 0}
-              suffix="ta"
-              hint="Kuryer orqali"
-            />
-            <StatCard
-              icon="ti-shopping-bag"
-              label="Olib ketish"
-              value={(orders?.pickup ?? 0) + (orders?.dinein ?? 0)}
-              suffix="ta"
-              hint="O‘zi olib ketgan"
             />
           </div>
 
-          {/* ═══ ENG KO'P SOTILGAN TAOMLAR ═══ */}
+          <div className="grid grid-cols-3 gap-3 mb-5">
+            <StatCard icon="ti-moped" label="Yetkazish" value={orders?.delivery ?? 0} suffix="ta" />
+            <StatCard icon="ti-shopping-bag" label="Olib ketish" value={orders?.pickup ?? 0} suffix="ta" />
+            <StatCard icon="ti-armchair" label="Zalda" value={orders?.dinein ?? 0} suffix="ta" />
+          </div>
+
+          {orders?.cancelReasons?.length > 0 && (
+            <div className="rb-note mb-5" data-testid="cancel-reasons">
+              <i className="ti ti-alert-triangle" />
+              <div>
+                <b>Bekor qilish sabablari:</b>{' '}
+                {orders.cancelReasons.map((r) => `${r.reason} — ${r.count} ta`).join('; ')}
+              </div>
+            </div>
+          )}
+
+          {/* ═══ HAR BIR BUYURTMA ═══ */}
+          <OrderList data={ordersQ.data} loading={ordersQ.isLoading} multiDay={multiDay} />
+
+          {/* ═══ ENG KO'P SOTILGAN ═══ */}
           {orders?.topDishes?.length > 0 && (
-            <div className="mb-5">
+            <div className="mt-6">
               <h2 className="text-sm font-semibold text-ink mb-2.5">Eng ko‘p sotilgan</h2>
               <div className="rb-top">
                 {orders.topDishes.map((d, i) => (
@@ -202,90 +187,18 @@ export function RestaurantBillingPage() {
             </div>
           )}
 
+          <DailyTable rows={dailyQ.data} loading={dailyQ.isLoading} />
+          <PayoutHistory items={payoutsQ.data} loading={payoutsQ.isLoading} />
+
           {/* ═══ NAQD/KARTA TUSHUNTIRISH — shaffoflik uchun ═══ */}
-          <div className="rb-note">
+          <div className="rb-note mt-6">
             <i className="ti ti-info-circle" />
             <div>
-              <b>Naqd</b> to‘lovlarda pul to‘liq sizda qoladi — biz komissiyamizni
-              keyingi karta to‘lovlaridan ushlab qolamiz.{' '}
-              <b>Karta</b> orqali to‘langan pul avval bizga tushadi, ulushingizni
-              keyin o‘tkazib beramiz (pastdagi jadvalda qachon-qanchaligi ko‘rinadi).
+              <b>Naqd</b> to‘lovlarda pul to‘liq sizda qoladi — LokmaGo qismi (komissiyangiz va mijoz xizmat haqi)
+              keyingi karta to‘lovlaridan ushlab qolinadi.{' '}
+              <b>Karta</b> orqali (yoki LokmaGo kuryeri naqd olganda) pul avval LokmaGo’ga tushadi, ulushingiz keyin
+              o‘tkazib beriladi. Sanalar Toshkent vaqti bo‘yicha.
             </div>
-          </div>
-
-          {/* ═══ KUNLIK JADVAL ═══ */}
-          <div className="mt-6">
-            <h2 className="text-sm font-semibold text-ink mb-2.5">Kunlik hisob-kitob</h2>
-
-            {dailyQ.isLoading ? (
-              <div className="text-muted text-sm py-6 text-center">Yuklanmoqda...</div>
-            ) : daily.length === 0 ? (
-              <div className="text-center text-muted text-sm py-10 border border-dashed border-line rounded-xl">
-                Bu oraliqda yozuv yo‘q
-              </div>
-            ) : (
-              <>
-                {/* Desktop: jadval */}
-                <div className="hidden md:block overflow-x-auto rounded-xl border border-line">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="bg-canvas text-left text-muted text-xs uppercase tracking-wide">
-                        <th className="px-4 py-2.5 font-medium">Sana</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Tushum</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Komissiya</th>
-                        <th className="px-4 py-2.5 font-medium text-right">Ulushingiz</th>
-                        <th className="px-4 py-2.5 font-medium text-right" title="Mijozga bepul bergan sovg‘alar puli — LokmaGo qoplaydi">LokmaGo bonusi</th>
-                        <th className="px-4 py-2.5 font-medium text-right">O‘tkazildi</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {daily.map((d) => (
-                        <tr key={d.day} className="border-t border-line">
-                          <td className="px-4 py-2.5 font-medium text-ink">{d.day}</td>
-                          <td className="px-4 py-2.5 text-right text-ink">{som(d.tushum)}</td>
-                          <td className="px-4 py-2.5 text-right text-red-600">
-                            {d.komissiya > 0 ? `−${som(d.komissiya)}` : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right font-medium text-ink">
-                            {som(d.restoranUlushi)}
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-green-600">
-                            {d.bonusKompensatsiya > 0 ? `+${som(d.bonusKompensatsiya)}` : '—'}
-                          </td>
-                          <td className="px-4 py-2.5 text-right text-green-600">
-                            {d.tolangan > 0 ? som(d.tolangan) : '—'}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Mobil: kartalar ro'yxati */}
-                <div className="grid gap-2 md:hidden">
-                  {daily.map((d) => (
-                    <div key={d.day} className="rb-daycard">
-                      <div className="rb-daycard__head">
-                        <b>{d.day}</b>
-                        <span>{som(d.tushum)} so'm</span>
-                      </div>
-                      <div className="rb-daycard__rows">
-                        {d.komissiya > 0 && (
-                          <div><span>Komissiya</span><span className="text-red-600">−{som(d.komissiya)}</span></div>
-                        )}
-                        <div><span>Ulushingiz</span><span className="font-medium">{som(d.restoranUlushi)}</span></div>
-                        {d.bonusKompensatsiya > 0 && (
-                          <div><span>🎁 LokmaGo sovg‘a bonusi</span><span className="text-green-600">+{som(d.bonusKompensatsiya)}</span></div>
-                        )}
-                        {d.tolangan > 0 && (
-                          <div><span>O‘tkazildi</span><span className="text-green-600">{som(d.tolangan)}</span></div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
           </div>
         </>
       )}
@@ -295,71 +208,21 @@ export function RestaurantBillingPage() {
 
 function PresetBtn({ active, onClick, children }) {
   return (
-    <button
-      onClick={onClick}
-      className={`rb-preset ${active ? 'is-active' : ''}`}
-    >
+    <button type="button" onClick={onClick} aria-pressed={Boolean(active)} className={`rb-preset ${active ? 'is-active' : ''}`}>
       {children}
     </button>
   );
 }
 
-/*
- * Bekor qilinganlar uchun izoh — nafaqat SONI, balki ULUSHI ham
- * ko'rsatiladi. 3 ta bekor 10 ta buyurtmadan va 300 tadan
- * butunlay boshqa narsa: birinchisi jiddiy muammo, ikkinchisi
- * odatiy holat.
- */
-function cancelHint(orders) {
-  const c = orders?.cancelled ?? 0;
-  if (!c) return 'Muammo yo‘q';
-  const done = orders?.ordersTotal ?? 0;
-  if (!done) return 'Yetkazilgan buyurtma yo‘q';
-  return `Buyurtmalarning ${Math.round((c / (c + done)) * 100)}%`;
-}
-
-function StatCard({ icon, label, value, suffix, hint, accent, warn }) {
+function StatCard({ icon, label, value, suffix, hint, warn }) {
   return (
-    <div className={`rb-card${accent ? ' rb-card--accent' : ''}${warn ? ' rb-card--alert' : ''}`}>
+    <div className={`rb-card${warn ? ' rb-card--alert' : ''}`}>
       <i className={`ti ${icon} rb-card__icon`} />
       <div className="rb-card__label">{label}</div>
       <div className="rb-card__value">
         {value} <span>{suffix}</span>
       </div>
       {hint && <div className="rb-card__hint">{hint}</div>}
-    </div>
-  );
-}
-
-/**
- * Balans kartasi — musbat/manfiy holatga qarab rang va matn
- * o'zgaradi. Bu "kimga qancha qarz" savoliga bevosita javob.
- */
-function BalanceCard({ payout }) {
-  const owed = payout?.owedToLokma || 0;
-  const pending = payout?.pendingToReceive || 0;
-
-  if (owed > 0) {
-    return (
-      <div className="rb-card rb-card--warn">
-        <i className="ti ti-cash rb-card__icon" />
-        <div className="rb-card__label">Sizdan olinadigan</div>
-        <div className="rb-card__value">
-          {som(owed)} <span>so'm</span>
-        </div>
-        <div className="rb-card__hint">Naqd buyurtmalar komissiyasi</div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="rb-card rb-card--ok">
-      <i className="ti ti-cash rb-card__icon" />
-      <div className="rb-card__label">Sizga o‘tkaziladigan</div>
-      <div className="rb-card__value">
-        {som(pending)} <span>so'm</span>
-      </div>
-      <div className="rb-card__hint">Karta orqali kelgan, kutilmoqda</div>
     </div>
   );
 }

@@ -594,3 +594,163 @@ body {
   }
   .rb-top__sum { grid-column: 2 / -1; font-size: 12.5px; color: var(--muted); }
 }
+
+/* ═══ Hisobotlar — hisob varaqasi (2026-11 audit) ═══ */
+
+/*
+ * Chek shaklidagi varaqa: chap — nima, o'ng — qancha. Raqamlar bir
+ * ustunda tekislanadi (tabular-nums), natija qatori oldidan uzuq
+ * chiziq — kassa chekidagidek. Restoran egasi har kuni chek ko'radi,
+ * shu shakl unga tanish.
+ */
+.rb-stmt {
+  padding: 16px 18px 14px;
+  border-radius: 16px;
+  border: 1px solid rgba(214, 158, 46, 0.35);
+  background: linear-gradient(170deg, rgba(214, 158, 46, 0.09), var(--surface) 55%);
+  font-variant-numeric: tabular-nums;
+}
+.rb-stmt__head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px;
+}
+.rb-stmt__head h2 { font-size: 15px; font-weight: 700; color: var(--ink); }
+.rb-stmt__head span { font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+.rb-stmt__empty { font-size: 13px; color: var(--muted); padding: 8px 0 4px; }
+.rb-stmt__sub {
+  margin: 14px 0 4px;
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+}
+.rb-stmt__lines { display: flex; flex-direction: column; }
+.rb-stmt__line {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 12px;
+  padding: 5px 0;
+  font-size: 13.5px;
+}
+.rb-stmt__line dt { color: var(--ink); min-width: 0; }
+.rb-stmt__line dd { color: var(--ink); font-weight: 600; white-space: nowrap; }
+.rb-stmt__line.is-muted dt, .rb-stmt__line.is-muted dd { color: var(--muted); font-weight: 500; }
+.rb-stmt__line.is-minus dd { color: #C93B31; }
+.rb-stmt__line.is-plus dd { color: #2E9E75; }
+.rb-stmt__line.is-strong {
+  margin-top: 4px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line);
+  font-size: 15px;
+}
+.rb-stmt__line.is-strong dt { font-weight: 600; }
+.rb-stmt__line.is-strong dd { font-weight: 800; font-size: 17px; }
+.rb-stmt__aside {
+  margin-top: 6px;
+  font-size: 12px; line-height: 1.45;
+  color: var(--muted);
+}
+.rb-stmt__foot {
+  margin-top: 10px;
+  font-size: 12px; line-height: 1.45;
+  color: var(--muted);
+}
+.rb-stmt__foot b { color: var(--ink); }
+
+/* Umumiy hisob — davrga bog'liq emas, shuning uchun alohida kartochka */
+.rb-acc {
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  display: flex; flex-direction: column;
+}
+.rb-acc__label { font-size: 12px; color: var(--muted); }
+.rb-acc__value {
+  margin-top: 4px;
+  font-size: 24px; font-weight: 800; line-height: 1.15;
+  color: var(--ink);
+  font-variant-numeric: tabular-nums;
+}
+.rb-acc__value span { font-size: 13px; font-weight: 500; color: var(--muted); }
+.rb-acc__what { margin-top: 6px; font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+.rb-acc__facts {
+  margin-top: auto;
+  padding-top: 12px;
+  display: flex; flex-direction: column; gap: 4px;
+  font-size: 12.5px;
+}
+.rb-acc__facts > div { display: flex; justify-content: space-between; gap: 10px; border-top: 1px solid var(--line); padding-top: 6px; }
+.rb-acc__facts dt { color: var(--muted); }
+.rb-acc__facts dd { color: var(--ink); font-weight: 600; text-align: right; }
+.rb-acc--owe { background: rgba(226, 75, 74, 0.05); border-color: rgba(226, 75, 74, 0.25); }
+.rb-acc--owe .rb-acc__value { color: #C93B31; }
+.rb-acc--receive { background: rgba(93, 202, 165, 0.07); border-color: rgba(93, 202, 165, 0.3); }
+.rb-acc--receive .rb-acc__value { color: #2E9E75; }
+
+/* Har bir buyurtma */
+.rb-ord {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  overflow: hidden;
+  background: var(--surface);
+  font-variant-numeric: tabular-nums;
+}
+.rb-ord__row { padding: 10px 14px; }
+.rb-ord__row + .rb-ord__row { border-top: 1px solid var(--line); }
+.rb-ord__top {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: baseline;
+  gap: 10px;
+}
+.rb-ord__num { font-weight: 700; color: var(--ink); font-size: 14px; min-width: 30px; }
+.rb-ord__meta { font-size: 12.5px; color: var(--muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rb-ord__share { font-weight: 700; color: var(--ink); font-size: 14px; white-space: nowrap; }
+.rb-ord__calc {
+  margin-top: 3px;
+  padding-left: 40px;
+  display: flex; flex-wrap: wrap; gap: 2px 12px;
+  font-size: 12px; color: var(--muted);
+}
+.rb-ord__calc .is-minus { color: #C93B31; }
+.rb-ord__calc .is-plus { color: #2E9E75; }
+.rb-ord__row.is-cancelled .rb-ord__share { color: var(--muted); text-decoration: line-through; font-weight: 500; }
+.rb-ord__reason { margin-top: 2px; padding-left: 40px; font-size: 12px; color: #C93B31; }
+
+.rb-more {
+  margin-top: 8px;
+  width: 100%;
+  padding: 9px;
+  border-radius: 10px;
+  border: 1px dashed var(--line);
+  font-size: 12.5px; font-weight: 600;
+  color: var(--muted);
+}
+.rb-more:hover { background: var(--canvas); }
+
+.rb-cancelled { margin-top: 10px; }
+.rb-cancelled summary {
+  cursor: pointer;
+  padding: 8px 2px;
+  font-size: 13px; font-weight: 600;
+  color: #C93B31;
+}
+.rb-cancelled[open] summary { margin-bottom: 6px; }
+
+/* O'tkazmalar tarixi */
+.rb-pay__row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  gap: 10px;
+  align-items: baseline;
+  padding: 10px 14px;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+.rb-pay__row + .rb-pay__row { border-top: 1px solid var(--line); }
+.rb-pay__date { color: var(--ink); white-space: nowrap; }
+.rb-pay__note { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rb-pay__sum { color: #2E9E75; font-weight: 700; white-space: nowrap; }
+
+@media (max-width: 480px) {
+  .rb-stmt, .rb-acc { padding: 14px; }
+  .rb-stmt__line { font-size: 13px; }
+  .rb-ord__calc, .rb-ord__reason { padding-left: 0; }
+  .rb-acc__value { font-size: 22px; }
+}
