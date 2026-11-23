@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { adminApi } from '@/api';
 import { RestaurantPayoutSection } from '@/pages/admin/RestaurantPayoutSection';
-import { formatCard, copyText, fmtWeek } from '@/lib/billingPeriod';
+import { formatCard, copyText } from '@/lib/billingPeriod';
 import { Sheet } from './Sheet';
 import { som } from './format';
 
@@ -113,15 +113,8 @@ function BankBlock({ bank, primary }) {
   );
 }
 
-/*
- * `week` (ixtiyoriy) — "Shu haftani to'lash": to'lov shu haftaga biriktiriladi (server: weekStart).
- * `presetAmount` — oldindan qo'yiladigan summa (hafta qoldig'i yoki "Hammasini to'lash"). Ikkalasi
- * ham berilmasa — avvalgi xulq: butun balans, hafta tanlanmagan (eng eski haftadan).
- */
-export function PayoutModal({ restaurant, onClose, onDone, week = null, presetAmount = null }) {
+export function PayoutModal({ restaurant, onClose, onDone }) {
   const balance = Math.round(restaurant.balans || 0);
-  // Taklif etiladigan summa balansdan oshmaydi (server baribir tekshiradi)
-  const suggested = presetAmount != null ? Math.min(Math.floor(presetAmount), balance) : balance;
 
   const [reveal, setReveal] = useState(null);
   const [loadErr, setLoadErr] = useState('');
@@ -129,7 +122,7 @@ export function PayoutModal({ restaurant, onClose, onDone, week = null, presetAm
   const [savingReq, setSavingReq] = useState(false);
   const editorRef = useRef(null);
 
-  const [amount, setAmount] = useState(String(suggested));
+  const [amount, setAmount] = useState(String(balance));
   const [note, setNote] = useState('');
   const [paying, setPaying] = useState(false);
   const [err, setErr] = useState('');
@@ -179,7 +172,6 @@ export function PayoutModal({ restaurant, onClose, onDone, week = null, presetAm
         // Har bosishda yangi kalit: bu YANGI mantiqiy so'rov; haqiqiy
         // himoya — serverdagi atomik balans tekshiruvi va shu kalit.
         idempotencyKey: crypto.randomUUID(),
-        ...(week ? { weekStart: week.weekStart } : {}),
       });
       onDone();
     } catch (e) {
@@ -217,18 +209,7 @@ export function PayoutModal({ restaurant, onClose, onDone, week = null, presetAm
   }
 
   return (
-    <Sheet
-      title={`${restaurant.name} ga to‘lov`}
-      subtitle={week
-        ? `Hafta: ${fmtWeek(week.weekStart, { year: true })} · qoldiq ${som(week.payable)} so‘m`
-        : `Restoranga qarzimiz: ${som(balance)} so‘m`}
-      onClose={onClose}
-    >
-      {week && (
-        <div className="mb-3 rounded-lg border border-brand-400/50 bg-brand-400/10 px-3 py-2 text-[11px] text-brand-800" data-testid="payout-week">
-          To‘lov <b>{fmtWeek(week.weekStart)}</b> haftasiga yoziladi. Qoldiqdan ortig‘i eng eski ochiq haftaga o‘tadi.
-        </div>
-      )}
+    <Sheet title={`${restaurant.name} ga to‘lov`} subtitle={`Restoranga qarzimiz: ${som(balance)} so‘m`} onClose={onClose}>
       <div className="mb-3 rounded-lg bg-canvas px-3 py-2 text-[11px] text-muted">
         Pulni quyidagi rekvizitga bank ilovasidan <b className="text-ink">o‘zingiz o‘tkazing</b>.
         Tizim pul jo‘natmaydi — pastdagi tugma faqat o‘tkazilganini qayd etadi.
@@ -275,8 +256,8 @@ export function PayoutModal({ restaurant, onClose, onDone, week = null, presetAm
       <label className="mb-3 block">
         <span className="mb-1 flex items-baseline justify-between text-xs font-medium text-muted">
           <span>O‘tkazilgan summa (so‘m)</span>
-          <button type="button" onClick={() => setAmount(String(suggested))} className="text-brand-600 underline">
-            {week ? 'Hafta qoldig‘i' : 'Hammasi'}: {som(suggested)}
+          <button type="button" onClick={() => setAmount(String(balance))} className="text-brand-600 underline">
+            Hammasi: {som(balance)}
           </button>
         </span>
         <input

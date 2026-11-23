@@ -299,8 +299,6 @@ export const adminApi = {
   // "Naqd: N ta / Karta: N ta" ortidagi buyurtmalar: '?method=cash&from=..&to=..'
   getRestaurantBillingOrders: (id, q = '') => apiFetch(`/admin/billing/restaurant/${id}/orders${q}`),
   getLedger: (q = '') => apiFetch(`/admin/billing/ledger${q}`),
-  // Haftalik ko'rinish (faqat o'qish): '?restaurantId=' ixtiyoriy — server/services/weeklySettlement.js
-  getBillingWeeks: (q = '') => apiFetch(`/admin/billing/weeks${q}`),
   /*
    * `idempotencyKey` chaqiruvchi tomonidan berilishi kerak —
    * agar tarmoq uzilib javob kelmasa va qayta urinilsa, AYNAN
