@@ -7,7 +7,9 @@ import { PeriodFilter } from '@/components/billing/PeriodFilter';
 import { RestaurantOrdersModal } from '@/components/billing/RestaurantOrdersModal';
 import { PayoutModal } from '@/components/billing/PayoutModal';
 import { PayoutsHistoryModal } from '@/components/billing/PayoutsHistoryModal';
-import { rangeFor, buildQuery, periodLabel } from '@/lib/billingPeriod';
+import { rangeFor, buildQuery, periodLabel, weekPeriod } from '@/lib/billingPeriod';
+import { WeekStrip } from '@/components/billing/WeekStrip';
+import { RestaurantWeeks } from '@/components/billing/RestaurantWeeks';
 
 /*
  * Kasr qismi bo'lishi mumkin (Click 1.5% → 9 940,5). Avval vergul
@@ -53,9 +55,36 @@ export function BillingPage() {
   // Ketma-ket filtr almashtirilsa, kechikkan ESKI javob yangisini bosib ketmasin
   const loadSeq = useRef(0);
 
+  /*
+   * ═══ HAFTALIK KO'RINISH ═══ (GET /admin/billing/weeks — faqat o'qish)
+   * Asosiy hisobotdan ALOHIDA yuklanadi: u yuklanmasa ham hisobot to'liq ishlaydi,
+   * faqat haftalar bloki ko'rinmaydi (xato aniq aytiladi).
+   */
+  const [weeksData, setWeeksData] = useState(null);
+  const [weeksError, setWeeksError] = useState('');
+  const loadWeeks = useCallback(() => {
+    adminApi.getBillingWeeks()
+      .then((d) => { setWeeksData(d); setWeeksError(''); })
+      .catch((e) => setWeeksError(e.message || 'Haftalarni yuklab bo‘lmadi'));
+  }, []);
+  const weeksById = useMemo(
+    () => new Map((weeksData?.restaurants || []).map((x) => [String(x._id), x])),
+    [weeksData],
+  );
+  const selectedWeek = period.key === 'isoweek' ? period.from : null;
+  const pickWeek = (ws) => setPeriod(ws ? weekPeriod(ws) : { key: 'all', from: '', to: '' });
+  // Kartadagi eski hafta bosilganda: shu haftaga o'tib, o'sha restoranni ko'rsatish
+  const openWeek = (ws, restaurantId) => {
+    pickWeek(ws);
+    setTimeout(() => {
+      document.getElementById(`rest-${restaurantId}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  };
+
   const load = useCallback(async () => {
     const mine = ++loadSeq.current;
     setRefreshing(true);
+    loadWeeks();
     try {
       const [o, r] = await Promise.all([
         adminApi.getBillingOverview(),
@@ -72,7 +101,7 @@ export function BillingPage() {
     }
     setInitialLoading(false);
     setRefreshing(false);
-  }, [range]);
+  }, [range, loadWeeks]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -231,6 +260,14 @@ export function BillingPage() {
 
           <PeriodFilter value={period} onChange={setPeriod} />
 
+          <WeekStrip weeks={weeksData?.weeks} value={selectedWeek} onChange={pickWeek} />
+          {weeksError && (
+            <div className="mb-3 flex items-center justify-between gap-3 text-[11px] text-muted">
+              <span>Haftalar ko&apos;rinishi yuklanmadi: {weeksError}</span>
+              <button type="button" onClick={loadWeeks} className="flex-none underline">Qayta urinish</button>
+            </div>
+          )}
+
           {/* Davr tanlangan bo'lsa — umumiy natija ("kecha qancha o'tkazildi?") */}
           {range && (() => {
             const sum = (k) => restaurants.reduce((a, r) => a + (r.period?.[k] || 0), 0);
@@ -260,7 +297,7 @@ export function BillingPage() {
               const sof = p ? p.sofKomissiya : r.sofKomissiya;
 
               return (
-                <div key={r._id} className="bg-surface border border-line rounded-xl p-4">
+                <div key={r._id} id={`rest-${r._id}`} className="scroll-mt-4 bg-surface border border-line rounded-xl p-4">
                   <div className="flex items-start justify-between gap-3 mb-3">
                     <div className="min-w-0">
                       <div className="font-semibold text-ink">{r.name}</div>
@@ -346,13 +383,22 @@ export function BillingPage() {
                     </div>
                     {r.balans > 0 && (
                       <button
-                        onClick={() => setPayTarget(r)}
+                        onClick={() => setPayTarget({ restaurant: r })}
                         className="bg-brand-400 text-brand-text text-sm font-medium px-4 py-2 rounded-lg flex-none"
                       >
                         To'lash
                       </button>
                     )}
                   </div>
+
+                  <RestaurantWeeks
+                    data={weeksById.get(String(r._id))}
+                    balance={r.balans}
+                    selectedWeek={selectedWeek}
+                    onOpenWeek={(ws) => openWeek(ws, r._id)}
+                    onPayWeek={(week, amount) => setPayTarget({ restaurant: r, week, presetAmount: amount })}
+                    onPayAll={(amount) => setPayTarget({ restaurant: r, presetAmount: amount })}
+                  />
                 </div>
               );
             })}
@@ -373,7 +419,9 @@ export function BillingPage() {
 
       {payTarget && (
         <PayoutModal
-          restaurant={payTarget}
+          restaurant={payTarget.restaurant}
+          week={payTarget.week || null}
+          presetAmount={payTarget.presetAmount ?? null}
           onClose={() => setPayTarget(null)}
           onDone={() => { setPayTarget(null); load(); }}
         />

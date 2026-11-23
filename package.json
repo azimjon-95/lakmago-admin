@@ -10,6 +10,7 @@
     "test:catalog": "node --test tests/catalogGroups.test.mjs tests/coverSet.test.mjs tests/catalogTotals.test.mjs",
     "test:incident-mode": "node --test tests/incidentMode.test.mjs",
     "test:delivery-ui": "node tests/deliveryUi.render.mjs",
+    "test:finance-weeks": "node tests/financeWeeks.render.mjs",
     "test:groups": "node tests/groups.render.mjs",
     "test:advideo": "node --test tests/adVideo.test.mjs",
     "test:market-categories": "node --test tests/marketCategories.admin.mjs"
