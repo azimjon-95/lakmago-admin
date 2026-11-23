@@ -48,6 +48,8 @@ export function rangeFor(period, now = new Date()) {
     case 'week': return { from: addDaysYmd(today, -6), to: today };
     case 'month': return { from: addDaysYmd(today, -29), to: today };
     case 'custom': return isValidRange(period.from, period.to) ? { from: period.from, to: period.to } : null;
+    // Haftalik ko'rinishdan tanlangan hafta (dushanba — yakshanba)
+    case 'isoweek': return isValidRange(period.from, period.to) ? { from: period.from, to: period.to } : null;
     default: return null;
   }
 }
@@ -69,6 +71,7 @@ const fmt = (ymd) => ymd.split('-').reverse().join('.');
 /** "Kecha (27.09.2026)", "24.09 — 28.09.2026", "Hamma vaqt". */
 export function periodLabel(period, range) {
   if (!range) return 'Hamma vaqt';
+  if (period?.key === 'isoweek') return `Hafta: ${fmtWeek(range.from, { year: true })}`;
   const dates = range.from === range.to ? fmt(range.from) : `${fmt(range.from)} — ${fmt(range.to)}`;
   const preset = PRESETS.find((p) => p.key === period?.key);
   return preset && preset.key !== 'custom' && preset.key !== 'all' && range.from === range.to
@@ -100,3 +103,29 @@ export async function copyText(text) {
     } catch { return false; }
   }
 }
+
+/* ═══ HAFTALAR (server/services/weeklySettlement.js bilan bir xil: dushanba–yakshanba, Toshkent) ═══ */
+
+const MONTHS = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek'];
+
+/** Shu sana tushgan haftaning dushanbasi: "2026-11-23". */
+export function weekStartOfYmd(ymd) {
+  const [y, m, d] = ymd.split('-').map(Number);
+  const dow = (new Date(Date.UTC(y, m - 1, d)).getUTCDay() + 6) % 7;
+  return addDaysYmd(ymd, -dow);
+}
+
+/** Toshkentdagi joriy hafta dushanbasi. */
+export const currentWeekStart = (now = new Date()) => weekStartOfYmd(tashkentToday(now));
+
+/** "17–23 noy", oy almashsa "27 okt – 2 noy"; { year: true } bilan oxiriga yil. */
+export function fmtWeek(weekStart, { year = false } = {}) {
+  const end = addDaysYmd(weekStart, 6);
+  const [, m1, d1] = weekStart.split('-').map(Number);
+  const [y2, m2, d2] = end.split('-').map(Number);
+  const head = m1 === m2 ? `${d1}–${d2} ${MONTHS[m2 - 1]}` : `${d1} ${MONTHS[m1 - 1]} – ${d2} ${MONTHS[m2 - 1]}`;
+  return year ? `${head} ${y2}` : head;
+}
+
+/** Davr filtri uchun qiymat: shu hafta tanlangan. */
+export const weekPeriod = (weekStart) => ({ key: 'isoweek', from: weekStart, to: addDaysYmd(weekStart, 6) });
