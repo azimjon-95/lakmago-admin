@@ -189,6 +189,14 @@ export const panelApi = {
     const qs = q.toString();
     return apiFetch(`/panel/billing/daily${qs ? `?${qs}` : ''}`);
   },
+  // Davrdagi har bir buyurtma pul tasviri bilan (from/to — YYYY-MM-DD, Toshkent kuni)
+  getBillingOrders: (from, to) => {
+    const q = new URLSearchParams();
+    if (from) q.set('from', from);
+    if (to) q.set('to', to);
+    const qs = q.toString();
+    return apiFetch(`/panel/billing/orders${qs ? `?${qs}` : ''}`);
+  },
   getBillingLedger: (params = {}) => {
     const q = new URLSearchParams(
       Object.entries(params).filter(([, v]) => v != null && v !== ''),
