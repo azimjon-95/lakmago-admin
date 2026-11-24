@@ -13,6 +13,9 @@ const MAX_ACTIVE = 5;
 const KINDS = [['restaurant', 'Restoran'], ['choyxona', 'Choyxona'], ['cafe', 'Kafe'], ['fastfood', 'Fast food'], ['club', 'Klub'], ['shop', 'Do‘kon']];
 const FOOD = ['restaurant', 'choyxona', 'cafe', 'fastfood', 'club'];
 const PAYS = [['cash', 'Naqd'], ['click', 'Click'], ['payme', 'Payme'], ['paynet', 'Paynet'], ['uzum', 'Uzum']];
+// Buyurtma qayerdan berilganda (server services/clientChannel.js). 'app' = iOS + Android ilova
+const CHANNELS = [['app', 'Ilova (iOS + Android)'], ['ios', 'Faqat iPhone'], ['android', 'Faqat Android'], ['telegram', 'Telegram'], ['web', 'Sayt']];
+const CHANNEL_SHORT = { app: 'Ilovada', ios: 'iPhone', android: 'Android', telegram: 'Telegram', web: 'Sayt' };
 const DAYS = [[1, 'Du'], [2, 'Se'], [3, 'Ch'], [4, 'Pa'], [5, 'Ju'], [6, 'Sh'], [0, 'Ya']];
 const AMOUNT_CHIPS = [50_000, 100_000, 150_000, 200_000, 300_000];
 const STEPS = [['gift', 'Sovg‘a'], ['cond', 'Shart'], ['when', 'Cheklov']];
@@ -20,9 +23,9 @@ const FIELD = 'inp !w-full min-w-0 max-w-full !text-base sm:!text-sm';
 
 const EMPTY = {
   name: '', itemName: '', imageUrl: '', quantity: 1, reimburse: 0, minAmount: 100_000, maxAmount: 0, basis: 'menu',
-  active: false, scope: 'all', restaurantIds: [], kinds: [...FOOD], fulfillments: ['delivery', 'pickup'], paymentMethods: [],
+  active: false, scope: 'all', restaurantIds: [], kinds: [...FOOD], fulfillments: ['delivery', 'pickup'], paymentMethods: [], channels: [],
   startsAt: '', endsAt: '', weekdays: [], hourFrom: '', hourTo: '',
-  perCustomerPerDay: 0, perCustomerTotal: 0, dailyLimit: 0, totalLimit: 0, budget: 0,
+  perCustomerPerDay: 0, perCustomerTotal: 0, perDeviceTotal: 0, dailyLimit: 0, totalLimit: 0, budget: 0,
 };
 
 const som = (n) => Math.round(Number(n) || 0).toLocaleString('ru-RU').replace(/\u00a0/g, ' ');
@@ -39,7 +42,10 @@ export function describe(r) {
   const pay = r.reimburse > 0
     ? `LokmaGo restoranga har bir dona uchun ${som(r.reimburse)} so‘m to‘laydi.`
     : 'Restoranga qoplash belgilanmagan (0 so‘m) — restoran o‘z hisobidan beradi.';
-  const text = `${who} ${amount} ${range} buyurtmaga ${r.quantity} × ${r.itemName || 'sovg‘a'} bepul qo‘shiladi. ${pay}`;
+  const ch = (r.channels || []).map((k) => CHANNEL_SHORT[k] || k);
+  const where = ch.length ? ` (faqat: ${ch.join(', ')} orqali berilgan buyurtma)` : '';
+  const dev = r.perDeviceTotal > 0 ? ` Bitta qurilmaga ko‘pi bilan ${r.perDeviceTotal} marta.` : '';
+  const text = `${who} ${amount} ${range} buyurtmaga${where} ${r.quantity} × ${r.itemName || 'sovg‘a'} bepul qo‘shiladi. ${pay}${dev}`;
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
@@ -105,9 +111,9 @@ export function GiftBonusPage() {
 
 const pick = (r) => ({
   name: r.name, itemName: r.itemName, imageUrl: r.imageUrl || '', quantity: r.quantity, reimburse: r.reimburse, minAmount: r.minAmount, maxAmount: r.maxAmount, basis: r.basis,
-  scope: r.scope, restaurantIds: r.restaurantIds || [], kinds: r.kinds, fulfillments: r.fulfillments, paymentMethods: r.paymentMethods || [],
+  scope: r.scope, restaurantIds: r.restaurantIds || [], kinds: r.kinds, fulfillments: r.fulfillments, paymentMethods: r.paymentMethods || [], channels: r.channels || [],
   startsAt: r.startsAt || null, endsAt: r.endsAt || null, weekdays: r.weekdays || [], hourFrom: r.hourFrom ?? null, hourTo: r.hourTo ?? null,
-  perCustomerPerDay: r.perCustomerPerDay, perCustomerTotal: r.perCustomerTotal, dailyLimit: r.dailyLimit, totalLimit: r.totalLimit, budget: r.budget,
+  perCustomerPerDay: r.perCustomerPerDay, perCustomerTotal: r.perCustomerTotal, perDeviceTotal: r.perDeviceTotal || 0, dailyLimit: r.dailyLimit, totalLimit: r.totalLimit, budget: r.budget,
 });
 const toForm = (r) => ({ ...EMPTY, ...r, startsAt: toLocal(r.startsAt), endsAt: toLocal(r.endsAt), hourFrom: r.hourFrom ?? '', hourTo: r.hourTo ?? '' });
 
@@ -352,6 +358,16 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
             <fieldset className="min-w-0"><Label hint="Hech biri tanlanmasa — hamma to‘lov turi">To‘lov turi</Label>
               <div className="flex flex-wrap gap-1.5">{PAYS.map(([k, l]) => <Chip key={k} on={f.paymentMethods.includes(k)} onClick={() => toggleIn('paymentMethods', k)}>{l}</Chip>)}</div>
             </fieldset>
+            <fieldset className="min-w-0" data-testid="gift-channels">
+              <Label hint="Hech biri tanlanmasa — hamma joyda. “Ilova” — mijozlarni ilovani yuklab olishga undash uchun">Qayerdan buyurtma berilganda</Label>
+              <div className="flex flex-wrap gap-1.5">{CHANNELS.map(([k, l]) => <Chip key={k} on={(f.channels || []).includes(k)} onClick={() => toggleIn('channels', k)}>{l}</Chip>)}</div>
+              {(f.channels || []).some((k) => k === 'app' || k === 'ios' || k === 'android') && (
+                <p className="mt-2 text-xs leading-snug text-muted">
+                  Ilovaning eski versiyalari (yangilanmagan) bu sovg‘ani olmaydi. Bir telefonda bir necha akkaunt ochib qayta olishning oldini olish uchun
+                  “Cheklov” bo‘limida <b>bitta qurilmaga</b> limitini qo‘ying (masalan 1).
+                </p>
+              )}
+            </fieldset>
           </div>
 
           {/* 3. CHEKLOV */}
@@ -377,7 +393,7 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
             <fieldset className="min-w-0">
               <Label hint="0 yoki bo‘sh = cheklovsiz. Suiste’molni oldini oladi">Cheklovlar</Label>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {[['perCustomerPerDay', 'Bir mijozga kuniga (buyurtma)'], ['perCustomerTotal', 'Bir mijozga jami (buyurtma)'], ['dailyLimit', 'Kuniga jami (barcha mijozga)'], ['totalLimit', 'Umuman jami (buyurtma)']].map(([k, l]) => (
+                {[['perCustomerPerDay', 'Bir mijozga kuniga (buyurtma)'], ['perCustomerTotal', 'Bir mijozga jami (buyurtma)'], ['perDeviceTotal', 'Bitta qurilmaga jami (faqat ilova)'], ['dailyLimit', 'Kuniga jami (barcha mijozga)'], ['totalLimit', 'Umuman jami (buyurtma)']].map(([k, l]) => (
                   <label key={k} className="block min-w-0"><span className="mb-1 block text-xs text-muted">{l}</span>
                     <input className={FIELD} inputMode="numeric" value={f[k] ? String(f[k]) : ''} onChange={(e) => set(k)(num(e.target.value))} placeholder="Cheklovsiz" />
                   </label>

@@ -55,6 +55,7 @@ const RevenuePage = lazy(() => import('@/pages/admin/RevenuePage').then((m) => (
 const BannersPage = lazy(() => import('@/pages/admin/BannersPage').then((m) => ({ default: m.BannersPage })));
 const GiftBonusPage = lazy(() => import('@/pages/admin/gift/GiftBonusPage').then((m) => ({ default: m.GiftBonusPage })));
 const PromoModalsPage = lazy(() => import('@/pages/admin/promo/PromoModalsPage').then((m) => ({ default: m.PromoModalsPage })));
+const AppSettingsPage = lazy(() => import('@/pages/admin/app/AppSettingsPage').then((m) => ({ default: m.AppSettingsPage })));
 const OrdersMonitorPage = lazy(() => import('@/pages/admin/OrdersMonitorPage').then((m) => ({ default: m.OrdersMonitorPage })));
 const GroupsPage = lazy(() => import('@/pages/admin/GroupsPage').then((m) => ({ default: m.GroupsPage })));
 const SupportPage = lazy(() => import('@/pages/admin/SupportPage').then((m) => ({ default: m.SupportPage })));
@@ -181,6 +182,7 @@ function AdminRoutes() {
         <Route path="/banners" element={<Guarded page="banners"><BannersPage /></Guarded>} />
         <Route path="/promo-modals" element={<Guarded page="banners"><PromoModalsPage /></Guarded>} />
         <Route path="/gift-bonuses" element={<Guarded page="banners"><GiftBonusPage /></Guarded>} />
+        <Route path="/app-settings" element={<AdminOnly><AppSettingsPage /></AdminOnly>} />
         <Route path="/settings" element={<Guarded page="settings"><SettingsPage /></Guarded>} />
         <Route path="/billing" element={<Guarded page="billing"><BillingPage /></Guarded>} />
         <Route path="/bot" element={<Guarded page="bot"><BotBroadcastPage /></Guarded>} />
