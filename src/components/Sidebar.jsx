@@ -34,6 +34,8 @@ const adminNav = [
   { group: "Marketing & kontent", to: "/promo-modals", icon: "ti-sparkles", label: "Reklama oynalari", page: "banners" },
   // LokmaGo sovg'a-bonusi: buyurtma summasi shartdan oshsa taomga qo'shib bepul sovg'a (puli restoranga qoplanadi)
   { group: "Marketing & kontent", to: "/gift-bonuses", icon: "ti-gift", label: "Sovg‘a-bonuslar", page: "banners" },
+  // Mijoz ilovasi: majburiy yangilash, do'kon havolalari, buyurtmalar qayerdan (iOS/Android/Telegram/sayt)
+  { group: "Marketing & kontent", to: "/app-settings", icon: "ti-device-mobile", label: "Mijoz ilovasi", page: "app-settings", adminOnly: true },
   { group: "Marketing & kontent", to: "/promo-admin", icon: "ti-speakerphone", label: "Mijoz jalb qilish", page: "marketing" },
   { group: "Marketing & kontent", to: "/catalog", icon: "ti-package", label: "Katalog", page: "catalog" },
   { group: "Marketing & kontent", to: "/market-categories", icon: "ti-category", label: "Market kategoriyalari", page: "market-categories" },

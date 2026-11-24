@@ -17,12 +17,16 @@ const TEMPLATES = [
   ['sunburst', 'Nurlar', "To'q sariq nurlar, oq sarlavha"],
   ['image', 'Faqat rasm', "Matnsiz: rasm butun oynani chetdan-chetgacha qoplaydi"],
 ];
-const LINKS = [['', 'Faqat yopiladi'], ['/', 'Bosh sahifa'], ['/market', 'Market'], ['custom', 'Boshqa havola']];
+const INSTALL = '__install_app__';
+const LINKS = [['', 'Faqat yopiladi'], ['/', 'Bosh sahifa'], ['/market', 'Market'], [INSTALL, 'Ilovani yuklab olish (App Store / Google Play)'], ['custom', 'Boshqa havola']];
+// Kimga ko'rinadi (server services/promoModals.js audienceMatches). Ilovaning eski versiyalari faqat "Hammaga"ni ko'radi.
+const AUDIENCES = [['all', 'Hammaga'], ['not_app', 'Sayt va Telegram (ilovasizlar)'], ['app', 'Faqat ilovada'], ['telegram', 'Faqat Telegram'], ['web', 'Faqat sayt']];
+const AUDIENCE_SHORT = { all: '', not_app: 'Ilovasizlarga', app: 'Faqat ilovada', telegram: 'Telegram', web: 'Sayt' };
 const MAX_ACTIVE = 5;
 const LIMIT = { title: 90, footer: 70 };
 const visibleLen = (s) => String(s || '').replace(/\*/g, '').length;
 
-const EMPTY = { template: 'brush', title: '', footer: '', imageUrl: '', link: '', active: false, frequency: 'daily', startsAt: '', endsAt: '' };
+const EMPTY = { template: 'brush', title: '', footer: '', imageUrl: '', link: '', active: false, frequency: 'daily', startsAt: '', endsAt: '', audience: 'all', cta: 'link' };
 
 const toLocal = (d) => (d ? new Date(new Date(d).getTime() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '');
 
@@ -114,6 +118,8 @@ export function PromoModalsPage() {
                   <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-[11px]">
                     <span className={`rounded-full px-2 py-0.5 font-medium ${cls}`}>{label}</span>
                     <span className="rounded-full bg-canvas px-2 py-0.5 text-muted">{p.frequency === 'once' ? 'Faqat bir marta' : 'Kuniga bir marta'}</span>
+                    {AUDIENCE_SHORT[p.audience || 'all'] && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">{AUDIENCE_SHORT[p.audience]}</span>}
+                    {p.cta === 'install_app' && <span className="rounded-full bg-violet-50 px-2 py-0.5 font-medium text-violet-700">Ilovani yuklash</span>}
                     <span className="text-muted">Ko‘rildi {shown}{p.link ? ` · bosildi ${clicked}${shown ? ` (${Math.round((clicked / shown) * 100)}%)` : ''}` : ''}</span>
                   </div>
                   <div className="mt-auto flex flex-wrap gap-1 pt-2">
@@ -136,7 +142,7 @@ export function PromoModalsPage() {
   );
 }
 
-const pick = (p) => ({ template: p.template, title: p.title, footer: p.footer, imageUrl: p.imageUrl, link: p.link, frequency: p.frequency, startsAt: p.startsAt || null, endsAt: p.endsAt || null });
+const pick = (p) => ({ template: p.template, title: p.title, footer: p.footer, imageUrl: p.imageUrl, link: p.link, frequency: p.frequency, startsAt: p.startsAt || null, endsAt: p.endsAt || null, audience: p.audience || 'all', cta: p.cta || 'link' });
 
 function Switch({ on, onChange, disabled }) {
   return (
@@ -169,7 +175,7 @@ const FIELD = 'inp !w-full min-w-0 max-w-full !text-base sm:!text-sm';
 function Editor({ initial, activeCount, onClose, onSaved }) {
   const isNew = !initial.id;
   const [f, setF] = useState({ ...EMPTY, ...initial });
-  const [linkMode, setLinkMode] = useState(() => (LINKS.some(([v]) => v === (initial.link || '')) ? (initial.link || '') : 'custom'));
+  const [linkMode, setLinkMode] = useState(() => (initial.cta === 'install_app' ? INSTALL : LINKS.some(([v]) => v === (initial.link || '')) ? (initial.link || '') : 'custom'));
   const [step, setStep] = useState(0);
   const [preview, setPreview] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -182,18 +188,21 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
   const titleLen = visibleLen(f.title);
   const footerLen = visibleLen(f.footer);
   const canActivate = f.active || initial.active || activeCount < MAX_ACTIVE;
-  const link = linkMode === 'custom' ? f.link.trim() : linkMode;
+  const install = linkMode === INSTALL;
+  const link = install ? '' : linkMode === 'custom' ? f.link.trim() : linkMode;
   const linkBad = linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link);
 
   // Har qadam uchun nima yetishmayapti (foydalanuvchiga tushunarli matn)
   const problems = {
     design: imageOnly && !f.imageUrl ? '“Faqat rasm” uchun rasm yuklang' : null,
+    setupAudience: install && f.audience === 'app' ? '“Ilovani yuklab olish” ilova foydalanuvchilariga ko‘rsatilmaydi — auditoriyani o‘zgartiring' : null,
     text: !imageOnly && titleLen < 3 ? 'Sarlavhani yozing (kamida 3 belgi)'
       : titleLen > LIMIT.title ? `Sarlavha ${LIMIT.title} belgidan oshmasin`
       : footerLen > LIMIT.footer ? `Pastki yozuv ${LIMIT.footer} belgidan oshmasin`
       : linkBad ? 'Havola noto‘g‘ri: /market kabi yo‘l yoki https:// manzil yozing' : null,
     setup: null,
   };
+  problems.setup = problems.setupAudience;
   const firstBad = STEPS.findIndex(([k]) => problems[k]);
   const stepLabel = (k) => (k === 'text' && imageOnly ? 'Havola' : STEPS.find((x) => x[0] === k)[1]);
 
@@ -218,7 +227,7 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
     if (firstBad >= 0) { go(firstBad); setErr(problems[STEPS[firstBad][0]]); return; }
     setBusy(true); setErr(null);
     const body = {
-      ...pick(f), link, active: Boolean(f.active),
+      ...pick(f), link, cta: install ? 'install_app' : 'link', active: Boolean(f.active),
       startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : null,
       endsAt: f.endsAt ? new Date(f.endsAt).toISOString() : null,
     };
@@ -333,9 +342,20 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
 
                 <label className="block min-w-0">
                   <span className="mb-1.5 block text-sm font-semibold text-ink">{imageOnly ? 'Rasm bosilganda nima bo‘lsin?' : 'Pastki yozuv bosilganda nima bo‘lsin?'}</span>
-                  <select className={FIELD} value={linkMode} onChange={(e) => { setLinkMode(e.target.value); if (e.target.value !== 'custom') set('link')(e.target.value); }}>
+                  <select className={FIELD} value={linkMode} onChange={(e) => {
+                    const v = e.target.value;
+                    setLinkMode(v);
+                    if (v === INSTALL) { set('link')(''); setF((s) => ({ ...s, cta: 'install_app', audience: s.audience === 'all' || s.audience === 'app' ? 'not_app' : s.audience })); return; }
+                    setF((s) => ({ ...s, cta: 'link' }));
+                    if (v !== 'custom') set('link')(v);
+                  }}>
                     {LINKS.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
                   </select>
+                  {install && (
+                    <p className="mt-1.5 text-[11px] leading-snug text-muted" data-testid="promo-install-hint">
+                      Mijoz telefoniga qarab App Store yoki Google Play ochiladi. Havolalar: “Ilova versiyasi” sahifasida. Ilova ichida bu oyna ko‘rinmaydi.
+                    </p>
+                  )}
                   {linkMode === 'custom' && (
                     <input className={`${FIELD} mt-2 ${linkBad ? '!border-red-400' : ''}`} value={f.link} onChange={(e) => set('link')(e.target.value)} placeholder="/restaurant/… yoki https://…" inputMode="url" autoCapitalize="none" autoCorrect="off" />
                   )}
@@ -344,6 +364,14 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
 
               {/* 3. SOZLAMA */}
               <div className={`min-w-0 space-y-5 ${showStep(2)}`}>
+                <fieldset className="min-w-0" data-testid="promo-audience">
+                  <legend className="mb-2 text-sm font-semibold text-ink">Kimga ko‘rsatilsin?</legend>
+                  <select className={FIELD} value={f.audience} onChange={(e) => set('audience')(e.target.value)}>
+                    {AUDIENCES.filter(([v]) => !(install && v === 'app')).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
+                  <p className="mt-1.5 text-[11px] leading-snug text-muted">Masalan “Ilovada buyurtma bering — Cola tekin” oynasini faqat sayt va Telegram’dagilarga ko‘rsating.</p>
+                </fieldset>
+
                 <fieldset className="min-w-0">
                   <legend className="mb-2 text-sm font-semibold text-ink">3. Har bir mijozga necha marta?</legend>
                   <div className="grid grid-cols-2 gap-1 rounded-xl border border-line p-1">

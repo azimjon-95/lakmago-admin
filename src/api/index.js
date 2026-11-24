@@ -407,6 +407,11 @@ export const adminApi = {
   updateGiftBonus: (id, d) => apiFetch(`/admin/gift-bonuses/${id}`, { method: 'PATCH', body: JSON.stringify(d) }),
   deleteGiftBonus: (id) => apiFetch(`/admin/gift-bonuses/${id}`, { method: 'DELETE' }),
 
+  // Mijoz ilovasi: versiyalar (majburiy yangilash), do'kon havolalari; buyurtmalar kanal kesimida
+  getAppConfig: () => apiFetch('/admin/app-config'),
+  updateAppConfig: (d) => apiFetch('/admin/app-config', { method: 'PATCH', body: JSON.stringify(d) }),
+  getChannelStats: (from, to) => apiFetch(`/admin/stats/channels?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+
   // Reklama oynalari (mijoz ilovasi ochilganda navbat bilan)
   getPromoModals: () => apiFetch('/admin/promo-modals'),
   createPromoModal: (d) => apiFetch('/admin/promo-modals', { method: 'POST', body: JSON.stringify(d) }),
