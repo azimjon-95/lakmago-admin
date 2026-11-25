@@ -130,6 +130,12 @@ export function ReservationsPage() {
                         </a>
                       )}
                     </div>
+                    {/* Mijoz kim: tasdiqlangan telefon, oldingi bronlar (soxta bronni ajratish uchun) */}
+                    {r.customer?.trustText && (
+                      <div className={`text-xs mt-1 ${r.customer.trust === 'risk' ? 'text-red-600 font-medium' : 'text-muted'}`}>
+                        <i className="ti ti-user-search text-xs" /> {r.customer.trustText}
+                      </div>
+                    )}
                     <div className="text-sm text-ink mt-1.5">
                       <i className="ti ti-calendar text-xs" /> {r.date} · {r.time}
                       <span className="mx-2 text-muted">|</span>
@@ -164,7 +170,11 @@ export function ReservationsPage() {
                       </div>
                     )}
 
-                    {r.note && <div className="text-xs text-muted mt-1">Izoh: {r.note}</div>}
+                    {r.note && (
+                      <div className="text-sm text-ink mt-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 whitespace-pre-wrap break-words">
+                        <i className="ti ti-note text-xs" /> {r.note}
+                      </div>
+                    )}
                     {r.rejectReason && (
                       <div className="text-xs text-red-600 mt-1">Rad sababi: {r.rejectReason}</div>
                     )}
