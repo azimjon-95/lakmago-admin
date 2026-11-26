@@ -411,6 +411,11 @@ export const adminApi = {
   getAppConfig: () => apiFetch('/admin/app-config'),
   updateAppConfig: (d) => apiFetch('/admin/app-config', { method: 'PATCH', body: JSON.stringify(d) }),
   getChannelStats: (from, to) => apiFetch(`/admin/stats/channels?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}`),
+  // Taom takliflari push'i (mijoz ilovasi): sozlama + statistika, namuna, sinov
+  getPromoPush: () => apiFetch('/admin/promo-push'),
+  updatePromoPush: (d) => apiFetch('/admin/promo-push', { method: 'PATCH', body: JSON.stringify(d) }),
+  previewPromoPush: (d) => apiFetch('/admin/promo-push/preview', { method: 'POST', body: JSON.stringify(d) }),
+  testPromoPush: (d) => apiFetch('/admin/promo-push/test', { method: 'POST', body: JSON.stringify(d) }),
 
   // Reklama oynalari (mijoz ilovasi ochilganda navbat bilan)
   getPromoModals: () => apiFetch('/admin/promo-modals'),
