@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { adminApi } from '@/api';
+import { PromoPushPanel } from './PromoPushPanel';
 
 /*
  * ═══════════════════════════════════════════════════════════
@@ -31,9 +32,10 @@ export function AppSettingsPage() {
     <div className="flex-1 p-4 sm:p-6 min-w-0 max-w-5xl">
       <div className="mb-5">
         <h1 className="text-lg sm:text-xl font-semibold text-ink">Mijoz ilovasi</h1>
-        <p className="text-xs sm:text-sm text-muted mt-0.5">Yangilanish, do‘kon havolalari va buyurtmalar qayerdan kelayotgani</p>
+        <p className="text-xs sm:text-sm text-muted mt-0.5">Yangilanish, do‘kon havolalari, taom takliflari va buyurtmalar qayerdan kelayotgani</p>
       </div>
       <ChannelStats />
+      <PromoPushPanel />
       <AppConfigForm />
     </div>
   );
