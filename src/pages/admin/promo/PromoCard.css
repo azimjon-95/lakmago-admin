@@ -148,3 +148,32 @@ button.pm-coverbtn:active .pm-cover { transform: scale(0.99); }
 .pm-foot--bare .pm-foottext { font-size: 15px; }
 
 @media (prefers-reduced-motion: reduce) { .pm-rays { animation: none; } }
+
+/* "Faqat rasm": pastdagi tugmalar — rasm ustida yumshoq qorong'i qatlam, shu qatlamda 1–2 ta tugma */
+.pm-t-image.pm-has-btns::after {
+  content: ''; position: absolute; left: 0; right: 0; bottom: 0; height: 44%; z-index: 2; pointer-events: none;
+  background: linear-gradient(to top, rgba(8, 4, 1, 0.78) 0%, rgba(8, 4, 1, 0.5) 42%, rgba(8, 4, 1, 0) 100%);
+}
+.pm-btns { position: absolute; left: 0; right: 0; bottom: 0; z-index: 3; display: flex; flex-direction: column; gap: 2.6cqw; padding: 0 5.5cqw 5.5cqw; }
+.pm-btn {
+  position: relative; display: flex; align-items: center; justify-content: center; width: 100%; min-height: clamp(8px, 13.5cqw, 52px); padding: 0 5cqw; margin: 0;
+  border: 0; border-radius: 999px; cursor: pointer; color: #fff; text-align: center;
+  font: 800 clamp(5px, 4.7cqw, 18px)/1.1 'Inter Tight', 'Inter', system-ui, sans-serif; letter-spacing: 0.005em;
+  -webkit-tap-highlight-color: transparent; transition: transform 0.15s ease, filter 0.15s ease;
+  animation: pm-btn-in 0.5s cubic-bezier(0.22, 0.9, 0.25, 1) both;
+}
+.pm-btn:nth-child(2) { animation-delay: 0.08s; }
+.pm-btn-text { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pm-btn--primary {
+  background: linear-gradient(180deg, #FF8A3D 0%, var(--pm-orange) 55%, #E5560E 100%);
+  box-shadow: 0 6px 18px -4px rgba(242, 102, 26, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.pm-btn--ghost {
+  background: rgba(255, 255, 255, 0.16); border: 1px solid rgba(255, 255, 255, 0.38);
+  backdrop-filter: blur(10px) saturate(1.2); -webkit-backdrop-filter: blur(10px) saturate(1.2);
+}
+.pm-btn:active { transform: scale(0.97); filter: brightness(0.94); }
+.pm-btn:focus-visible { outline: 3px solid #4C8DFF; outline-offset: 2px; }
+.pm-preview .pm-btn { animation: none; pointer-events: none; }
+@keyframes pm-btn-in { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .pm-btn { animation: none; } }

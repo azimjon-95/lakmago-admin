@@ -11,7 +11,7 @@ import './PromoCard.css';
  * Shablonlar:
  *   brush    — asosiy reklama plakati bilan AYNAN bir xil: ramka (cho'tka zarbalari va nuqtalar) plakatning
  *              o'zidan ajratilgan (/promo/brush-frame.webp), sarlavha, rasm va lenta plakat o'lchovlarida
- *   image    — faqat rasm: matnsiz, ramkasiz, rasm oynani chetdan-chetgacha qoplaydi
+ *   image    — faqat rasm: matnsiz, ramkasiz, rasm oynani chetdan-chetgacha qoplaydi; pastda 0–2 ta tugma (nom + havola)
  *   coupon   — to'q sariq kupon: teshikli chet, uzib olinadigan pastki qism
  *   sunburst — to'q sariq nurlar, oq sarlavha, urg'u qora stikerda
  * Matn: *yulduzcha* ichidagi qism urg'u rangida. Matn har doim kartaga SIG'ADI:
@@ -74,7 +74,7 @@ function Fit({ as: Tag = 'div', className, ratio, min, maxLines = 0, children, d
 
 export const PROMO_TEMPLATES = ['brush', 'coupon', 'sunburst', 'image'];
 
-export function PromoCard({ promo, onClose, onAction, preview = false }) {
+export function PromoCard({ promo, onClose, onAction, onButton, preview = false }) {
   // Kupon kesimlari karta eniga nisbatan (kichik ko'rinishda ham to'g'ri)
   const cardRef = useRef(null);
   useLayoutEffect(() => {
@@ -92,6 +92,8 @@ export function PromoCard({ promo, onClose, onAction, preview = false }) {
   const img = promoImg(promo?.imageUrl || '');
   const clickable = Boolean(promo?.link) && !preview;
   const Footer = clickable ? 'button' : 'div';
+  // Tugmalar faqat "Faqat rasm" shablonida (server ham shunday saqlaydi)
+  const buttons = t === 'image' ? (promo?.buttons || []).filter((b) => b?.label).slice(0, 2) : [];
 
   const closeBtn = onClose && (
     <button type="button" className="pm-close" onClick={onClose} aria-label="Yopish">
@@ -103,10 +105,21 @@ export function PromoCard({ promo, onClose, onAction, preview = false }) {
   if (t === 'image') {
     const Cover = clickable ? 'button' : 'div';
     return (
-      <div ref={cardRef} className={`pm-card pm-t-image${preview ? ' pm-preview' : ''}`} role="document">
+      <div ref={cardRef} className={`pm-card pm-t-image${buttons.length ? ' pm-has-btns' : ''}${preview ? ' pm-preview' : ''}`} role="document">
         <Cover type={clickable ? 'button' : undefined} className="pm-coverbtn" onClick={clickable ? onAction : undefined} aria-label={clickable ? 'Ko‘rish' : undefined}>
           {img ? <img className="pm-cover" src={img} alt="" draggable="false" /> : <span className="pm-cover pm-cover--empty" aria-hidden="true">Rasm yuklang</span>}
         </Cover>
+        {/* Pastdagi tugmalar (0–2 ta): nom + havola. Birinchisi asosiy (to'q sariq), ikkinchisi shishasimon */}
+        {buttons.length > 0 && (
+          <div className="pm-btns" data-n={buttons.length}>
+            {buttons.map((b, i) => (
+              <button key={`${i}-${b.label}`} type="button" className={`pm-btn ${i === 0 ? 'pm-btn--primary' : 'pm-btn--ghost'}`}
+                tabIndex={preview ? -1 : 0} onClick={preview ? undefined : () => onButton?.(i, b)}>
+                <span className="pm-btn-text">{b.label}</span>
+              </button>
+            ))}
+          </div>
+        )}
         {closeBtn}
       </div>
     );

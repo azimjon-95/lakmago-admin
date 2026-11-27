@@ -26,7 +26,11 @@ const MAX_ACTIVE = 5;
 const LIMIT = { title: 90, footer: 70 };
 const visibleLen = (s) => String(s || '').replace(/\*/g, '').length;
 
-const EMPTY = { template: 'brush', title: '', footer: '', imageUrl: '', link: '', active: false, frequency: 'daily', startsAt: '', endsAt: '', audience: 'all', cta: 'link' };
+const EMPTY = { template: 'brush', title: '', footer: '', imageUrl: '', link: '', active: false, frequency: 'daily', startsAt: '', endsAt: '', audience: 'all', cta: 'link', buttons: [] };
+
+const BTN = { label: 24, max: 2 };
+const LINK_RE = /^(\/(?!\/)\S*|https:\/\/\S+)$/;
+const BTN_PRESETS = [['/', 'Bosh sahifa'], ['/market', 'Market']];
 
 const toLocal = (d) => (d ? new Date(new Date(d).getTime() - new Date().getTimezoneOffset() * 60_000).toISOString().slice(0, 16) : '');
 
@@ -119,8 +123,10 @@ export function PromoModalsPage() {
                     <span className={`rounded-full px-2 py-0.5 font-medium ${cls}`}>{label}</span>
                     <span className="rounded-full bg-canvas px-2 py-0.5 text-muted">{p.frequency === 'once' ? 'Faqat bir marta' : 'Kuniga bir marta'}</span>
                     {AUDIENCE_SHORT[p.audience || 'all'] && <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700">{AUDIENCE_SHORT[p.audience]}</span>}
+                    {(p.buttons || []).length > 0 && <span className="rounded-full bg-amber-50 px-2 py-0.5 font-medium text-amber-700">{p.buttons.length} ta tugma</span>}
                     {p.cta === 'install_app' && <span className="rounded-full bg-violet-50 px-2 py-0.5 font-medium text-violet-700">Ilovani yuklash</span>}
-                    <span className="text-muted">Ko‘rildi {shown}{p.link ? ` · bosildi ${clicked}${shown ? ` (${Math.round((clicked / shown) * 100)}%)` : ''}` : ''}</span>
+                    <span className="text-muted">Ko‘rildi {shown}{(p.link || (p.buttons || []).length) ? ` · bosildi ${clicked}${shown ? ` (${Math.round((clicked / shown) * 100)}%)` : ''}` : ''}</span>
+                    {(p.buttons || []).length > 0 && <span className="text-muted">({p.buttons.map((b) => `${b.label}: ${b.clicks || 0}`).join(' · ')})</span>}
                   </div>
                   <div className="mt-auto flex flex-wrap gap-1 pt-2">
                     <IconBtn icon="ti-arrow-up" label="Yuqoriga" disabled={i === 0 || busyId === 'order'} onClick={() => move(i, -1)} />
@@ -142,7 +148,7 @@ export function PromoModalsPage() {
   );
 }
 
-const pick = (p) => ({ template: p.template, title: p.title, footer: p.footer, imageUrl: p.imageUrl, link: p.link, frequency: p.frequency, startsAt: p.startsAt || null, endsAt: p.endsAt || null, audience: p.audience || 'all', cta: p.cta || 'link' });
+const pick = (p) => ({ template: p.template, title: p.title, footer: p.footer, imageUrl: p.imageUrl, link: p.link, frequency: p.frequency, startsAt: p.startsAt || null, endsAt: p.endsAt || null, audience: p.audience || 'all', cta: p.cta || 'link', buttons: (p.buttons || []).map((b) => ({ label: b.label, link: b.link })) });
 
 function Switch({ on, onChange, disabled }) {
   return (
@@ -190,7 +196,25 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
   const canActivate = f.active || initial.active || activeCount < MAX_ACTIVE;
   const install = linkMode === INSTALL;
   const link = install ? '' : linkMode === 'custom' ? f.link.trim() : linkMode;
-  const linkBad = linkMode === 'custom' && !/^(\/(?!\/)\S*|https:\/\/\S+)$/.test(f.link);
+  const linkBad = linkMode === 'custom' && !LINK_RE.test(f.link);
+
+  // Pastdagi tugmalar ("Faqat rasm"): 0–2 ta, har birida nom va havola
+  const buttons = imageOnly ? (f.buttons || []) : [];
+  const setBtn = (i, k, v) => setF((s) => ({ ...s, buttons: (s.buttons || []).map((b, j) => (j === i ? { ...b, [k]: v } : b)) }));
+  const addBtn = () => setF((s) => ((s.buttons || []).length >= BTN.max ? s : { ...s, buttons: [...(s.buttons || []), { label: '', link: '' }] }));
+  const delBtn = (i) => setF((s) => ({ ...s, buttons: (s.buttons || []).filter((_, j) => j !== i) }));
+  const buttonProblem = (() => {
+    for (let i = 0; i < buttons.length; i++) {
+      const b = buttons[i]; const l = (b.label || '').trim(); const k = (b.link || '').trim();
+      if (!l && !k) continue;
+      if (!l) return `${i + 1}-tugma: nomini yozing`;
+      if (!k) return `${i + 1}-tugma: havolani yozing`;
+      if (!LINK_RE.test(k)) return `${i + 1}-tugma: havola noto‘g‘ri — /market kabi yo‘l yoki https:// manzil yozing`;
+    }
+    return null;
+  })();
+  // Faqat to'liq to'ldirilgan tugmalar mijozga/preview'ga boradi
+  const readyButtons = buttons.map((b) => ({ label: (b.label || '').trim(), link: (b.link || '').trim() })).filter((b) => b.label && LINK_RE.test(b.link));
 
   // Har qadam uchun nima yetishmayapti (foydalanuvchiga tushunarli matn)
   const problems = {
@@ -199,12 +223,13 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
     text: !imageOnly && titleLen < 3 ? 'Sarlavhani yozing (kamida 3 belgi)'
       : titleLen > LIMIT.title ? `Sarlavha ${LIMIT.title} belgidan oshmasin`
       : footerLen > LIMIT.footer ? `Pastki yozuv ${LIMIT.footer} belgidan oshmasin`
-      : linkBad ? 'Havola noto‘g‘ri: /market kabi yo‘l yoki https:// manzil yozing' : null,
+      : linkBad ? 'Havola noto‘g‘ri: /market kabi yo‘l yoki https:// manzil yozing'
+      : buttonProblem,
     setup: null,
   };
   problems.setup = problems.setupAudience;
   const firstBad = STEPS.findIndex(([k]) => problems[k]);
-  const stepLabel = (k) => (k === 'text' && imageOnly ? 'Havola' : STEPS.find((x) => x[0] === k)[1]);
+  const stepLabel = (k) => (k === 'text' && imageOnly ? 'Tugmalar' : STEPS.find((x) => x[0] === k)[1]);
 
   const go = (n) => { setErr(null); setStep(n); requestAnimationFrame(() => bodyRef.current?.scrollTo({ top: 0 })); };
   const next = () => {
@@ -227,7 +252,7 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
     if (firstBad >= 0) { go(firstBad); setErr(problems[STEPS[firstBad][0]]); return; }
     setBusy(true); setErr(null);
     const body = {
-      ...pick(f), link, cta: install ? 'install_app' : 'link', active: Boolean(f.active),
+      ...pick(f), link, cta: install ? 'install_app' : 'link', active: Boolean(f.active), buttons: imageOnly ? readyButtons : [],
       startsAt: f.startsAt ? new Date(f.startsAt).toISOString() : null,
       endsAt: f.endsAt ? new Date(f.endsAt).toISOString() : null,
     };
@@ -239,7 +264,7 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
 
   const showStep = (n) => (step === n ? 'block' : 'hidden sm:block');
   const last = step === 2;
-  const previewPromo = { ...f, link, title: f.title || (imageOnly ? '' : 'Sarlavha shu yerda chiqadi') };
+  const previewPromo = { ...f, link, buttons: readyButtons, title: f.title || (imageOnly ? '' : 'Sarlavha shu yerda chiqadi') };
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true">
@@ -360,6 +385,42 @@ function Editor({ initial, activeCount, onClose, onSaved }) {
                     <input className={`${FIELD} mt-2 ${linkBad ? '!border-red-400' : ''}`} value={f.link} onChange={(e) => set('link')(e.target.value)} placeholder="/restaurant/… yoki https://…" inputMode="url" autoCapitalize="none" autoCorrect="off" />
                   )}
                 </label>
+
+                {imageOnly && (
+                  <fieldset className="min-w-0 space-y-3" data-testid="promo-buttons">
+                    <legend className="mb-1 text-sm font-semibold text-ink">Pastdagi tugmalar <span className="font-normal text-muted">(ixtiyoriy, 2 tagacha)</span></legend>
+                    <p className="text-[11px] leading-snug text-muted">Tugmalar rasmning pastki qismida chiqadi — shu joyga muhim yozuv joylamang. Har bir tugma bosilganda oyna yopilib, havola ochiladi.</p>
+                    {buttons.map((b, i) => {
+                      const bad = (b.link || '').trim() && !LINK_RE.test((b.link || '').trim());
+                      return (
+                        <div key={i} className="min-w-0 space-y-2 rounded-2xl border border-line p-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-xs font-semibold text-ink">{i + 1}-tugma{i === 0 ? ' · asosiy' : ' · qo‘shimcha'}</span>
+                            <button type="button" onClick={() => delBtn(i)} aria-label={`${i + 1}-tugmani olib tashlash`} className="flex h-8 w-8 items-center justify-center rounded-lg border border-red-200 text-sm text-red-600"><i className="ti ti-trash" /></button>
+                          </div>
+                          <label className="block min-w-0">
+                            <span className="mb-1 flex items-center justify-between text-xs text-muted">Tugma nomi <span className={(b.label || '').length > BTN.label ? 'text-red-600' : ''}>{(b.label || '').length}/{BTN.label}</span></span>
+                            <input className={FIELD} maxLength={BTN.label} value={b.label} onChange={(e) => setBtn(i, 'label', e.target.value)} placeholder={i === 0 ? 'Buyurtma berish' : 'Batafsil'} />
+                          </label>
+                          <label className="block min-w-0">
+                            <span className="mb-1 block text-xs text-muted">Havola</span>
+                            <input className={`${FIELD} ${bad ? '!border-red-400' : ''}`} value={b.link} onChange={(e) => setBtn(i, 'link', e.target.value)} placeholder="/market yoki https://…" inputMode="url" autoCapitalize="none" autoCorrect="off" />
+                          </label>
+                          <div className="flex flex-wrap gap-1.5">
+                            {BTN_PRESETS.map(([v, l]) => (
+                              <button key={v} type="button" onClick={() => setBtn(i, 'link', v)} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${b.link === v ? 'border-brand-400 bg-brand-400/10 text-ink' : 'border-line text-muted'}`}>{l}</button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {buttons.length < BTN.max && (
+                      <button type="button" onClick={addBtn} className="flex h-11 w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line bg-white text-sm font-semibold text-ink active:bg-canvas">
+                        <i className="ti ti-plus" /> {buttons.length ? 'Yana bitta tugma' : 'Tugma qo‘shish'}
+                      </button>
+                    )}
+                  </fieldset>
+                )}
               </div>
 
               {/* 3. SOZLAMA */}
