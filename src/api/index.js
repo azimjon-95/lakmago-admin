@@ -273,6 +273,7 @@ export const adminApi = {
   getRestaurants: (status) => apiFetch(`/admin/restaurants${status ? `?status=${status}` : ''}`),
   createRestaurant: (data) => apiFetch('/admin/restaurants', { method: 'POST', body: JSON.stringify(data) }),
   updateRestaurant: (id, data) => apiFetch(`/admin/restaurants/${id}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  setClosure: (id, closed, reason = '') => apiFetch(`/admin/restaurants/${id}/closure`, { method: 'PATCH', body: JSON.stringify({ closed, reason }) }),
   toggleBlock: (id, blocked) => apiFetch(`/admin/restaurants/${id}/block`, { method: 'PATCH', body: JSON.stringify({ blocked }) }),
   resetPassword: (id, password) =>
     apiFetch(`/admin/restaurants/${id}/password`, { method: 'PATCH', body: JSON.stringify({ password }) }),

@@ -46,6 +46,9 @@ function ConfirmDialog({ options, onClose }) {
     input,
     inputPlaceholder = '',
     defaultValue = '',
+    maxLength,
+    // allowEmpty: bo'sh kiritish ham "tasdiqlandi" (natija { value }), bekor qilish — false
+    allowEmpty = false,
     options: selectOptions,
   } = options;
 
@@ -116,7 +119,8 @@ function ConfirmDialog({ options, onClose }) {
                 autoFocus
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && close(value)}
+                onKeyDown={(e) => e.key === 'Enter' && close(allowEmpty ? { value } : value)}
+                maxLength={maxLength}
                 placeholder={inputPlaceholder}
                 className="inp mt-3"
               />
@@ -156,7 +160,7 @@ function ConfirmDialog({ options, onClose }) {
           )}
           <button
             autoFocus={!input}
-            onClick={() => close(input || selectOptions ? value : true)}
+            onClick={() => close(allowEmpty ? { value } : (input || selectOptions ? value : true))}
             className={`flex-[1.4] py-2.5 rounded-xl text-sm font-medium transition-colors ${t.btnCls}`}
           >
             {okText}
