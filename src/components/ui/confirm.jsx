@@ -88,72 +88,77 @@ function ConfirmDialog({ options, onClose }) {
   return (
     <div
       onClick={() => close(false)}
-      className={`fixed inset-0 z-[100] flex items-center justify-center p-4 transition-opacity duration-150 ${
+      className={`fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-3 sm:p-4 transition-opacity duration-150 ${
         visible ? 'opacity-100' : 'opacity-0'
       }`}
-      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(4px)', paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className={`bg-white w-full max-w-sm rounded-2xl p-5 shadow-xl transition-all duration-150 ${
+        className={`bg-white w-full max-w-sm rounded-2xl p-4 sm:p-5 shadow-xl max-h-[calc(100dvh-1.5rem)] overflow-y-auto transition-all duration-150 ${
           visible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >
-        <div className="flex gap-3.5">
+        <div className="flex items-start gap-3">
           <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-none ${t.iconCls}`}>
             <i className={`ti ${t.icon} text-xl`} />
           </div>
-
-          <div className="min-w-0 flex-1">
-            <h3 className="text-base font-semibold text-ink leading-snug">
-              {title}
-            </h3>
-            {content && (
-              <p className="text-sm text-muted mt-1.5 leading-relaxed whitespace-pre-line">
-                {content}
-              </p>
-            )}
-
-            {input && !selectOptions && (
-              <input
-                autoFocus
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && close(allowEmpty ? { value } : value)}
-                maxLength={maxLength}
-                placeholder={inputPlaceholder}
-                className="inp mt-3"
-              />
-            )}
-
-            {selectOptions && (
-              <div className="mt-3 space-y-2">
-                {selectOptions.map((opt) => (
-                  <button
-                    key={opt.value}
-                    onClick={() => setValue(opt.value)}
-                    className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
-                      value === opt.value
-                        ? 'border-brand-400 bg-brand-50 text-brand-600'
-                        : 'border-line text-ink hover:bg-canvas'
-                    }`}
-                  >
-                    <div className="font-medium">{opt.label}</div>
-                    {opt.hint && (
-                      <div className="text-xs text-muted mt-0.5">{opt.hint}</div>
-                    )}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
+          <h3 className="min-w-0 flex-1 text-base font-semibold text-ink leading-snug pt-1.5 break-words">
+            {title}
+          </h3>
         </div>
 
-        <div className="flex gap-2 mt-5">
+        {/* Matn, kiritish va tanlov — to'liq kenglikda (mobilda tor ustun bo'lmasin) */}
+        <div className="mt-3 min-w-0">
+          {content && (
+            <p className="text-sm text-muted leading-relaxed whitespace-pre-line">
+              {content}
+            </p>
+          )}
+
+          {input && !selectOptions && (
+            <input
+              autoFocus
+              value={value}
+              onChange={(e) => setValue(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && close(allowEmpty ? { value } : value)}
+              maxLength={maxLength}
+              placeholder={inputPlaceholder}
+              enterKeyHint="done"
+              className={`inp w-full text-base ${content ? 'mt-3' : ''}`}
+            />
+          )}
+          {input && !selectOptions && maxLength && (
+            <div className="text-[11px] text-muted text-right mt-1">{value.length}/{maxLength}</div>
+          )}
+
+          {selectOptions && (
+            <div className={`space-y-2 ${content ? 'mt-3' : ''}`}>
+              {selectOptions.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setValue(opt.value)}
+                  className={`w-full text-left px-3 py-2.5 rounded-xl border text-sm transition-colors ${
+                    value === opt.value
+                      ? 'border-brand-400 bg-brand-50 text-brand-600'
+                      : 'border-line text-ink hover:bg-canvas'
+                  }`}
+                >
+                  <div className="font-medium">{opt.label}</div>
+                  {opt.hint && (
+                    <div className="text-xs text-muted mt-0.5">{opt.hint}</div>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2 mt-4">
           {cancelText !== null && (
             <button
               onClick={() => close(false)}
-              className="flex-1 border border-line text-muted py-2.5 rounded-xl text-sm font-medium hover:bg-canvas transition-colors"
+              className="flex-1 border border-line text-muted py-3 rounded-xl text-sm font-medium hover:bg-canvas transition-colors"
             >
               {cancelText}
             </button>
@@ -161,7 +166,7 @@ function ConfirmDialog({ options, onClose }) {
           <button
             autoFocus={!input}
             onClick={() => close(allowEmpty ? { value } : (input || selectOptions ? value : true))}
-            className={`flex-[1.4] py-2.5 rounded-xl text-sm font-medium transition-colors ${t.btnCls}`}
+            className={`flex-[1.4] py-3 rounded-xl text-sm font-medium transition-colors ${t.btnCls}`}
           >
             {okText}
           </button>

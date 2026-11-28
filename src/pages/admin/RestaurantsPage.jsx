@@ -300,20 +300,20 @@ export function RestaurantsPage() {
               {/* Amallar — mobilda pastda, chapdan boshlab */}
               <div className="flex items-center gap-2 flex-none justify-start sm:justify-end flex-wrap">
                 <button
+                  onClick={() => toggleActive(r)}
+                  title={r.isActive ? 'Mijozlardan yashirish (nofaol qilish)' : 'Mijozlarga ko‘rsatish (faol qilish)'}
+                  className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
+                >
+                  <i className={`ti ${r.isActive ? 'ti-player-stop' : 'ti-player-play'}`} />
+                </button>
+                <button
                   onClick={() => toggleClosure(r)}
                   title={r.manualClosed ? 'Qayta ochish (buyurtma va bron yana qabul qilinadi)' : 'Vaqtincha yopish (taomlar ko‘rinadi, buyurtma va bron yo‘q)'}
                   aria-label={r.manualClosed ? 'Qayta ochish' : 'Vaqtincha yopish'}
                   data-testid="closure-btn"
                   className={`w-9 h-9 rounded-lg border flex items-center justify-center ${r.manualClosed ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-line hover:bg-canvas text-muted'}`}
                 >
-                  <i className={`ti ${r.manualClosed ? 'ti-player-play' : 'ti-player-pause'}`} />
-                </button>
-                <button
-                  onClick={() => toggleActive(r)}
-                  title={r.isActive ? 'Mijozlardan yashirish (nofaol qilish)' : 'Mijozlarga ko‘rsatish (faol qilish)'}
-                  className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
-                >
-                  <i className={`ti ${r.isActive ? 'ti-lock' : 'ti-lock-open'}`} />
+                  <i className={`ti ${r.manualClosed ? 'ti-lock' : 'ti-lock-open'}`} />
                 </button>
                 <button
                   onClick={() => toggleBlock(r)}
