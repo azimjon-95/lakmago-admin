@@ -103,6 +103,29 @@ export function RestaurantsPage() {
     load();
   };
 
+  /*
+   * VAQTINCHA YOPISH (Lokma admini): taomlar mijozga ko'rinib turadi, lekin buyurtma ham, stol bron ham
+   * qabul qilinmaydi. Sabab ixtiyoriy (80 belgigacha) — kartada "Yopiq · sabab" ko'rinadi.
+   * "Faol/Nofaol" (qulf) tugmasidan FARQI: u restoranni mijozlardan butunlay yashiradi.
+   */
+  const toggleClosure = async (r) => {
+    if (r.manualClosed) {
+      if (!await confirm({ title: `"${r.name}" qayta ochilsinmi?`, content: 'Mijozlar yana buyurtma va bron qila oladi.', okText: 'Ochish', tone: 'success' })) return;
+      await adminApi.setClosure(r._id, false);
+      load();
+      return;
+    }
+    const res = await confirm({
+      title: `"${r.name}" vaqtincha yopilsinmi?`,
+      content: 'Taomlari mijozga ko‘rinib turadi, lekin buyurtma va bron qabul qilinmaydi. Qayta ochmaguncha yopiq turadi.',
+      input: true, allowEmpty: true, maxLength: 80, inputPlaceholder: 'Qisqa sabab, masalan: Texnik ishlar (ixtiyoriy)',
+      okText: 'Yopish', tone: 'warning',
+    });
+    if (!res) return;
+    await adminApi.setClosure(r._id, true, res.value || '');
+    load();
+  };
+
   const remove = async (r) => {
     if (!await confirm({ title: `"${r.name}" o'chirilsinmi? Akkaunt ham o'chadi.` })) return;
     await adminApi.deleteRestaurant(r._id);
@@ -255,7 +278,12 @@ export function RestaurantsPage() {
                     ) : r.isActive ? (
                       <span className="text-[11px] px-2 py-0.5 rounded-full bg-green-50 text-green-700 flex-none">Faol</span>
                     ) : (
-                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-none">Yopiq</span>
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-500 flex-none">Yashirin</span>
+                    )}
+                    {r.manualClosed && (
+                      <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium flex-none" data-testid="closed-badge">
+                        ⏸ Yopiq{r.closedReason ? ` · ${r.closedReason}` : ''}
+                      </span>
                     )}
                   </div>
                   <Expandable
@@ -272,8 +300,17 @@ export function RestaurantsPage() {
               {/* Amallar — mobilda pastda, chapdan boshlab */}
               <div className="flex items-center gap-2 flex-none justify-start sm:justify-end flex-wrap">
                 <button
+                  onClick={() => toggleClosure(r)}
+                  title={r.manualClosed ? 'Qayta ochish (buyurtma va bron yana qabul qilinadi)' : 'Vaqtincha yopish (taomlar ko‘rinadi, buyurtma va bron yo‘q)'}
+                  aria-label={r.manualClosed ? 'Qayta ochish' : 'Vaqtincha yopish'}
+                  data-testid="closure-btn"
+                  className={`w-9 h-9 rounded-lg border flex items-center justify-center ${r.manualClosed ? 'border-amber-300 bg-amber-50 text-amber-700' : 'border-line hover:bg-canvas text-muted'}`}
+                >
+                  <i className={`ti ${r.manualClosed ? 'ti-player-play' : 'ti-player-pause'}`} />
+                </button>
+                <button
                   onClick={() => toggleActive(r)}
-                  title={r.isActive ? 'Yopish' : 'Ochish'}
+                  title={r.isActive ? 'Mijozlardan yashirish (nofaol qilish)' : 'Mijozlarga ko‘rsatish (faol qilish)'}
                   className="w-9 h-9 rounded-lg border border-line hover:bg-canvas flex items-center justify-center text-muted"
                 >
                   <i className={`ti ${r.isActive ? 'ti-lock' : 'ti-lock-open'}`} />
